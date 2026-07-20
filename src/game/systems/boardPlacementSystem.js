@@ -13,3 +13,8 @@ export const getPlacedCells = (cells, rotation, originX, originY) =>
 
 export const canPlaceBlock = ({ cells, activeCellKeys, occupiedCellKeys }) =>
   cells.every((cell) => activeCellKeys.has(cellKey(cell)) && !occupiedCellKeys.has(cellKey(cell)))
+
+export const getActiveBoardCellCount = (health, maximumCells) =>
+  Math.max(9, Math.min(maximumCells, Math.ceil(health / 5)))
+
+export const canPlaceAnotherBlock = (placedCount, placementLimit) => placedCount < placementLimit

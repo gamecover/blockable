@@ -1,19 +1,19 @@
 import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
-import { canPlaceBlock, cellKey, getPlacedCells } from '../../systems/boardPlacementSystem.js'
+import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import { gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
 
 const BOARD_METRICS = { originX: 374, originY: 84, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
 const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
-const COLORS = { neutral: 0xd99a4e, ghost: 0x6f5a42, valid: 0x79b88a, invalid: 0xbd5c4f }
+const COLORS = { neutral: 0xb9b5ad, ghost: 0x6f5a42, valid: 0x91c99c, placed: 0xb94a42, invalid: 0x8c8177 }
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('battle') }
 
   init(data) {
     this.hand = data.hand ?? []
-    this.activeCellCount = Math.max(9, Math.min(BOARD_CELLS.length, Math.floor((data.health ?? 75) / 5)))
+    this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
     this.selected = null
@@ -49,7 +49,7 @@ export class BattleScene extends Phaser.Scene {
     const x = 74 + (index % 3) * 112
     const y = 252 + Math.floor(index / 3) * 112
     const container = this.add.container(x, y)
-    const piece = { block, container, rotation: 0, placed: false, used: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand' }
+    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand' }
     this.layoutPieceForHand(piece)
     container.setInteractive(new Phaser.Geom.Rectangle(-piece.hitOffset, -piece.hitOffset, piece.hitWidth, piece.hitHeight), Phaser.Geom.Rectangle.Contains)
     container.input.cursor = 'pointer'
@@ -73,10 +73,11 @@ export class BattleScene extends Phaser.Scene {
 
   applyPieceLayout(piece, layout, mode, tint) {
     piece.container.removeAll(true)
+    const isPlaced = mode === 'placed'
     layout.cells.forEach(({ x, y, size }) => {
-      piece.container.add(this.add.rectangle(x, y, size, size, tint).setStrokeStyle(2, 0xf4d8a6))
+      piece.container.add(this.add.rectangle(x, y, size, size, tint)
+        .setStrokeStyle(isPlaced ? 4 : 2, isPlaced ? 0x5c1815 : 0xe7e0d3))
     })
-    piece.container.add(this.add.text(0, -layout.cellSize / 2 - 12, piece.block.shape, { fontFamily: 'Georgia', fontSize: '13px', color: '#fff3d6' }).setOrigin(0.5))
     piece.layoutMode = mode
     piece.hitWidth = layout.width
     piece.hitHeight = layout.height
@@ -89,21 +90,26 @@ export class BattleScene extends Phaser.Scene {
     this.applyPieceLayout(piece, layoutBlockForHand(piece.block, piece.rotation, HAND_METRICS), 'hand', tint)
   }
 
-  layoutPieceForBoard(piece, tint = COLORS.valid) {
-    this.applyPieceLayout(piece, layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS), 'board', tint)
+  layoutPieceForBoard(piece, placed = false) {
+    this.applyPieceLayout(
+      piece,
+      layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS),
+      placed ? 'placed' : 'board-preview',
+      placed ? COLORS.placed : COLORS.valid,
+    )
   }
 
   getPlacementCandidate(piece) {
     const { column, row } = worldToGrid(piece.container.x, piece.container.y, BOARD_METRICS)
     const cells = getPlacedCells(piece.block.cells, piece.rotation, column, row)
-    const canAdd = piece.used || this.pieces.filter((item) => item.placed).length < PLACEMENTS_PER_TURN
+    const canAdd = canPlaceAnotherBlock(this.pieces.filter((item) => item.placed).length, PLACEMENTS_PER_TURN)
     const valid = canAdd && canPlaceBlock({ cells, activeCellKeys: this.activeCellKeys, occupiedCellKeys: new Set(this.occupied.keys()) })
     return { column, row, cells, valid }
   }
 
   previewPieceLayout(piece) {
     const { valid } = this.getPlacementCandidate(piece)
-    if (valid && piece.layoutMode !== 'board') this.layoutPieceForBoard(piece)
+    if (valid && piece.layoutMode !== 'board-preview') this.layoutPieceForBoard(piece)
     if (!valid && piece.layoutMode !== 'hand') this.layoutPieceForHand(piece)
   }
 
@@ -126,13 +132,12 @@ export class BattleScene extends Phaser.Scene {
       return
     }
     piece.placed = true
-    piece.used = true
     piece.boardX = candidate.column
     piece.boardY = candidate.row
     candidate.cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
     const world = gridToWorld(candidate.row, candidate.column, BOARD_METRICS)
     piece.container.setPosition(world.x, world.y)
-    this.layoutPieceForBoard(piece)
+    this.layoutPieceForBoard(piece, true)
     this.emitBoardState()
   }
 
