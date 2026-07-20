@@ -1,2 +1,2 @@
-Open the Command shell
+Open the Command shell and 
 shoot "npm run dev"
