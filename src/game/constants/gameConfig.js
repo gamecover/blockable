@@ -5,6 +5,10 @@ export const STARTING_GOLD = 50
 export const HAND_SIZE = 5
 export const PLACEMENTS_PER_TURN = 3
 export const BASE_BLOCK_DAMAGE = 10
+export const BOARD_CELL_SIZE = 54
+export const BOARD_CELL_GAP = 5
+export const HAND_BLOCK_CELL_SIZE = 25
+export const HAND_BLOCK_CELL_GAP = 2
 export const BOARD_CELLS = [
   [0, 0], [1, 0], [2, 0],
   [0, 1], [1, 1], [2, 1],
