@@ -20,15 +20,6 @@ button:focus-visible { outline: 3px solid #f3c46e; outline-offset: 3px; }
 .primary-button { color:#21150d; background:linear-gradient(#f0bd68,#c97932); box-shadow:0 4px 0 #6e351e, inset 0 1px #fff2c3; }
 .secondary-button { color:#e7d5b6; background:#2c241d; border:1px solid #67523c; }
 .primary-button:hover, .secondary-button:hover { filter:brightness(1.12); transform:translateY(-1px); }
-.main-screen { grid-template-columns:minmax(360px,650px) minmax(300px,1fr); padding:6vw; background:linear-gradient(90deg,#110e0c 0 50%,transparent), radial-gradient(circle at 78% 47%,#7b351e 0,#271710 35%,#0e0b09 72%); }
-.hero-panel { width:min(600px,90vw); }
-.hero-panel .game-logo { text-align:left; }
-.hero-panel .game-logo h1 { font-size:clamp(4rem,8vw,7rem); }
-.tagline { margin:42px 0 28px; color:#b9a991; font-size:1.05rem; }
-.menu-actions { display:flex; gap:12px; }
-.build-mark { display:block; margin-top:30px; font-size:.65rem; color:#6f6253; letter-spacing:.2em; }
-.forge-art { font-size:clamp(8rem,18vw,17rem); color:#e7a03b; text-align:center; filter:drop-shadow(0 18px 35px #000); opacity:.82; }
-.forge-art .anvil { font-size:7rem; color:#1b1714; text-shadow:0 2px #a65a32; }
 .prologue-screen { padding:5vw; background:radial-gradient(circle at 25% 30%,#76402a,#20140f 50%,#0c0907); }
 .story-card { max-width:1100px; display:grid; grid-template-columns:1.1fr 1fr; background:#17120f; border:1px solid #664c35; box-shadow:0 28px 70px #000b; }
 .story-art { min-height:560px; display:grid; place-items:center; font-size:10rem; background:linear-gradient(#0000,#120c09dd), radial-gradient(circle,#d57939,#4a2418 50%,#160e0a); position:relative; }
@@ -84,4 +75,4 @@ button:focus-visible { outline: 3px solid #f3c46e; outline-offset: 3px; }
 .chest-gold-result{margin:24px 0;padding:20px;border:1px solid #b9803d;background:#3a2818;color:#f2bd63;font-size:1.5rem;font-weight:900;text-align:center}
 .result-screen{text-align:center;padding:5vw;background:radial-gradient(circle,#63311f,#17100c 58%,#090706)}.result-screen>.game-logo{position:absolute;top:35px;left:4vw}.result-symbol{font-size:9rem;color:#d58a42;text-shadow:0 10px #2a130d}.result-screen h2{max-width:720px}.result-screen p{max-width:620px}.result-screen .primary-button{margin-top:20px}.result-screen.defeat{filter:saturate(.6)}
 @keyframes float{50%{transform:translateY(-14px)}}@keyframes pulse{50%{opacity:.12;transform:scale(1.04)}}
-@media(max-width:850px){.main-screen{grid-template-columns:1fr}.forge-art{display:none}.story-card{grid-template-columns:1fr}.story-art{min-height:260px;font-size:6rem}.story-card article{padding:35px}.topbar{grid-template-columns:130px 1fr}.top-actions{display:none}.game-canvas{right:2vw;bottom:250px}.monster-stage{right:4vw;top:auto;bottom:65px;height:180px;width:45vw;z-index:3;pointer-events:none}.monster-glyph{font-size:7rem}.battle-controls{height:62px}.reward-grid{grid-template-columns:1fr;max-width:260px;margin:auto}.event-card{grid-template-columns:1fr}.event-illustration{min-height:220px;font-size:7rem}.event-card article{padding:30px}.map-legend{display:none}}
+@media(max-width:850px){.story-card{grid-template-columns:1fr}.story-art{min-height:260px;font-size:6rem}.story-card article{padding:35px}.topbar{grid-template-columns:130px 1fr}.top-actions{display:none}.game-canvas{right:2vw;bottom:250px}.monster-stage{right:4vw;top:auto;bottom:65px;height:180px;width:45vw;z-index:3;pointer-events:none}.monster-glyph{font-size:7rem}.battle-controls{height:62px}.reward-grid{grid-template-columns:1fr;max-width:260px;margin:auto}.event-card{grid-template-columns:1fr}.event-illustration{min-height:220px;font-size:7rem}.event-card article{padding:30px}.map-legend{display:none}}

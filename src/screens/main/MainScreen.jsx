@@ -1,19 +1,15 @@
-import { motion } from 'motion/react'
-import { GameLogo } from '../../components/ui/GameLogo.jsx'
+import { MainMenuButton } from './components/MainMenuButton.jsx'
+import './styles/main-screen.css'
 
 export function MainScreen({ onStart, onContinue, canContinue }) {
   return (
-    <main className="main-screen">
-      <motion.div className="hero-panel" initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-        <GameLogo />
-        <p className="tagline">세계 제일의 대장장이, 이번엔 직접 던전으로.</p>
-        <div className="menu-actions">
-          <button className="primary-button" onClick={onStart}>새로운 원정</button>
-          {canContinue && <button className="secondary-button" onClick={onContinue}>계속하기</button>}
-        </div>
-        <span className="build-mark">PROTOTYPE BUILD 0.1</span>
-      </motion.div>
-      <div className="forge-art" aria-hidden="true"><span>⚒</span><div className="anvil">▰</div></div>
+    <main className="main-screen" aria-label="BLOCK ANGLE 메인 메뉴">
+      <div className="main-screen__shade" aria-hidden="true" />
+      <nav className="main-menu" aria-label="게임 메뉴">
+        <MainMenuButton onClick={onStart} delay={0}>START</MainMenuButton>
+        <MainMenuButton onClick={onContinue} disabled={!canContinue} delay={0.08}>CONTINUE</MainMenuButton>
+        <MainMenuButton disabled delay={0.16} description="준비 중">OPTION</MainMenuButton>
+      </nav>
     </main>
   )
 }

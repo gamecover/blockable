@@ -3,6 +3,7 @@ import { BattleScene } from '../scenes/BattleScene.js'
 
 export const createGameConfig = (parent, sceneData) => ({
   type: Phaser.AUTO,
+  banner: false,
   parent,
   width: 820,
   height: 500,

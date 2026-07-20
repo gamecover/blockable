@@ -18,5 +18,17 @@ const layoutBlock = (block, rotation, metrics) => {
 
 export const layoutBlockForHand = (block, rotation, metrics) => layoutBlock(block, rotation, metrics)
 export const layoutBlockForBoard = (block, rotation, metrics) => layoutBlock(block, rotation, metrics)
+export const getBlockHitArea = (layout, minimumCellSpan = 1) => {
+  const width = Math.max(layout.width, layout.cellSize * minimumCellSpan)
+  const height = Math.max(layout.height, layout.cellSize * minimumCellSpan)
+  const visualCenterX = (layout.width - layout.cellSize) / 2
+  const visualCenterY = (layout.height - layout.cellSize) / 2
+  return {
+    x: visualCenterX - width / 2,
+    y: visualCenterY - height / 2,
+    width,
+    height,
+  }
+}
 export const gridToWorld = (row, column, metrics) => ({ x: metrics.originX + column * metrics.cellSize, y: metrics.originY + row * metrics.cellSize })
 export const worldToGrid = (x, y, metrics) => ({ column: Math.round((x - metrics.originX) / metrics.cellSize), row: Math.round((y - metrics.originY) / metrics.cellSize) })

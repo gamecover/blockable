@@ -2,11 +2,18 @@ import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
-import { gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
+import { getBlockHitArea, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
 
 const BOARD_METRICS = { originX: 374, originY: 84, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
 const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
 const COLORS = { neutral: 0xb9b5ad, ghost: 0x6f5a42, valid: 0x91c99c, placed: 0xb94a42, invalid: 0x8c8177 }
+const STROKES = {
+  hand: { width: 2, color: 0xe7e0d3 },
+  preview: { width: 3, color: 0xf3eee5 },
+  placed: { width: 3, color: 0x5c1815 },
+  latest: { width: 6, color: 0xffffff },
+}
+const DRAG_ALPHA = 0.58
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('battle') }
@@ -17,6 +24,7 @@ export class BattleScene extends Phaser.Scene {
     this.occupied = new Map()
     this.pieces = []
     this.selected = null
+    this.placementOrder = 0
     this.unsubReset = null
   }
 
@@ -49,21 +57,25 @@ export class BattleScene extends Phaser.Scene {
     const x = 74 + (index % 3) * 112
     const y = 252 + Math.floor(index / 3) * 112
     const container = this.add.container(x, y)
-    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand' }
+    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null }
     this.layoutPieceForHand(piece)
-    container.setInteractive(new Phaser.Geom.Rectangle(-piece.hitOffset, -piece.hitOffset, piece.hitWidth, piece.hitHeight), Phaser.Geom.Rectangle.Contains)
+    this.updatePieceHitArea(piece)
     container.input.cursor = 'pointer'
     this.input.setDraggable(container)
-    container.on('dragstart', () => {
+    container.on('dragstart', (pointer) => {
       this.selected = piece
       if (piece.placed) this.removeOccupancy(piece)
+      container.setPosition(pointer.worldX, pointer.worldY)
+      this.previewPieceLayout(piece)
+      container.setAlpha(DRAG_ALPHA)
       container.setDepth(20)
     })
-    container.on('drag', (_pointer, dragX, dragY) => {
-      container.setPosition(dragX, dragY)
+    container.on('drag', (pointer) => {
+      container.setPosition(pointer.worldX, pointer.worldY)
       this.previewPieceLayout(piece)
     })
     container.on('dragend', () => {
+      container.setAlpha(1)
       container.setDepth(1)
       this.tryPlace(piece)
       this.selected = null
@@ -71,19 +83,34 @@ export class BattleScene extends Phaser.Scene {
     this.pieces.push(piece)
   }
 
-  applyPieceLayout(piece, layout, mode, tint) {
+  applyPieceLayout(piece, layout, mode, tint, stroke = STROKES.hand) {
     piece.container.removeAll(true)
-    const isPlaced = mode === 'placed'
     layout.cells.forEach(({ x, y, size }) => {
       piece.container.add(this.add.rectangle(x, y, size, size, tint)
-        .setStrokeStyle(isPlaced ? 4 : 2, isPlaced ? 0x5c1815 : 0xe7e0d3))
+        .setStrokeStyle(stroke.width, stroke.color))
     })
     piece.layoutMode = mode
-    piece.hitWidth = layout.width
-    piece.hitHeight = layout.height
-    piece.hitOffset = layout.cellSize / 2
-    piece.container.setSize(layout.width, layout.height)
-    if (piece.container.input) piece.container.input.hitArea.setTo(-piece.hitOffset, -piece.hitOffset, layout.width, layout.height)
+    piece.layout = layout
+    if (piece.container.input) this.updatePieceHitArea(piece)
+  }
+
+  updatePieceHitArea(piece) {
+    const minimumCellSpan = piece.layoutMode === 'hand' ? 2 : 1
+    const bounds = getBlockHitArea(piece.layout, minimumCellSpan)
+    piece.container.setSize(bounds.width, bounds.height)
+    const hitArea = new Phaser.Geom.Rectangle(
+      bounds.x + piece.container.displayOriginX,
+      bounds.y + piece.container.displayOriginY,
+      bounds.width,
+      bounds.height,
+    )
+    if (piece.container.input) {
+      piece.container.input.hitArea = hitArea
+      piece.container.input.hitAreaCallback = Phaser.Geom.Rectangle.Contains
+      piece.container.input.customHitArea = true
+      return
+    }
+    piece.container.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains)
   }
 
   layoutPieceForHand(piece, tint = COLORS.neutral) {
@@ -91,12 +118,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   layoutPieceForBoard(piece, placed = false) {
+    const latestOrder = Math.max(0, ...this.pieces.filter((item) => item.placed).map((item) => item.placedOrder))
+    const isLatest = placed && piece.placedOrder === latestOrder
     this.applyPieceLayout(
       piece,
       layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS),
       placed ? 'placed' : 'board-preview',
       placed ? COLORS.placed : COLORS.valid,
+      placed ? (isLatest ? STROKES.latest : STROKES.placed) : STROKES.preview,
     )
+  }
+
+  refreshPlacedHighlights() {
+    this.pieces.filter((piece) => piece.placed).forEach((piece) => this.layoutPieceForBoard(piece, true))
   }
 
   getPlacementCandidate(piece) {
@@ -132,25 +166,30 @@ export class BattleScene extends Phaser.Scene {
       return
     }
     piece.placed = true
+    piece.placedOrder = ++this.placementOrder
     piece.boardX = candidate.column
     piece.boardY = candidate.row
     candidate.cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
     const world = gridToWorld(candidate.row, candidate.column, BOARD_METRICS)
     piece.container.setPosition(world.x, world.y)
-    this.layoutPieceForBoard(piece, true)
+    this.refreshPlacedHighlights()
     this.emitBoardState()
   }
 
   removeOccupancy(piece) {
     for (const [key, id] of this.occupied.entries()) if (id === piece.block.id) this.occupied.delete(key)
     piece.placed = false
+    piece.placedOrder = null
+    this.refreshPlacedHighlights()
     this.emitBoardState()
   }
 
   resetBoard() {
     this.occupied.clear()
+    this.placementOrder = 0
     this.pieces.forEach((piece) => {
       piece.placed = false
+      piece.placedOrder = null
       piece.container.setPosition(piece.homeX, piece.homeY)
       this.layoutPieceForHand(piece)
     })

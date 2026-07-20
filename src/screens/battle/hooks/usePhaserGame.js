@@ -9,6 +9,7 @@ export const usePhaserGame = (sceneData) => {
   useEffect(() => {
     if (!mountRef.current || gameRef.current) return undefined
     gameRef.current = new Phaser.Game(createGameConfig(mountRef.current, sceneData))
+
     return () => {
       gameRef.current?.destroy(true)
       gameRef.current = null
