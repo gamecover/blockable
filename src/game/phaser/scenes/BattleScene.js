@@ -26,6 +26,7 @@ export class BattleScene extends Phaser.Scene {
     this.selected = null
     this.placementOrder = 0
     this.unsubReset = null
+    this.unsubInput = null
   }
 
   create() {
@@ -36,9 +37,14 @@ export class BattleScene extends Phaser.Scene {
     this.hand.forEach((block, index) => this.createPiece(block, index))
     this.input.keyboard.on('keydown-R', this.rotateSelected, this)
     this.unsubReset = gameBridge.on(GAME_EVENTS.RESET_BOARD, () => this.resetBoard())
+    this.unsubInput = gameBridge.on(GAME_EVENTS.SET_INPUT_ENABLED, (enabled) => {
+      this.input.enabled = enabled
+      if (this.input.keyboard) this.input.keyboard.enabled = enabled
+    })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard.off('keydown-R', this.rotateSelected, this)
       this.unsubReset?.()
+      this.unsubInput?.()
     })
     this.emitBoardState()
   }
