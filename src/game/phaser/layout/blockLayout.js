@@ -18,14 +18,16 @@ const layoutBlock = (block, rotation, metrics) => {
 
 export const layoutBlockForHand = (block, rotation, metrics) => layoutBlock(block, rotation, metrics)
 export const layoutBlockForBoard = (block, rotation, metrics) => layoutBlock(block, rotation, metrics)
+export const getBlockVisualCenter = (layout) => ({
+  x: (layout.width - layout.cellSize) / 2,
+  y: (layout.height - layout.cellSize) / 2,
+})
 export const getBlockHitArea = (layout, minimumCellSpan = 1) => {
   const width = Math.max(layout.width, layout.cellSize * minimumCellSpan)
   const height = Math.max(layout.height, layout.cellSize * minimumCellSpan)
-  const visualCenterX = (layout.width - layout.cellSize) / 2
-  const visualCenterY = (layout.height - layout.cellSize) / 2
   return {
-    x: visualCenterX - width / 2,
-    y: visualCenterY - height / 2,
+    x: -width / 2,
+    y: -height / 2,
     width,
     height,
   }

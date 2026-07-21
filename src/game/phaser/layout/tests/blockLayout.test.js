@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCK_SHAPES } from '../../../constants/gameConfig.js'
-import { getBlockHitArea, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../blockLayout.js'
+import { getBlockHitArea, getBlockVisualCenter, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../blockLayout.js'
 
 const board = { originX: 374, originY: 84, cellSize: 54, gap: 5 }
 const hand = { cellSize: 25, gap: 2 }
@@ -28,13 +28,19 @@ describe('block layout', () => {
     const horizontal = layoutBlockForHand(block('I'), 0, hand)
     const vertical = layoutBlockForHand(block('I'), 1, hand)
 
-    expect(getBlockHitArea(horizontal, 2)).toEqual({ x: -12.5, y: -25, width: 75, height: 50 })
-    expect(getBlockHitArea(vertical, 2)).toEqual({ x: -25, y: -12.5, width: 50, height: 75 })
+    expect(getBlockHitArea(horizontal, 2)).toEqual({ x: -37.5, y: -25, width: 75, height: 50 })
+    expect(getBlockHitArea(vertical, 2)).toEqual({ x: -25, y: -37.5, width: 50, height: 75 })
   })
 
   it('centers a minimum two-by-two hit area over an O block', () => {
     const layout = layoutBlockForHand(block('O'), 0, hand)
-    expect(getBlockHitArea(layout, 2)).toEqual({ x: -12.5, y: -12.5, width: 50, height: 50 })
+    expect(getBlockHitArea(layout, 2)).toEqual({ x: -25, y: -25, width: 50, height: 50 })
+  })
+
+  it('calculates the visual center from the rotated block bounds', () => {
+    expect(getBlockVisualCenter(layoutBlockForHand(block('I'), 0, hand))).toEqual({ x: 25, y: 0 })
+    expect(getBlockVisualCenter(layoutBlockForHand(block('I'), 1, hand))).toEqual({ x: 0, y: 25 })
+    expect(getBlockVisualCenter(layoutBlockForHand(block('O'), 0, hand))).toEqual({ x: 12.5, y: 12.5 })
   })
 
   it('converts between grid and world coordinates', () => {

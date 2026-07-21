@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
-import { getBlockHitArea, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
+import { getBlockHitArea, getBlockVisualCenter, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
 
 const BOARD_METRICS = { originX: 374, originY: 84, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
 const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
@@ -85,8 +85,9 @@ export class BattleScene extends Phaser.Scene {
 
   applyPieceLayout(piece, layout, mode, tint, stroke = STROKES.hand) {
     piece.container.removeAll(true)
+    const center = getBlockVisualCenter(layout)
     layout.cells.forEach(({ x, y, size }) => {
-      piece.container.add(this.add.rectangle(x, y, size, size, tint)
+      piece.container.add(this.add.rectangle(x - center.x, y - center.y, size, size, tint)
         .setStrokeStyle(stroke.width, stroke.color))
     })
     piece.layoutMode = mode
@@ -134,7 +135,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   getPlacementCandidate(piece) {
-    const { column, row } = worldToGrid(piece.container.x, piece.container.y, BOARD_METRICS)
+    const boardLayout = layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS)
+    const center = getBlockVisualCenter(boardLayout)
+    const { column, row } = worldToGrid(piece.container.x - center.x, piece.container.y - center.y, BOARD_METRICS)
     const cells = getPlacedCells(piece.block.cells, piece.rotation, column, row)
     const canAdd = canPlaceAnotherBlock(this.pieces.filter((item) => item.placed).length, PLACEMENTS_PER_TURN)
     const valid = canAdd && canPlaceBlock({ cells, activeCellKeys: this.activeCellKeys, occupiedCellKeys: new Set(this.occupied.keys()) })
@@ -171,7 +174,8 @@ export class BattleScene extends Phaser.Scene {
     piece.boardY = candidate.row
     candidate.cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
     const world = gridToWorld(candidate.row, candidate.column, BOARD_METRICS)
-    piece.container.setPosition(world.x, world.y)
+    const center = getBlockVisualCenter(layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS))
+    piece.container.setPosition(world.x + center.x, world.y + center.y)
     this.refreshPlacedHighlights()
     this.emitBoardState()
   }
