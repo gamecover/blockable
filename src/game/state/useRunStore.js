@@ -6,6 +6,7 @@ import { createStarterDeck } from '../../objects/blocks/blockData.js'
 import { STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
+import { trackedLocalStorage } from './trackedStorage.js'
 
 const initialRun = () => ({
   health: STARTING_MAX_HEALTH,
@@ -58,7 +59,7 @@ export const useRunStore = create(persist(immer((set) => ({
   }),
 })), {
   name: 'blockable-save-v1',
-  storage: createJSONStorage(() => localStorage),
+  storage: createJSONStorage(() => trackedLocalStorage),
   partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, prologueSeen, runStarted }) =>
     ({ health, maxHealth, gold, deck, map, currentNodeId, floor, prologueSeen, runStarted }),
   merge: (persisted, current) => isValidSave(persisted) ? { ...current, ...persisted } : current,

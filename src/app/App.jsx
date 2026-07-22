@@ -14,6 +14,7 @@ import { BattleScreen } from '../screens/battle/BattleScreen.jsx'
 import { RewardScreen } from '../screens/reward/RewardScreen.jsx'
 import { EventScreen } from '../screens/event/EventScreen.jsx'
 import { ResultScreen } from '../screens/result/ResultScreen.jsx'
+import { CommonGameMenu } from '../components/game/CommonGameMenu.jsx'
 
 export function App() {
   const [appState, send] = useMachine(appMachine)
@@ -67,6 +68,7 @@ export function App() {
   }
 
   const backToMenu = () => {
+    useRunStore.setState({ lastSavedAt: Date.now() })
     send({ type: 'MENU' })
   }
 
@@ -74,12 +76,25 @@ export function App() {
   const monster = useMemo(() => encounter?.monster, [encounter])
   if (current === 'splash') return <SplashScreen onReady={() => send({ type: 'READY' })} />
   if (current === 'menu') return <MainScreen canContinue={run.runStarted} onStart={startNewRun} onContinue={() => { SoundManager.unlock(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'prologue') return <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'map') return <MapScreen {...run} onSelect={enterNode} />
-  if (current === 'battle' && monster) return <BattleScreen key={run.currentNodeId} monster={monster} onWin={winBattle} onLose={() => send({ type: 'LOSE' })} onAbandon={() => send({ type: 'ABANDON' })} />
-  if (current === 'reward') return <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
-  if (current === 'event') return <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
-  if (current === 'gameover') return <ResultScreen floor={run.floor} onMenu={backToMenu} />
-  if (current === 'ending') return <ResultScreen victory floor={run.floor} onMenu={backToMenu} />
-  return null
+
+  let screen = null
+  if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
+  if (current === 'map') screen = <MapScreen {...run} onSelect={enterNode} />
+  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} monster={monster} onWin={winBattle} onLose={() => send({ type: 'LOSE' })} onAbandon={() => send({ type: 'ABANDON' })} />
+  if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
+  if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
+  if (current === 'gameover') screen = <ResultScreen floor={run.floor} onMenu={backToMenu} />
+  if (current === 'ending') screen = <ResultScreen victory floor={run.floor} onMenu={backToMenu} />
+
+  return <>
+    {screen}
+    <CommonGameMenu
+      floor={run.floor}
+      map={run.map}
+      deck={run.deck}
+      currentNodeId={run.currentNodeId}
+      currentScreen={current}
+      onMainMenu={backToMenu}
+    />
+  </>
 }

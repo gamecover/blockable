@@ -2,6 +2,7 @@ export const GAME_EVENTS = {
   BOARD_CHANGED: 'board:changed',
   TURN_RESOLVED: 'turn:resolved',
   RESET_BOARD: 'board:reset',
+  SET_INPUT_ENABLED: 'input:set-enabled',
 }
 
 export class GameEventBridge {

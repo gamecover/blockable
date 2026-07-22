@@ -7,7 +7,7 @@
   overflow: hidden;
   isolation: isolate;
   background-color: #080807;
-  background-image: url('../assets/pictures/main-background.png');
+  background-image: url('../assets/pictures/Title_Alpha.png');
   background-repeat: no-repeat;
   background-position: center center;
   background-size: cover;
@@ -36,21 +36,15 @@
   position: relative;
   display: grid;
   width: 100%;
-  min-height: clamp(4rem, 6.5vh, 4.75rem);
+  aspect-ratio: 304 / 112;
+  min-height: 0;
   place-content: center;
-  padding: 0.7rem 1.4rem;
+  padding: 0;
   overflow: hidden;
-  border: 1px solid #282725;
-  border-radius: 0.2rem;
+  border: 0;
   color: #d5d3cd;
-  background:
-    linear-gradient(180deg, rgba(65, 65, 62, 0.92), rgba(27, 28, 27, 0.96)),
-    #242523;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 -3px 7px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(0, 0, 0, 0.72),
-    0 0 12px rgba(151, 70, 31, 0.12);
+  background: transparent;
+  box-shadow: none;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(1.05rem, 1.35vw, 1.35rem);
   font-weight: 700;
@@ -61,30 +55,12 @@
   transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
-.main-menu-button::before,
-.main-menu-button::after {
-  content: '';
-  position: absolute;
-  top: 0.45rem;
-  width: 0.22rem;
-  height: calc(100% - 0.9rem);
-  border-radius: 999px;
-  background: #111;
-  box-shadow: inset 0 0 0 1px #4a4540;
-  opacity: 0.75;
-}
-
-.main-menu-button::before { left: 0.55rem; }
-.main-menu-button::after { right: 0.55rem; }
+.main-menu-button img { display:block;width:100%;height:100%;object-fit:contain; }
+.main-menu-button__label.visually-hidden { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0; }
 
 .main-menu-button:hover:not(:disabled) {
-  border-color: #63432f;
   color: #eee9df;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 -3px 7px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(0, 0, 0, 0.72),
-    0 0 16px rgba(157, 73, 33, 0.25);
+  filter:brightness(1.12) drop-shadow(0 0 12px rgba(203,105,49,.28));
 }
 
 .main-menu-button:focus-visible {
@@ -93,14 +69,12 @@
 }
 
 .main-menu-button:active:not(:disabled) {
-  filter: brightness(0.9);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.75), 0 0 9px rgba(145, 65, 29, 0.16);
+  filter: brightness(0.86);
 }
 
 .main-menu-button:disabled {
   color: #8b8a85;
-  border-color: #222;
-  filter: saturate(0.35) brightness(0.72);
+  filter: saturate(0.25) brightness(0.55);
   cursor: not-allowed;
 }
 
@@ -129,7 +103,7 @@
     gap: 0.8rem;
   }
 
-  .main-menu-button { min-height: 3.75rem; }
+  .main-menu-button { max-height: 5.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
