@@ -3,6 +3,10 @@ import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import { getBlockHitArea, getBlockVisualCenter, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
+import fireTexture from '../../../assets/sprites/blocks/block_fire.png'
+import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
+import steelTexture from '../../../assets/sprites/blocks/block_steel.png'
+import waterTexture from '../../../assets/sprites/blocks/block_water.png'
 
 const BOARD_METRICS = { originX: 374, originY: 84, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
 const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
@@ -14,6 +18,12 @@ const STROKES = {
   latest: { width: 6, color: 0xffffff },
 }
 const DRAG_ALPHA = 0.58
+const BLOCK_TEXTURES = {
+  fire: { key: 'block-fire', url: fireTexture },
+  nature: { key: 'block-nature', url: natureTexture },
+  steel: { key: 'block-steel', url: steelTexture },
+  water: { key: 'block-water', url: waterTexture },
+}
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('battle') }
@@ -27,6 +37,10 @@ export class BattleScene extends Phaser.Scene {
     this.placementOrder = 0
     this.unsubReset = null
     this.unsubInput = null
+  }
+
+  preload() {
+    Object.values(BLOCK_TEXTURES).forEach(({ key, url }) => this.load.image(key, url))
   }
 
   create() {
@@ -92,9 +106,18 @@ export class BattleScene extends Phaser.Scene {
   applyPieceLayout(piece, layout, mode, tint, stroke = STROKES.hand) {
     piece.container.removeAll(true)
     const center = getBlockVisualCenter(layout)
+    const texture = BLOCK_TEXTURES[piece.block.color] ?? BLOCK_TEXTURES.steel
     layout.cells.forEach(({ x, y, size }) => {
-      piece.container.add(this.add.rectangle(x - center.x, y - center.y, size, size, tint)
-        .setStrokeStyle(stroke.width, stroke.color))
+      const cellX = x - center.x
+      const cellY = y - center.y
+      if (texture && this.textures.exists(texture.key)) {
+        const image = this.add.image(cellX, cellY, texture.key).setDisplaySize(size, size)
+        if (mode === 'hand' && tint === COLORS.invalid) image.setTint(tint)
+        piece.container.add(image)
+        piece.container.add(this.add.rectangle(cellX, cellY, size, size, 0xffffff, 0).setStrokeStyle(stroke.width, stroke.color))
+        return
+      }
+      piece.container.add(this.add.rectangle(cellX, cellY, size, size, tint).setStrokeStyle(stroke.width, stroke.color))
     })
     piece.layoutMode = mode
     piece.layout = layout

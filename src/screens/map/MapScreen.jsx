@@ -11,7 +11,7 @@ export function MapScreen({ map, floor, health, maxHealth, gold, onSelect }) {
   const edges = getMapEdges(map)
 
   return (
-    <ScreenFrame title="잿빛 용광로 던전" subtitle={`FLOOR ${floor} / 10`} actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title="잿빛 용광로 던전" subtitle={`FLOOR ${floor} / 10`} barVariant="stage" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
       <div className="map-legend"><span><i className="dot available" /> 이동 가능</span><span><i className="dot complete" /> 완료</span><span>⚔ 전투</span><span>? 이벤트</span></div>
       <div className="dungeon-map">
         <svg className="map-connections" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
