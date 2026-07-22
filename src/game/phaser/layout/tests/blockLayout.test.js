@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCK_SHAPES } from '../../../constants/gameConfig.js'
-import { getBlockHitArea, getBlockVisualCenter, gridToWorld, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../blockLayout.js'
+import { getBlockAnchorOffset, getBlockVisualBounds, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../blockLayout.js'
 
 const board = { originX: 374, originY: 84, cellSize: 54, gap: 5 }
 const hand = { cellSize: 25, gap: 2 }
@@ -8,8 +8,8 @@ const block = (shape) => ({ cells: BLOCK_SHAPES[shape] })
 
 describe('block layout', () => {
   it('lays out horizontal and vertical I blocks on three board cells', () => {
-    expect(layoutBlockForBoard(block('I'), 0, board).cells.map(({ x, y, size }) => [x, y, size])).toEqual([[0, 0, 49], [54, 0, 49], [108, 0, 49]])
-    expect(layoutBlockForBoard(block('I'), 1, board).cells.map(({ x, y, size }) => [x, y, size])).toEqual([[0, 0, 49], [0, 54, 49], [0, 108, 49]])
+    expect(layoutBlockForBoard(block('I'), 0, board).cells.map(({ x, y, size }) => [x, y, size])).toEqual([[-54, 0, 49], [0, 0, 49], [54, 0, 49]])
+    expect(layoutBlockForBoard(block('I'), 1, board).cells.map(({ x, y, size }) => [x, y, size])).toEqual([[0, -54, 49], [0, 0, 49], [0, 54, 49]])
   })
 
   it.each([['O', 0, 4], ['L', 0, 3], ['L', 1, 3]])('lays out %s rotation %i with board metrics', (shape, rotation, count) => {
@@ -21,26 +21,34 @@ describe('block layout', () => {
   it('restores the hand metrics', () => {
     const layout = layoutBlockForHand(block('O'), 0, hand)
     expect(layout.cells.every(({ size }) => size === 23)).toBe(true)
-    expect(layout.cells[1].x).toBe(25)
+    expect(layout.cells[1].x).toBe(12.5)
   })
 
-  it('covers the complete rotated block bounds with its hit area', () => {
-    const horizontal = layoutBlockForHand(block('I'), 0, hand)
-    const vertical = layoutBlockForHand(block('I'), 1, hand)
-
-    expect(getBlockHitArea(horizontal, 2)).toEqual({ x: -37.5, y: -25, width: 75, height: 50 })
-    expect(getBlockHitArea(vertical, 2)).toEqual({ x: -25, y: -37.5, width: 50, height: 75 })
+  it('keeps the board anchor offset separate from the centered visual coordinates', () => {
+    expect(getBlockAnchorOffset(layoutBlockForBoard(block('I'), 0, board))).toEqual({ x: 54, y: 0 })
+    expect(getBlockAnchorOffset(layoutBlockForBoard(block('I'), 1, board))).toEqual({ x: 0, y: 54 })
+    expect(getBlockAnchorOffset(layoutBlockForBoard(block('O'), 0, board))).toEqual({ x: 27, y: 27 })
   })
 
-  it('centers a minimum two-by-two hit area over an O block', () => {
-    const layout = layoutBlockForHand(block('O'), 0, hand)
-    expect(getBlockHitArea(layout, 2)).toEqual({ x: -25, y: -25, width: 50, height: 50 })
+  it.each([
+    ['I', 0, { x: -36.5, y: -11.5, width: 73, height: 23 }],
+    ['I', 1, { x: -11.5, y: -36.5, width: 23, height: 73 }],
+    ['O', 0, { x: -24, y: -24, width: 48, height: 48 }],
+    ['L', 0, { x: -24, y: -24, width: 48, height: 48 }],
+  ])('centers the rendered %s block bounds after rotation %i', (shape, rotation, expected) => {
+    expect(getBlockVisualBounds(layoutBlockForHand(block(shape), rotation, hand))).toEqual(expected)
   })
 
-  it('calculates the visual center from the rotated block bounds', () => {
-    expect(getBlockVisualCenter(layoutBlockForHand(block('I'), 0, hand))).toEqual({ x: 25, y: 0 })
-    expect(getBlockVisualCenter(layoutBlockForHand(block('I'), 1, hand))).toEqual({ x: 0, y: 25 })
-    expect(getBlockVisualCenter(layoutBlockForHand(block('O'), 0, hand))).toEqual({ x: 12.5, y: 12.5 })
+  it('hit-tests the visible cells from the same centered coordinates used for rendering', () => {
+    const horizontalI = layoutBlockForHand(block('I'), 0, hand)
+    const lBlock = layoutBlockForHand(block('L'), 0, hand)
+
+    expect(isPointInsideBlock(horizontalI, -25, 0)).toBe(true)
+    expect(isPointInsideBlock(horizontalI, 0, 0)).toBe(true)
+    expect(isPointInsideBlock(horizontalI, 25, 0)).toBe(true)
+    expect(isPointInsideBlock(horizontalI, 50, 0)).toBe(false)
+    expect(isPointInsideBlock(lBlock, 12.5, -12.5)).toBe(false)
+    expect(isPointInsideBlock(lBlock, 12.5, 12.5)).toBe(true)
   })
 
   it('converts between grid and world coordinates', () => {

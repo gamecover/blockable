@@ -10,9 +10,15 @@ export const usePhaserGame = (sceneData) => {
     if (!mountRef.current || gameRef.current) return undefined
     gameRef.current = new Phaser.Game(createGameConfig(mountRef.current, sceneData))
 
-    return () => {
+    const destroyGame = () => {
       gameRef.current?.destroy(true)
       gameRef.current = null
+    }
+
+    if (import.meta.hot) import.meta.hot.dispose(destroyGame)
+
+    return () => {
+      destroyGame()
     }
   }, [sceneData])
 
