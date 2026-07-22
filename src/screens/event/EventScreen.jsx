@@ -25,7 +25,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
 
   const cost = 50
   return (
-    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
       <div className="event-card shop"><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요.</p><div className="deck-strip">{deck.slice(0, 8).map((block) => <button disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><b>{block.shape}</b><small>◆ {cost}</small></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
     </ScreenFrame>
   )

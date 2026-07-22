@@ -32,6 +32,31 @@ function RunMapModal({ map, currentNodeId, onClose }) {
   )
 }
 
+function DeckModal({ deck, onClose }) {
+  const blockCounts = deck.reduce((counts, block) => {
+    const key = `${block.shape}-${block.color}`
+    const current = counts.get(key)
+    counts.set(key, current ? { ...current, count: current.count + 1 } : { ...block, count: 1 })
+    return counts
+  }, new Map())
+
+  return (
+    <div className="common-modal__panel common-modal__panel--deck" role="dialog" aria-modal="true" aria-labelledby="deck-title">
+      <header><div><small>현재 원정 주머니</small><h2 id="deck-title">현재 덱 · {deck.length}개</h2></div><button type="button" onClick={onClose} aria-label="덱 닫기">×</button></header>
+      <div className="run-deck" aria-label="현재 덱 구성">
+        {[...blockCounts.values()].map((block) => (
+          <div className={`run-deck__block ${block.color}`} key={`${block.shape}-${block.color}`}>
+            <strong>{block.shape}</strong>
+            <span>{block.color === 'neutral' ? '무색 블록' : `${block.color} 블록`}</span>
+            <b aria-label={`${block.count}개`}>×{block.count}</b>
+          </div>
+        ))}
+      </div>
+      <p className="common-modal__hint">현재 원정에서 보유한 블록 구성입니다.</p>
+    </div>
+  )
+}
+
 function SettingsModal({ onClose, onRequestMainMenu }) {
   const [sfxVolume, setSfxVolume] = useState(() => SoundManager.getSfxVolume())
   const [musicVolume, setMusicVolume] = useState(() => SoundManager.getMusicVolume())
@@ -73,7 +98,7 @@ function MainMenuConfirm({ onCancel, onConfirm }) {
   )
 }
 
-export function CommonGameMenu({ floor, map, currentNodeId, onMainMenu }) {
+export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen, onMainMenu }) {
   const [modal, setModal] = useState(null)
   const saveStatus = useSyncExternalStore(saveStatusStore.subscribe, saveStatusStore.getSnapshot)
 
@@ -91,14 +116,16 @@ export function CommonGameMenu({ floor, map, currentNodeId, onMainMenu }) {
 
   return (
     <>
-      <aside className="common-game-menu" aria-label="공통 게임 메뉴">
+      <aside className={`common-game-menu common-game-menu--${currentScreen}`} aria-label="공통 게임 메뉴">
         <strong className="common-game-menu__floor" aria-label={`현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{floor}/{MAX_FLOOR}F</strong>
-        <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />
+        {currentScreen !== 'map' && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
+        {currentScreen !== 'battle' && <IconButton label="현재 덱 확인" icon="▦" onClick={() => setModal('deck')} />}
         <IconButton label="설정 열기" icon="⚙" onClick={() => setModal('settings')} />
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </aside>
       {modal && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
         {modal === 'map' && <RunMapModal map={map} currentNodeId={currentNodeId} onClose={() => setModal(null)} />}
+        {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}
         {modal === 'settings' && <SettingsModal onClose={() => setModal(null)} onRequestMainMenu={() => setModal('main')} />}
         {modal === 'main' && <MainMenuConfirm onCancel={() => setModal(null)} onConfirm={onMainMenu} />}
       </div>}

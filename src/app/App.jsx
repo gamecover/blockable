@@ -88,6 +88,13 @@ export function App() {
 
   return <>
     {screen}
-    <CommonGameMenu floor={run.floor} map={run.map} currentNodeId={run.currentNodeId} onMainMenu={backToMenu} />
+    <CommonGameMenu
+      floor={run.floor}
+      map={run.map}
+      deck={run.deck}
+      currentNodeId={run.currentNodeId}
+      currentScreen={current}
+      onMainMenu={backToMenu}
+    />
   </>
 }
