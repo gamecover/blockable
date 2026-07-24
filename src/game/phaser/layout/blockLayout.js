@@ -32,6 +32,19 @@ export const getBlockVisualBounds = (layout) => {
   const bottom = Math.max(...layout.cells.map(({ y, size }) => y + size / 2))
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
+
+export const layoutBlocksInCenteredRow = (blocks, metrics, availableWidth, horizontalGap) => {
+  const bounds = blocks.map((block) => getBlockVisualBounds(layoutBlockForHand(block, 0, metrics)))
+  const totalWidth = bounds.reduce((sum, item) => sum + item.width, 0)
+    + Math.max(0, bounds.length - 1) * horizontalGap
+  let cursor = (availableWidth - totalWidth) / 2
+
+  return bounds.map((item) => {
+    const x = cursor - item.x
+    cursor += item.width + horizontalGap
+    return { x, bounds: item }
+  })
+}
 export const isPointInsideBlock = (layout, localX, localY) => layout.cells.some(({ x, y, size }) => (
   localX >= x - size / 2
   && localX <= x + size / 2

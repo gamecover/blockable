@@ -2,14 +2,27 @@ import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
-import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
+import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import fireTexture from '../../../assets/sprites/blocks/block_fire.png'
 import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
 import steelTexture from '../../../assets/sprites/blocks/block_steel.png'
 import waterTexture from '../../../assets/sprites/blocks/block_water.png'
+import anvilTexture from '../../../screens/battle/assets/pictures/anvil_alpha.png'
+import formworkTexture from '../../../screens/battle/assets/pictures/formwork_alpha.png'
 
-const BOARD_METRICS = { originX: 374, originY: 84, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
+const BOARD_METRICS = { originX: 326, originY: 128, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
 const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
+const BATTLE_STAGE_WIDTH = 820
+const HAND_HORIZONTAL_GAP = HAND_BLOCK_CELL_SIZE * 1.5
+const ANVIL_CENTER_Y = 637
+const ANVIL_DISPLAY_HEIGHT = 383
+const FORMWORK_GRID_SIZE = 5
+const FORMWORK_TEXTURE_SIZE = 700
+const FORMWORK_TEXTURE_CELL_PITCH = 110
+const FORMWORK_DISPLAY_SIZE = FORMWORK_TEXTURE_SIZE * BOARD_CELL_SIZE / FORMWORK_TEXTURE_CELL_PITCH
+const BOARD_CENTER = gridToWorld(1, 1, BOARD_METRICS)
+const ANVIL_TOP_Y = ANVIL_CENTER_Y - ANVIL_DISPLAY_HEIGHT / 2
+const HAND_SURFACE_Y = ANVIL_TOP_Y - 8
 const COLORS = { neutral: 0xb9b5ad, ghost: 0x6f5a42, valid: 0x91c99c, placed: 0xb94a42, invalid: 0x8c8177 }
 const STROKES = {
   hand: { width: 2, color: 0xe7e0d3 },
@@ -33,6 +46,7 @@ export class BattleScene extends Phaser.Scene {
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
+    this.handSlots = layoutBlocksInCenteredRow(this.hand, HAND_METRICS, BATTLE_STAGE_WIDTH, HAND_HORIZONTAL_GAP)
     this.selected = null
     this.placementOrder = 0
     this.unsubReset = null
@@ -41,13 +55,20 @@ export class BattleScene extends Phaser.Scene {
 
   preload() {
     Object.values(BLOCK_TEXTURES).forEach(({ key, url }) => this.load.image(key, url))
+    this.load.image('battle-anvil', anvilTexture)
+    this.load.image('battle-formwork', formworkTexture)
   }
 
   create() {
-    this.cameras.main.setBackgroundColor('#17120f')
+    this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
-    this.add.text(28, 24, '도구 주머니', { fontFamily: 'Georgia', fontSize: '22px', color: '#ecd9b7' })
-    this.add.text(28, 53, '드래그해 배치 · 드래그 중 R로 회전', { fontFamily: 'sans-serif', fontSize: '13px', color: '#9c8b75' })
+    this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'Georgia', fontSize: '17px', color: '#ecd9b7' })
+    this.add.text(24, HAND_SURFACE_Y - 30, '드래그해 배치\n드래그 중 R로 회전', {
+      fontFamily: 'sans-serif',
+      fontSize: '11px',
+      lineSpacing: 2,
+      color: '#9c8b75',
+    })
     this.hand.forEach((block, index) => this.createPiece(block, index))
     this.input.keyboard.on('keydown-R', this.rotateSelected, this)
     this.input.on('pointerdown', this.selectPieceAtPointer, this)
@@ -72,16 +93,55 @@ export class BattleScene extends Phaser.Scene {
   drawBoard() {
     this.activeCells = BOARD_CELLS.slice(0, this.activeCellCount)
     this.activeCellKeys = new Set(this.activeCells.map(cellKey))
+    const hasFormworkTexture = this.textures.exists('battle-formwork')
+    if (this.textures.exists('battle-anvil')) {
+      this.add.image(410, ANVIL_CENTER_Y, 'battle-anvil')
+        .setDisplaySize(760, ANVIL_DISPLAY_HEIGHT)
+        .setFlipX(true)
+        .setDepth(-3)
+    }
+    if (hasFormworkTexture) {
+      this.add.image(BOARD_CENTER.x, BOARD_CENTER.y, 'battle-formwork')
+        .setDisplaySize(FORMWORK_DISPLAY_SIZE, FORMWORK_DISPLAY_SIZE)
+        .setDepth(-2)
+    }
+
     this.activeCells.forEach(([column, row]) => {
       const world = gridToWorld(row, column, BOARD_METRICS)
-      this.add.rectangle(world.x, world.y, BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap, COLORS.ghost, 0.34)
-        .setStrokeStyle(2, 0xc9a976, 0.55)
+      this.add.rectangle(world.x, world.y, BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap, COLORS.ghost, hasFormworkTexture ? 0.08 : 0.34)
+        .setStrokeStyle(2, 0xc9a976, 0.4)
+        .setDepth(-1)
     })
+    this.drawDisabledFormworkCells()
+  }
+
+  drawDisabledFormworkCells() {
+    for (let formworkRow = 0; formworkRow < FORMWORK_GRID_SIZE; formworkRow += 1) {
+      for (let formworkColumn = 0; formworkColumn < FORMWORK_GRID_SIZE; formworkColumn += 1) {
+        const column = formworkColumn - 1
+        const row = formworkRow - 1
+        if (this.activeCellKeys.has(cellKey([column, row]))) continue
+        const world = gridToWorld(row, column, BOARD_METRICS)
+        this.add.rectangle(
+          world.x,
+          world.y,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          0x090807,
+          0.68,
+        ).setStrokeStyle(2, 0x3e332a, 0.9).setDepth(0)
+        this.add.text(world.x, world.y, '×', {
+          fontFamily: 'Georgia',
+          fontSize: '23px',
+          color: '#5d5147',
+        }).setOrigin(0.5).setDepth(0)
+      }
+    }
   }
 
   createPiece(block, index) {
-    const x = 74 + (index % 3) * 112
-    const y = 252 + Math.floor(index / 3) * 112
+    const { x, bounds: homeBounds } = this.handSlots[index]
+    const y = HAND_SURFACE_Y - (homeBounds.y + homeBounds.height)
     const container = this.add.container(x, y)
     const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null }
     this.layoutPieceForHand(piece)
