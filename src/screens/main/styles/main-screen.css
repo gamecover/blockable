@@ -89,6 +89,42 @@
   letter-spacing: 0.14em;
 }
 
+.developer-main-menu {
+  position: absolute;
+  z-index: 2;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border: 1px solid #5f4330;
+  border-radius: 4px;
+  background: rgba(10, 8, 7, 0.9);
+}
+
+.developer-main-menu strong {
+  padding: 0 0.4rem;
+  color: #e5a34f;
+  font: 700 0.68rem/1 monospace;
+  letter-spacing: 0.12em;
+}
+
+.developer-main-menu button {
+  border: 1px solid #694b35;
+  border-radius: 3px;
+  padding: 0.55rem 0.7rem;
+  color: #e8d7bd;
+  background: #261a13;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.developer-main-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @media (max-width: 80rem) {
   .main-screen { background-position: 48% center; }
   .main-menu {

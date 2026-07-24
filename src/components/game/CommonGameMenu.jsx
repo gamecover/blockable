@@ -6,6 +6,7 @@ import { GameSettingsModal } from './GameSettingsModal.jsx'
 import './styles/common-game-menu.css'
 
 const statusLabels = { saving: '저장 중', saved: '저장 완료', failed: '저장 실패' }
+const mapSymbols = { start: '◆', battle: '⚔', event: '?', boss: '♜' }
 
 function IconButton({ label, icon, onClick }) {
   return (
@@ -19,12 +20,19 @@ function RunMapModal({ map, currentNodeId, onClose }) {
   return (
     <div className="common-modal__panel common-modal__panel--map" role="dialog" aria-modal="true" aria-labelledby="run-map-title">
       <header><div><small>현재 원정 경로</small><h2 id="run-map-title">지도</h2></div><button type="button" onClick={onClose} aria-label="지도 닫기">×</button></header>
-      <div className="run-map" aria-label="읽기 전용 진행 지도">
-        {map.map((nodes, index) => (
-          <div className="run-map__floor" key={index}>
-            <strong>{index + 1}F</strong>
-            <div>{nodes.map((node) => <span className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`} key={node.id}>{node.type === 'boss' ? '♜' : node.type === 'event' ? '?' : '⚔'}</span>)}</div>
-          </div>
+      <div className="run-map-list" aria-label="읽기 전용 진행 지도">
+        {map.floors.map((floor) => (
+          <section className="run-map-section" key={floor.number}>
+            <strong>{floor.number}층</strong>
+            <div className="run-map">
+              {floor.steps.map((nodes, index) => (
+                <div className="run-map__step" key={index}>
+                  <small>{floor.number}-{index + 1}</small>
+                  <div>{nodes.map((node) => <span className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`} key={node.id}>{mapSymbols[node.type]}</span>)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
       <p className="common-modal__hint">현재 진행 상황을 확인하는 읽기 전용 지도입니다.</p>

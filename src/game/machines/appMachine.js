@@ -11,7 +11,7 @@ export const appMachine = setup({
     prologue: { on: { CONTINUE: 'map', MENU: 'menu' } },
     map: { on: { ENTER_BATTLE: 'battle', ENTER_EVENT: 'event', MENU: 'menu' } },
     battle: { on: { WIN: 'reward', LOSE: 'gameover', ABANDON: 'map', MENU: 'menu' } },
-    reward: { on: { DONE: 'map', BOSS_WIN: 'ending', MENU: 'menu' } },
+    reward: { on: { DONE: 'map', FLOOR_BOSS_WIN: 'map', BOSS_WIN: 'ending', MENU: 'menu' } },
     event: { on: { DONE: 'map', MENU: 'menu' } },
     gameover: { on: { MENU: 'menu' } },
     ending: { on: { MENU: 'menu' } },

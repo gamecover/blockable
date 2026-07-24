@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMachine } from '@xstate/react'
+import { useStore } from 'zustand'
+import { DEVELOPER_TOOLS_ENABLED } from '../config/developerMode.js'
 import { appMachine } from '../game/machines/appMachine.js'
 import { MONSTERS } from '../game/constants/gameConfig.js'
 import { pick } from '../game/systems/randomSystem.js'
+import { canDeveloperEnterNode } from '../game/systems/mapGenerationSystem.js'
 import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem.js'
-import { useRunStore } from '../game/state/useRunStore.js'
+import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
+import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
 import { SoundManager } from '../managers/SoundManager.js'
 import { SplashScreen } from '../screens/main/SplashScreen.jsx'
 import { MainScreen } from '../screens/main/MainScreen.jsx'
@@ -21,18 +25,37 @@ export function App() {
   const [encounter, setEncounter] = useState(null)
   const [rewards, setRewards] = useState([])
   const [earnedGold, setEarnedGold] = useState(0)
-  const run = useRunStore()
+  const [runMode, setRunMode] = useState('normal')
+  const normalRun = useStore(normalRunStore)
+  const developerRun = useStore(developerRunStore)
+  const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
+  const run = runMode === 'developer' ? developerRun : normalRun
+  const developerMode = DEVELOPER_TOOLS_ENABLED && runMode === 'developer' && run.developerMode
 
   useEffect(() => () => SoundManager.dispose(), [])
 
-  const startNewRun = () => {
+  const startNewRun = (mode = 'normal') => {
     SoundManager.unlock()
-    const prologueSeen = run.prologueSeen
-    run.startRun('L')
-    send({ type: prologueSeen ? 'CONTINUE' : 'START' })
+    const targetStore = mode === 'developer' ? developerRunStore : normalRunStore
+    const targetRun = targetStore.getState()
+    const prologueSeen = targetRun.prologueSeen
+    targetRun.startRun('L')
+    setRunMode(mode)
+    send({ type: mode === 'developer' || prologueSeen ? 'CONTINUE' : 'START' })
+  }
+
+  const continueRun = (mode = 'normal') => {
+    SoundManager.unlock()
+    setRunMode(mode)
+    send({ type: 'CONTINUE' })
   }
 
   const enterNode = (node) => {
+    const canEnter = developerMode
+      ? canDeveloperEnterNode({ floor: run.floor, step: run.nodeStep }, node)
+      : node.status === 'available'
+    if (!canEnter) return
+
     run.selectNode(node)
     if (node.type === 'event') {
       setEncounter({ type: 'event', event: Math.random() < 0.3 ? 'spring' : pick(['shop', 'chest']) })
@@ -40,7 +63,7 @@ export function App() {
       return
     }
     const monster = node.type === 'boss' ? MONSTERS.boss : pick(MONSTERS.normal)
-    setEncounter({ type: node.type, monster })
+    setEncounter({ type: node.type, node, monster })
     run.beginBattle()
     send({ type: 'ENTER_BATTLE' })
   }
@@ -50,13 +73,17 @@ export function App() {
     setEarnedGold(gold)
     setRewards(createBlockRewards())
     run.addGold(gold)
-    run.completeNode()
     send({ type: 'WIN' })
   }, [run, send])
 
   const finishReward = (block) => {
     if (block) run.addBlock(block)
-    send({ type: encounter?.type === 'boss' ? 'BOSS_WIN' : 'DONE' })
+    run.completeNode()
+    if (encounter?.type !== 'boss') {
+      send({ type: 'DONE' })
+      return
+    }
+    send({ type: encounter.node?.isFinalBoss ? 'BOSS_WIN' : 'FLOOR_BOSS_WIN' })
   }
 
   const resolveEvent = (result) => {
@@ -68,33 +95,41 @@ export function App() {
   }
 
   const backToMenu = () => {
-    useRunStore.setState({ lastSavedAt: Date.now() })
+    activeStore.setState({ lastSavedAt: Date.now() })
     send({ type: 'MENU' })
   }
 
   const current = appState.value
   const monster = useMemo(() => encounter?.monster, [encounter])
   if (current === 'splash') return <SplashScreen onReady={() => send({ type: 'READY' })} />
-  if (current === 'menu') return <MainScreen canContinue={run.runStarted} onStart={startNewRun} onContinue={() => { SoundManager.unlock(); send({ type: 'CONTINUE' }) }} />
+  if (current === 'menu') return <MainScreen
+    canContinue={normalRun.runStarted}
+    onStart={() => startNewRun('normal')}
+    onContinue={() => continueRun('normal')}
+    developerToolsEnabled={DEVELOPER_TOOLS_ENABLED}
+    canDeveloperContinue={developerRun.runStarted}
+    onDeveloperStart={() => startNewRun('developer')}
+    onDeveloperContinue={() => continueRun('developer')}
+  />
 
   let screen = null
   if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'map') screen = <MapScreen {...run} onSelect={enterNode} />
-  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} monster={monster} onWin={winBattle} onLose={() => send({ type: 'LOSE' })} onAbandon={() => send({ type: 'ABANDON' })} />
+  if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onSelect={enterNode} />
+  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} onWin={winBattle} onLose={() => send({ type: 'LOSE' })} onAbandon={() => send({ type: 'ABANDON' })} />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
   if (current === 'gameover') screen = <ResultScreen floor={run.floor} onMenu={backToMenu} />
   if (current === 'ending') screen = <ResultScreen victory floor={run.floor} onMenu={backToMenu} />
 
-  return <>
+  return <RunStoreProvider store={activeStore}>
     {screen}
     <CommonGameMenu
-      floor={run.floor}
-      map={run.map}
-      deck={run.deck}
-      currentNodeId={run.currentNodeId}
-      currentScreen={current}
-      onMainMenu={backToMenu}
-    />
-  </>
+        floor={run.floor}
+        map={run.map}
+        deck={run.deck}
+        currentNodeId={run.currentNodeId}
+        currentScreen={current}
+        onMainMenu={backToMenu}
+      />
+  </RunStoreProvider>
 }

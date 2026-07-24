@@ -1,14 +1,14 @@
-import { create } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { generateMap, completeAndUnlockNext } from '../systems/mapGenerationSystem.js'
+import { generateMap, completeAndUnlockNext, findMapNode } from '../systems/mapGenerationSystem.js'
 import { createStarterDeck } from '../../objects/blocks/blockData.js'
 import { STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
 import { trackedLocalStorage } from './trackedStorage.js'
 
-const initialRun = () => ({
+const initialRun = (developerMode = false) => ({
   health: STARTING_MAX_HEALTH,
   maxHealth: STARTING_MAX_HEALTH,
   armor: 0,
@@ -17,16 +17,18 @@ const initialRun = () => ({
   map: generateMap(),
   currentNodeId: null,
   floor: 1,
+  nodeStep: 1,
   prologueSeen: false,
   runStarted: false,
+  developerMode,
   battlePiles: { drawPile: [], hand: [], discardPile: [] },
 })
 
-export const useRunStore = create(persist(immer((set) => ({
-  ...initialRun(),
+const createRunStore = ({ storageName, developerMode }) => createStore(persist(immer((set) => ({
+  ...initialRun(developerMode),
   startRun: (choice = 'L') => set((state) => {
     const prologueSeen = state.prologueSeen
-    Object.assign(state, initialRun())
+    Object.assign(state, initialRun(developerMode))
     state.deck = createStarterDeck(choice)
     state.runStarted = true
     state.prologueSeen = prologueSeen
@@ -34,9 +36,15 @@ export const useRunStore = create(persist(immer((set) => ({
   selectNode: (node) => set((state) => {
     state.currentNodeId = node.id
     state.floor = node.floor
+    state.nodeStep = node.step
   }),
   completeNode: () => set((state) => {
+    const completedNode = findMapNode(state.map, state.currentNodeId)
     state.map = completeAndUnlockNext(state.map, state.currentNodeId)
+    if (completedNode?.type === 'boss' && !completedNode.isFinalBoss) {
+      state.floor = completedNode.floor + 1
+      state.nodeStep = 1
+    }
   }),
   damagePlayer: (amount) => set((state) => {
     const absorbed = Math.min(state.armor, amount)
@@ -58,9 +66,21 @@ export const useRunStore = create(persist(immer((set) => ({
     state.battlePiles = drawHand(discardHand(state.battlePiles))
   }),
 })), {
-  name: 'blockable-save-v1',
+  name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, prologueSeen, runStarted }) =>
-    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, prologueSeen, runStarted }),
-  merge: (persisted, current) => isValidSave(persisted) ? { ...current, ...persisted } : current,
+  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode }) =>
+    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode }),
+  merge: (persisted, current) => isValidSave(persisted)
+    ? { ...current, ...persisted, developerMode }
+    : current,
 }))
+
+export const normalRunStore = createRunStore({
+  storageName: 'blockable-save-v1',
+  developerMode: false,
+})
+
+export const developerRunStore = createRunStore({
+  storageName: 'blockable-developer-save-v1',
+  developerMode: true,
+})
