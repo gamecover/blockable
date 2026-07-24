@@ -1,5 +1,12 @@
 export const GAME_TITLE = 'BLOCKABLE!'
-export const MAX_FLOOR = 10
+export const DEFAULT_DUNGEON = {
+  id: 'ashen-forge',
+  name: '잿빛 용광로',
+  difficulty: 1,
+  floorCount: 2,
+  nodeStepCount: 5,
+}
+export const MAX_FLOOR = DEFAULT_DUNGEON.floorCount
 export const STARTING_MAX_HEALTH = 75
 export const STARTING_GOLD = 50
 export const HAND_SIZE = 5

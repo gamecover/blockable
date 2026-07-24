@@ -6,7 +6,15 @@ import startButton from './assets/buttons/button_start_01.png'
 import continueButton from './assets/buttons/continue_01.png'
 import './styles/main-screen.css'
 
-export function MainScreen({ onStart, onContinue, canContinue }) {
+export function MainScreen({
+  onStart,
+  onContinue,
+  canContinue,
+  developerToolsEnabled = false,
+  onDeveloperStart,
+  onDeveloperContinue,
+  canDeveloperContinue = false,
+}) {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
@@ -25,6 +33,13 @@ export function MainScreen({ onStart, onContinue, canContinue }) {
           <MainMenuButton imageSrc={continueButton} onClick={onContinue} disabled={!canContinue} delay={0.08}>이어하기</MainMenuButton>
           <MainMenuButton imageSrc={configButton} onClick={() => setSettingsOpen(true)} delay={0.16}>환경 설정</MainMenuButton>
         </nav>
+        {developerToolsEnabled && (
+          <aside className="developer-main-menu" aria-label="개발자 모드 메뉴">
+            <strong>DEV MODE</strong>
+            <button type="button" onClick={onDeveloperStart}>개발자 게임 시작</button>
+            <button type="button" onClick={onDeveloperContinue} disabled={!canDeveloperContinue}>개발자 이어하기</button>
+          </aside>
+        )}
       </main>
       {settingsOpen && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false) }}><GameSettingsModal onClose={() => setSettingsOpen(false)} /></div>}
     </>
