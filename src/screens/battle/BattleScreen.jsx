@@ -70,7 +70,7 @@ export function BattleScreen({ monster, developerMode = false, onWin, onLose, on
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>
-        <div><button className="pile-button">남은 블록 <b>{battlePiles.drawPile.length}</b></button><button className="pile-button">버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
+        <div><button className="pile-button">남은 블록 <b>{battlePiles.remainingCount ?? battlePiles.drawPile.length + battlePiles.hand.length}</b></button><button className="pile-button">버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
         <div className="battle-action-buttons">
           {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
           <button className="end-turn" disabled={!board.placedCount || !machineState.matches('playerInput')} onClick={endTurn}>{machineState.matches('playerInput') ? '턴 종료' : '처리 중…'} <span>→</span></button>

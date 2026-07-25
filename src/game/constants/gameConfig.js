@@ -36,5 +36,9 @@ export const MONSTERS = {
     { id: 'golem', name: '고철 골렘', health: 55, damage: 10, glyph: '⚙' },
     { id: 'slime', name: '용광 슬라임', health: 48, damage: 9, glyph: '◉' },
   ],
+  named: [
+    { id: 'cinder-elite', name: '잿불 수문장', grade: 'named', health: 70, damage: 12, glyph: '♨' },
+    { id: 'golem-elite', name: '강철 파쇄자', grade: 'named', health: 82, damage: 13, glyph: '⚙' },
+  ],
   boss: { id: 'dragon', name: '녹슨 화룡', health: 110, damage: 15, glyph: '♜' },
 }

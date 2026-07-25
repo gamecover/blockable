@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "effects": [
+    { "id": "damage", "name": "피해", "parameters": ["amount"] },
+    { "id": "armor", "name": "방어도", "parameters": ["amount"] },
+    { "id": "heal", "name": "회복", "parameters": ["amount"] },
+    { "id": "status", "name": "상태 효과", "parameters": ["statusId", "stacks"] }
+  ]
+}

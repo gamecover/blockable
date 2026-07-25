@@ -5,6 +5,12 @@ import { rollGoldChest } from '../../game/systems/eventSystem.js'
 export function EventScreen({ event, gold, health, maxHealth, deck, onResolve }) {
   const [chestResult, setChestResult] = useState(null)
 
+  if (event === 'rest') return (
+    <ScreenFrame title="용광로의 쉼터" subtitle="REST">
+      <div className="event-card rest"><div className="event-illustration">♥</div><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>잠시 장비를 내려놓고 숨을 고릅니다. 식어 가는 불씨의 온기가 지친 몸을 회복시킵니다.</p><div className="choice-preview">현재 체력 20 회복 · {health}/{maxHealth}</div><button className="primary-button" onClick={() => onResolve({ heal: 20 })}>휴식을 마치고 이동한다</button></article></div>
+    </ScreenFrame>
+  )
+
   if (event === 'spring') return (
     <ScreenFrame title="생명의 샘" subtitle="RARE ENCOUNTER">
       <div className="event-card spring"><div className="event-illustration">♨</div><article><p className="eyebrow">희귀 이벤트</p><h3>돌 틈에서 푸른 불꽃이 솟는다.</h3><p>불꽃에 손을 담그자 오래된 상처가 아물고, 몸 안에 새로운 힘이 차오릅니다.</p><div className="choice-preview">최대 체력 +25 · 체력 완전 회복</div><button className="primary-button" onClick={() => onResolve({ maxHealth: 25 })}>불꽃을 받아들인다</button></article></div>

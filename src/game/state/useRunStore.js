@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { generateMap, completeAndUnlockNext, findMapNode } from '../systems/mapGenerationSystem.js'
 import { createStarterDeck } from '../../objects/blocks/blockData.js'
+import { createCombatantState } from '../systems/statusEffectSystem.js'
 import { STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
@@ -21,15 +22,20 @@ const initialRun = (developerMode = false) => ({
   prologueSeen: false,
   runStarted: false,
   developerMode,
-  battlePiles: { drawPile: [], hand: [], discardPile: [] },
+  battlePiles: { drawPile: [], hand: [], discardPile: [], remainingCount: 0 },
+  combat: {
+    player: createCombatantState(),
+    monster: createCombatantState(),
+  },
+  pendingBattle: null,
 })
 
 const createRunStore = ({ storageName, developerMode }) => createStore(persist(immer((set) => ({
   ...initialRun(developerMode),
-  startRun: (choice = 'L') => set((state) => {
+  startRun: () => set((state) => {
     const prologueSeen = state.prologueSeen
     Object.assign(state, initialRun(developerMode))
-    state.deck = createStarterDeck(choice)
+    state.deck = createStarterDeck()
     state.runStarted = true
     state.prologueSeen = prologueSeen
   }),
@@ -58,18 +64,45 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
   markPrologueSeen: () => set((state) => { state.prologueSeen = true }),
-  beginBattle: () => set((state) => {
+  beginBattle: (encounter) => set((state) => {
+    state.pendingBattle = {
+      encounter,
+      health: state.health,
+      maxHealth: state.maxHealth,
+      armor: state.armor,
+      gold: state.gold,
+      deck: state.deck,
+    }
     state.battlePiles = drawHand(startBattleDeck(state.deck))
     state.armor = 0
+    state.combat = {
+      player: createCombatantState(),
+      monster: createCombatantState(),
+    }
   }),
+  restorePendingBattle: () => set((state) => {
+    if (!state.pendingBattle) return
+    const snapshot = state.pendingBattle
+    state.health = snapshot.health
+    state.maxHealth = snapshot.maxHealth
+    state.armor = 0
+    state.gold = snapshot.gold
+    state.deck = snapshot.deck
+    state.battlePiles = drawHand(startBattleDeck(snapshot.deck))
+    state.combat = {
+      player: createCombatantState(),
+      monster: createCombatantState(),
+    }
+  }),
+  clearPendingBattle: () => set((state) => { state.pendingBattle = null }),
   drawNextHand: () => set((state) => {
     state.battlePiles = drawHand(discardHand(state.battlePiles))
   }),
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode }) =>
-    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode }),
+  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }) =>
+    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }),
   merge: (persisted, current) => isValidSave(persisted)
     ? { ...current, ...persisted, developerMode }
     : current,

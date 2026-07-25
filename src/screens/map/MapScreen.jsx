@@ -5,8 +5,8 @@ import mapBase from './assets/pictures/map_base_alpha.png'
 import straightArrow from './assets/pictures/map_arrow_short_01.png'
 import diagonalArrow from './assets/pictures/map_arrow_short_02.png'
 
-const symbols = { start: '◆', battle: '⚔', event: '?', boss: '♜' }
-const labels = { start: '입구', battle: '전투', event: '사건', boss: '보스' }
+const symbols = { start: '◆', battle: '⚔', event: '?', rest: '♥', boss: '♜' }
+const labels = { start: '고유 블록 선택', battle: '전투', event: '사건', rest: '휴식', boss: '보스' }
 
 export function MapScreen({
   map,
@@ -26,9 +26,9 @@ export function MapScreen({
   const edges = getMapEdges(map, floor)
 
   return (
-    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · ${nodeStep}/${selectedFloor.steps.length}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
       <div className="map-toolbar">
-        <div className="map-legend"><span><i className="dot available" /> 이동 가능</span><span><i className="dot complete" /> 완료</span><span>◆ 입구</span><span>⚔ 전투</span><span>? 이벤트</span><span>♜ 보스</span></div>
+        <div className="map-legend"><span><i className="dot available" /> 이동 가능</span><span><i className="dot complete" /> 완료</span><span>· 미확인</span></div>
         {developerMode && <div className="developer-map-tools"><strong>DEV</strong><button type="button" onClick={onDebugAddGold}>골드 +1000</button></div>}
       </div>
       <div className="dungeon-map-viewport">
