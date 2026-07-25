@@ -62,9 +62,9 @@ export class BattleScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
-    this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'Georgia', fontSize: '17px', color: '#ecd9b7' })
+    this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'DNF Forged Blade Medium', fontSize: '17px', color: '#ecd9b7' })
     this.add.text(24, HAND_SURFACE_Y - 30, '드래그해 배치\n드래그 중 R로 회전', {
-      fontFamily: 'sans-serif',
+      fontFamily: 'DNF Forged Blade Medium',
       fontSize: '11px',
       lineSpacing: 2,
       color: '#9c8b75',
@@ -131,7 +131,7 @@ export class BattleScene extends Phaser.Scene {
           0.68,
         ).setStrokeStyle(2, 0x3e332a, 0.9).setDepth(0)
         this.add.text(world.x, world.y, '×', {
-          fontFamily: 'Georgia',
+          fontFamily: 'DNF Forged Blade Medium',
           fontSize: '23px',
           color: '#5d5147',
         }).setOrigin(0.5).setDepth(0)

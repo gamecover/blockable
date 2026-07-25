@@ -26,7 +26,7 @@ export function MapScreen({
   const edges = getMapEdges(map, floor)
 
   return (
-    <ScreenFrame title={`${map.dungeonName} 던전`} subtitle={`${floor}층 · ${nodeStep}/${selectedFloor.steps.length}`} barVariant="stage" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · ${nodeStep}/${selectedFloor.steps.length}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
       <div className="map-toolbar">
         <div className="map-legend"><span><i className="dot available" /> 이동 가능</span><span><i className="dot complete" /> 완료</span><span>◆ 입구</span><span>⚔ 전투</span><span>? 이벤트</span><span>♜ 보스</span></div>
         {developerMode && <div className="developer-map-tools"><strong>DEV</strong><button type="button" onClick={onDebugAddGold}>골드 +1000</button></div>}
