@@ -1,13 +1,55 @@
-import { BLOCK_SHAPES } from '../../game/constants/gameConfig.js'
+import {
+  getRuleBlock,
+  getStarterBlockDefinitions,
+  getUniqueBlockDefinitions,
+} from '../../game/systems/blockRulesSystem.js'
 
-export const createBlock = (shape, index, color = 'neutral') => ({
-  id: `${shape}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-  shape,
-  color,
-  cells: BLOCK_SHAPES[shape],
-})
+const LEGACY_TYPES = { I: 's001', L: 's002', O: 's003' }
 
-export const createStarterDeck = (choice = 'L') => {
-  const shapes = ['I', 'I', 'I', 'I', 'O', 'O', 'O', 'O', 'L', 'L', 'L', 'L', choice]
-  return shapes.map((shape, index) => createBlock(shape, index))
+const getShapeLabel = (definition) => {
+  if (definition.id.endsWith('001') && definition.shape.cells.length === 3) return 'I'
+  if (definition.id.endsWith('002') && definition.shape.cells.length === 3) return 'L'
+  if (definition.id.endsWith('003') && definition.shape.cells.length === 4) return 'O'
+  return definition.display_name
+}
+
+export const createBlock = (definitionId, index) => {
+  const resolvedId = LEGACY_TYPES[definitionId] ?? definitionId
+  const definition = getRuleBlock(resolvedId)
+  if (!definition) throw new Error(`Unknown block definition: ${definitionId}`)
+  return {
+    id: `${definition.id}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+    definitionId: definition.id,
+    type: definition.type_id,
+    typeId: definition.type_id,
+    name: definition.display_name,
+    shape: getShapeLabel(definition),
+    color: definition.color_id,
+    cells: definition.shape.cells.map(({ x, y }) => [x, y]),
+    transform: { ...definition.transform },
+    effects: definition.effects.map((effect) => ({
+      ...effect,
+      parameters: { ...effect.parameters },
+    })),
+    tags: [...definition.tags],
+    description: definition.description,
+  }
+}
+
+export const createStarterDeck = () =>
+  getStarterBlockDefinitions()
+    .flatMap((definition) => Array.from({ length: 4 }, () => definition.id))
+    .map((id, index) => createBlock(id, index))
+
+export const createUniqueBlockChoices = () =>
+  getUniqueBlockDefinitions().map(({ id }, index) => createBlock(id, `unique-${index}`))
+
+export const hydrateBlock = (block, index = 0) => {
+  if (block?.definitionId && getRuleBlock(block.definitionId)) {
+    return { ...createBlock(block.definitionId, index), id: block.id }
+  }
+  if (block?.tags?.includes('unique')) return { ...createBlock('a001', index), id: block.id }
+  const prefix = { fire: 'f', water: 'w', nature: 'n', steel: 's', neutral: 's' }[block?.color] ?? 's'
+  const suffix = { I: '001', L: '002', O: '003' }[block?.shape] ?? '001'
+  return { ...createBlock(`${prefix}${suffix}`, index), id: block?.id ?? `${prefix}${suffix}-${index}` }
 }

@@ -14,11 +14,14 @@ describe('board placement system', () => {
     expect(canPlaceBlock({ cells: [[2, 0], [3, 0]], activeCellKeys, occupiedCellKeys: new Set() })).toBe(false)
   })
 
-  it('removes one cell per five health and keeps the central nine cells', () => {
-    expect(getActiveBoardCellCount(75, 15)).toBe(15)
-    expect(getActiveBoardCellCount(48, 15)).toBe(10)
-    expect(getActiveBoardCellCount(45, 15)).toBe(9)
-    expect(getActiveBoardCellCount(20, 15)).toBe(9)
+  it('changes one cell per five health, keeps nine cells, and expands above 75 health', () => {
+    expect(getActiveBoardCellCount(75, 25)).toBe(15)
+    expect(getActiveBoardCellCount(100, 25)).toBe(20)
+    expect(getActiveBoardCellCount(125, 25)).toBe(25)
+    expect(getActiveBoardCellCount(150, 25)).toBe(25)
+    expect(getActiveBoardCellCount(48, 25)).toBe(10)
+    expect(getActiveBoardCellCount(45, 25)).toBe(9)
+    expect(getActiveBoardCellCount(20, 25)).toBe(9)
   })
 
   it('allows no more than three placed blocks', () => {

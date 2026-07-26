@@ -2,8 +2,8 @@ import { DEFAULT_DUNGEON } from '../constants/gameConfig.js'
 
 const laneLabels = ['A', 'B', 'C']
 export const DIFFICULTY_ONE_TEMPLATES = [
-  { id: 'early-branch', nodeCounts: [1, 2, 2, 1, 1] },
-  { id: 'late-branch', nodeCounts: [1, 1, 2, 2, 1] },
+  { id: 'early-branch', nodeCounts: [1, 2, 1, 1, 1] },
+  { id: 'late-branch', nodeCounts: [1, 1, 1, 2, 1] },
   { id: 'sustained-branch', nodeCounts: [1, 2, 2, 2, 1] },
 ]
 
@@ -15,21 +15,39 @@ const createSeededRandom = (seed) => {
   }
 }
 
-const createNode = ({ floor, step, lane, type, available = false, finalBoss = false }) => ({
+const createNode = ({ floor, step, lane, type, grade = null, available = false, finalBoss = false }) => ({
   id: `${floor}-${step}-${laneLabels[lane]}`,
   floor,
   step,
   lane,
   type,
+  grade,
   status: available ? 'available' : 'locked',
   isFinalBoss: finalBoss,
   nextNodeIds: [],
 })
 
-const assignEncounterTypes = (step, count, random) => {
+const pickWeightedType = (weights, random) => {
+  const entries = Object.entries(weights)
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
+  let roll = random() * total
+  return entries.find(([, weight]) => {
+    roll -= weight
+    return roll <= 0
+  })?.[0] ?? entries.at(-1)[0]
+}
+
+const assignEncounterTypes = (step, count, random, previousTypes) => {
   if (step === 1) return ['start']
   if (step === DEFAULT_DUNGEON.nodeStepCount) return ['boss']
-  return Array.from({ length: count }, () => random() < 0.66 ? 'battle' : 'event')
+  const baseWeights = { battle: 0.6, event: 0.3, ...(step >= 3 ? { rest: 0.1 } : {}) }
+  return Array.from({ length: count }, () => {
+    const weights = { ...baseWeights }
+    previousTypes.forEach((type) => {
+      if (weights[type]) weights[type] *= 0.5
+    })
+    return pickWeightedType(weights, random)
+  })
 }
 
 const connectFloor = (steps) => steps.map((nodes, stepIndex) => nodes.map((node) => {
@@ -45,14 +63,17 @@ const createFloor = (floor, floorCount, random) => {
   const template = DIFFICULTY_ONE_TEMPLATES[
     Math.floor(random() * DIFFICULTY_ONE_TEMPLATES.length)
   ]
+  let previousTypes = []
   const steps = template.nodeCounts.map((count, index) => {
     const step = index + 1
-    const types = assignEncounterTypes(step, count, random)
+    const types = assignEncounterTypes(step, count, random, previousTypes)
+    previousTypes = types
     return types.map((type, lane) => createNode({
       floor,
       step,
       lane,
       type,
+      grade: type === 'battle' ? (random() < 0.2 ? 'named' : 'normal') : type === 'boss' ? 'boss' : null,
       available: floor === 1 && step === 1,
       finalBoss: type === 'boss' && floor === floorCount,
     }))
@@ -99,6 +120,9 @@ export const getMapNodePosition = (map, node) => {
 
 export const getMapEdges = (map, floor) => getMapNodes(map, floor).flatMap((node) =>
   node.nextNodeIds.map((targetId) => ({ from: node.id, to: targetId })))
+
+export const isNodeWithinKnownProgress = (node, { floor, step }) =>
+  node.floor < floor || (node.floor === floor && node.step <= step)
 
 export const completeAndUnlockNext = (map, nodeId) => {
   const current = findMapNode(map, nodeId)

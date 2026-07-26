@@ -7,6 +7,7 @@ import {
   generateMap,
   getMapEdges,
   getMapNodes,
+  isNodeWithinKnownProgress,
 } from '../mapGenerationSystem.js'
 
 describe('map generation', () => {
@@ -59,18 +60,32 @@ describe('map generation', () => {
     }
   })
 
-  it('keeps every branch open for at least two consecutive node steps', () => {
-    for (let seed = 0; seed < 30; seed += 1) {
-      generateMap({ seed }).floors.forEach(({ steps }) => {
-        const branchedSteps = steps
-          .map((nodes, index) => nodes.length > 1 ? index : -1)
-          .filter((index) => index >= 0)
-        expect(branchedSteps.length).toBeGreaterThanOrEqual(2)
-        expect(branchedSteps.every((index, position) =>
-          position === 0 || index === branchedSteps[position - 1] + 1,
-        )).toBe(true)
+  it('allows a branch to merge after one node step', () => {
+    const map = generateMap({ seed: 0 })
+    const hasSingleStepBranch = map.floors.some(({ steps }) =>
+      steps.some((nodes, index) =>
+        nodes.length === 2 && steps[index + 1]?.length === 1))
+
+    expect(hasSingleStepBranch).toBe(true)
+  })
+
+  it('only creates rest nodes from the second half of a floor', () => {
+    for (let seed = 0; seed < 100; seed += 1) {
+      getMapNodes(generateMap({ seed }), 1)
+        .filter(({ type }) => type === 'rest')
+        .forEach(({ step }) => expect(step).toBeGreaterThanOrEqual(3))
+    }
+  })
+
+  it('assigns normal, named, and boss encounter grades', () => {
+    const grades = new Set()
+    for (let seed = 0; seed < 100; seed += 1) {
+      getMapNodes(generateMap({ seed }), 1).forEach(({ grade }) => {
+        if (grade) grades.add(grade)
       })
     }
+
+    expect(grades).toEqual(new Set(['normal', 'named', 'boss']))
   })
 
   it('only connects nodes to the immediately following node step on the same floor', () => {
@@ -143,5 +158,14 @@ describe('map generation', () => {
     expect(canDeveloperEnterNode(current, { floor: 1, step: 3 })).toBe(true)
     expect(canDeveloperEnterNode(current, { floor: 1, step: 5 })).toBe(true)
     expect(canDeveloperEnterNode(current, { floor: 2, step: 1 })).toBe(true)
+  })
+
+  it('reveals only nodes at or behind the current floor and step', () => {
+    const progress = { floor: 1, step: 3 }
+
+    expect(isNodeWithinKnownProgress({ floor: 1, step: 2 }, progress)).toBe(true)
+    expect(isNodeWithinKnownProgress({ floor: 1, step: 3 }, progress)).toBe(true)
+    expect(isNodeWithinKnownProgress({ floor: 1, step: 4 }, progress)).toBe(false)
+    expect(isNodeWithinKnownProgress({ floor: 2, step: 1 }, progress)).toBe(false)
   })
 })

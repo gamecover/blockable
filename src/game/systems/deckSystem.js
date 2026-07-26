@@ -8,6 +8,7 @@ export const startBattleDeck = (deck, random = Math.random) => ({
 export const drawHand = (piles, count = HAND_SIZE, random = Math.random) => {
   let drawPile = [...piles.drawPile]
   let discardPile = [...piles.discardPile]
+  const remainingCount = drawPile.length || discardPile.length
   const hand = []
   while (hand.length < count && (drawPile.length || discardPile.length)) {
     if (!drawPile.length) {
@@ -16,11 +17,12 @@ export const drawHand = (piles, count = HAND_SIZE, random = Math.random) => {
     }
     hand.push(drawPile.shift())
   }
-  return { drawPile, hand, discardPile }
+  return { drawPile, hand, discardPile, remainingCount }
 }
 
 export const discardHand = (piles) => ({
   drawPile: piles.drawPile,
   hand: [],
   discardPile: [...piles.discardPile, ...piles.hand],
+  remainingCount: piles.remainingCount,
 })

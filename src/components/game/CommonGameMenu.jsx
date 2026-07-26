@@ -2,11 +2,12 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
+import { isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import './styles/common-game-menu.css'
 
 const statusLabels = { saving: '저장 중', saved: '저장 완료', failed: '저장 실패' }
-const mapSymbols = { start: '◆', battle: '⚔', event: '?', boss: '♜' }
+const mapSymbols = { start: '◆', battle: '⚔', event: '?', rest: '♥', boss: '♜', hidden: '·' }
 
 function IconButton({ label, icon, onClick }) {
   return (
@@ -16,7 +17,14 @@ function IconButton({ label, icon, onClick }) {
   )
 }
 
-function RunMapModal({ map, currentNodeId, onClose }) {
+function RunMapModal({
+  map,
+  floor: currentFloor,
+  nodeStep,
+  currentNodeId,
+  concealFuture,
+  onClose,
+}) {
   return (
     <div className="common-modal__panel common-modal__panel--map" role="dialog" aria-modal="true" aria-labelledby="run-map-title">
       <header><div><small>현재 원정 경로</small><h2 id="run-map-title">지도</h2></div><button type="button" onClick={onClose} aria-label="지도 닫기">×</button></header>
@@ -24,14 +32,22 @@ function RunMapModal({ map, currentNodeId, onClose }) {
         {map.floors.map((floor) => (
           <section className="run-map-section" key={floor.number}>
             <strong>{floor.number}층</strong>
-            <div className="run-map">
+            {concealFuture && floor.number > currentFloor
+              ? <p className="common-modal__hint">아직 확인할 수 없는 구역입니다.</p>
+              : <div className="run-map">
               {floor.steps.map((nodes, index) => (
                 <div className="run-map__step" key={index}>
                   <small>{floor.number}-{index + 1}</small>
-                  <div>{nodes.map((node) => <span className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`} key={node.id}>{mapSymbols[node.type]}</span>)}</div>
+                  <div>{nodes.map((node) => {
+                    const revealed = !concealFuture || isNodeWithinKnownProgress(node, {
+                        floor: currentFloor,
+                        step: nodeStep,
+                      })
+                    return <span className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`} key={node.id}>{mapSymbols[revealed ? node.type : 'hidden']}</span>
+                  })}</div>
                 </div>
               ))}
-            </div>
+              </div>}
           </section>
         ))}
       </div>
@@ -75,7 +91,7 @@ function MainMenuConfirm({ onCancel, onConfirm }) {
   )
 }
 
-export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen, onMainMenu }) {
+export function CommonGameMenu({ floor, nodeStep, map, deck, currentNodeId, currentScreen, onMainMenu }) {
   const [modal, setModal] = useState(null)
   const saveStatus = useSyncExternalStore(saveStatusStore.subscribe, saveStatusStore.getSnapshot)
 
@@ -101,7 +117,7 @@ export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen,
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </aside>
       {modal && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
-        {modal === 'map' && <RunMapModal map={map} currentNodeId={currentNodeId} onClose={() => setModal(null)} />}
+        {modal === 'map' && <RunMapModal map={map} floor={floor} nodeStep={nodeStep} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
         {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}
         {modal === 'settings' && <GameSettingsModal onClose={() => setModal(null)} onRequestMainMenu={() => setModal('main')} />}
         {modal === 'main' && <MainMenuConfirm onCancel={() => setModal(null)} onConfirm={onMainMenu} />}

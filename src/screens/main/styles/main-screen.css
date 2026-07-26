@@ -45,7 +45,7 @@
   color: #d5d3cd;
   background: transparent;
   box-shadow: none;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'DNF Forged Blade Medium', sans-serif;
   font-size: clamp(1.05rem, 1.35vw, 1.35rem);
   font-weight: 700;
   line-height: 1;
@@ -82,7 +82,7 @@
   display: block;
   margin-top: 0.45rem;
   color: #9b938a;
-  font-family: Arial, sans-serif;
+  font-family: 'DNF Forged Blade Medium', sans-serif;
   font-size: clamp(0.62rem, 0.7vw, 0.72rem);
   font-weight: 400;
   line-height: 1;
@@ -106,7 +106,7 @@
 .developer-main-menu strong {
   padding: 0 0.4rem;
   color: #e5a34f;
-  font: 700 0.68rem/1 monospace;
+  font: 700 0.68rem/1 'DNF Forged Blade Medium', sans-serif;
   letter-spacing: 0.12em;
 }
 

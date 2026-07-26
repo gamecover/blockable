@@ -1,9 +1,8 @@
-import { BASE_BLOCK_DAMAGE } from '../constants/gameConfig.js'
+import { resolveBlockEffects } from './blockEffectSystem.js'
 
-export const resolvePlayerTurn = ({ placedCount, occupiedCells, totalBoardCells }) => {
-  const baseDamage = placedCount * BASE_BLOCK_DAMAGE
+export const resolvePlayerTurn = ({ placedBlocks = [], occupiedCells, totalBoardCells }) => {
   const boardComplete = occupiedCells === totalBoardCells
-  return { damage: baseDamage + (boardComplete ? 20 : 0), boardComplete }
+  return { ...resolveBlockEffects(placedBlocks), boardComplete }
 }
 
 export const applyDamage = (health, damage, armor = 0) => ({

@@ -5,7 +5,9 @@
 Before planning or modifying code, read:
 
 - `docs/CODEX_DEVELOPMENT_GUIDE.md`
-- `docs/GAME_DESIGN.md`tre
+- `docs/GAME_DESIGN.md`
+- `docs/BLOCKABLE_BLOCK_DESIGN_CODEX_INTERACTION_INSTRUCTION.md`
+- `docs/BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md`
 
 Follow that document unless the current user request explicitly overrides it.
 
