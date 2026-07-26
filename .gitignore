@@ -1,22 +1,23 @@
-# Dependencies
-node_modules/
+# Ignore every root-level item unless explicitly required below.
+/*
 
-# Production build
-dist/
+# Repository metadata and project documentation
+!/.gitignore
+!/AGENTS.md
+!/LICENSE
+!/README.md
+!/update.txt
 
-# Environment variables
-.env
-.env.*
-!.env.example
+# Package and build configuration
+!/package.json
+!/package-lock.json
+!/eslint.config.js
+!/vite.config.js
+!/index.html
+!/.env.example
 
-# Logs
-*.log
-npm-debug.log*
-
-# Editor / OS temporary files
-.vscode/
-.DS_Store
-
-# Temporary source assets
-/Asset/
-/Assets/
+# Game design documents and source code, including runtime assets
+!/docs/
+!/docs/**
+!/src/
+!/src/**
