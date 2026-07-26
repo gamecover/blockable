@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  STATUS_EFFECTS,
   addStatus,
   applyWeakness,
   applyWound,
@@ -9,6 +10,13 @@ import {
 } from '../statusEffectSystem.js'
 
 describe('status effects', () => {
+  it('기획안의 상태 이상 2종, 디버프 2종, 군중 제어 1종을 분류한다', () => {
+    const categories = Object.values(STATUS_EFFECTS).map(({ category }) => category)
+    expect(categories.filter((category) => category === 'damage')).toHaveLength(2)
+    expect(categories.filter((category) => category === 'debuff')).toHaveLength(2)
+    expect(categories.filter((category) => category === 'control')).toHaveLength(1)
+  })
+
   it('defines attributes without assigning balance values', () => {
     expect(createCombatantState().attributes).toEqual({ strength: null, dexterity: null })
   })

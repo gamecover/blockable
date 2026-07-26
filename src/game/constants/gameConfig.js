@@ -11,7 +11,6 @@ export const STARTING_MAX_HEALTH = 75
 export const STARTING_GOLD = 50
 export const HAND_SIZE = 5
 export const PLACEMENTS_PER_TURN = 3
-export const BASE_BLOCK_DAMAGE = 10
 export const BOARD_CELL_SIZE = 54
 export const BOARD_CELL_GAP = 5
 export const HAND_BLOCK_CELL_SIZE = 34
@@ -22,23 +21,6 @@ export const BOARD_CELLS = [
   [0, 2], [1, 2], [2, 2],
   [-1, 0], [-1, 1], [-1, 2],
   [3, 0], [3, 1], [3, 2],
+  [-1, -1], [0, -1], [1, -1], [2, -1], [3, -1],
+  [-1, 3], [0, 3], [1, 3], [2, 3], [3, 3],
 ]
-
-export const BLOCK_SHAPES = {
-  I: [[0, 0], [1, 0], [2, 0]],
-  O: [[0, 0], [1, 0], [0, 1], [1, 1]],
-  L: [[0, 0], [0, 1], [1, 1]],
-}
-
-export const MONSTERS = {
-  normal: [
-    { id: 'cinder', name: '잿불 정령', health: 42, damage: 8, glyph: '♨' },
-    { id: 'golem', name: '고철 골렘', health: 55, damage: 10, glyph: '⚙' },
-    { id: 'slime', name: '용광 슬라임', health: 48, damage: 9, glyph: '◉' },
-  ],
-  named: [
-    { id: 'cinder-elite', name: '잿불 수문장', grade: 'named', health: 70, damage: 12, glyph: '♨' },
-    { id: 'golem-elite', name: '강철 파쇄자', grade: 'named', health: 82, damage: 13, glyph: '⚙' },
-  ],
-  boss: { id: 'dragon', name: '녹슨 화룡', health: 110, damage: 15, glyph: '♜' },
-}

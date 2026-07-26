@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
+import { resolveBlockEffects } from '../../systems/blockEffectSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import fireTexture from '../../../assets/sprites/blocks/block_fire.png'
 import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
@@ -21,6 +22,8 @@ const FORMWORK_TEXTURE_SIZE = 700
 const FORMWORK_TEXTURE_CELL_PITCH = 110
 const FORMWORK_DISPLAY_SIZE = FORMWORK_TEXTURE_SIZE * BOARD_CELL_SIZE / FORMWORK_TEXTURE_CELL_PITCH
 const BOARD_CENTER = gridToWorld(1, 1, BOARD_METRICS)
+const EFFECT_SUMMARY_X = BOARD_CENTER.x + FORMWORK_DISPLAY_SIZE / 2 + 10
+const EFFECT_SUMMARY_Y = BOARD_CENTER.y + FORMWORK_DISPLAY_SIZE / 2 - 54
 const ANVIL_TOP_Y = ANVIL_CENTER_Y - ANVIL_DISPLAY_HEIGHT / 2
 const HAND_SURFACE_Y = ANVIL_TOP_Y - 8
 const COLORS = { neutral: 0xb9b5ad, ghost: 0x6f5a42, valid: 0x91c99c, placed: 0xb94a42, invalid: 0x8c8177 }
@@ -62,6 +65,7 @@ export class BattleScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
+    this.createEffectSummary()
     this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'DNF Forged Blade Medium', fontSize: '17px', color: '#ecd9b7' })
     this.add.text(24, HAND_SURFACE_Y - 30, '드래그해 배치\n드래그 중 R로 회전', {
       fontFamily: 'DNF Forged Blade Medium',
@@ -113,6 +117,25 @@ export class BattleScene extends Phaser.Scene {
         .setDepth(-1)
     })
     this.drawDisabledFormworkCells()
+  }
+
+  createEffectSummary() {
+    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 240, 68, 0x17120f, 0.86)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(1, 0x725438, 0.8)
+      .setDepth(8)
+    this.formworkEffectText = this.add.text(
+      EFFECT_SUMMARY_X + 8,
+      EFFECT_SUMMARY_Y,
+      '피해 0  방어 0  회복 0\n조합 없음',
+      {
+        fontFamily: 'DNF Forged Blade Medium',
+        fontSize: '10px',
+        lineSpacing: 4,
+        color: '#d8c4a5',
+        wordWrap: { width: 222 },
+      },
+    ).setOrigin(0, 0.5).setDepth(9)
   }
 
   drawDisabledFormworkCells() {
@@ -292,10 +315,33 @@ export class BattleScene extends Phaser.Scene {
   }
 
   emitBoardState() {
+    const placedBlocks = this.pieces.filter((piece) => piece.placed).map((piece) => ({
+      block: piece.block,
+      origin: { x: piece.boardX, y: piece.boardY },
+      rotation: piece.rotation * 90,
+      mirrored: false,
+      cells: getPlacedCells(
+        piece.block.cells,
+        piece.rotation,
+        piece.boardX,
+        piece.boardY,
+      ).map(([x, y]) => ({ x, y })),
+    }))
+    const effects = resolveBlockEffects(placedBlocks)
+    const combinationText = effects.combinationDetails.length
+      ? effects.combinationDetails
+        .map(({ name, effects: appliedEffects }) =>
+          `${name} · ${appliedEffects.length ? appliedEffects.join(', ') : '추가 효과 없음'}`)
+        .join('\n')
+      : '조합 없음'
+    this.formworkEffectText?.setText(
+      `피해 ${effects.damage}  방어 ${effects.armor}  회복 ${effects.healing}\n${combinationText}`,
+    )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
-      placedCount: this.pieces.filter((piece) => piece.placed).length,
+      placedCount: placedBlocks.length,
       occupiedCells: this.occupied.size,
       totalBoardCells: this.activeCellCount,
+      placedBlocks,
     })
   }
 }

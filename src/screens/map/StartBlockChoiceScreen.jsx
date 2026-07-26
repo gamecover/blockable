@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
+import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
 
 export function StartBlockChoiceScreen({ dungeonName, floor, choices, onChoose }) {
   return (
@@ -18,9 +19,9 @@ export function StartBlockChoiceScreen({ dungeonName, floor, choices, onChoose }
             key={block.id}
             onClick={() => onChoose(block)}
           >
-            <span className={`shape-icon shape-${block.shape}`}>{block.shape}</span>
+            <BlockPreview block={block} />
             <strong>{block.name}</strong>
-            <small>강철 · 고유 블록</small>
+            <small>{block.description}</small>
             <em>도구 주머니에 추가</em>
           </motion.button>
         ))}

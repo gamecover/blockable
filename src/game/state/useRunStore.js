@@ -2,9 +2,14 @@ import { createStore } from 'zustand/vanilla'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { generateMap, completeAndUnlockNext, findMapNode } from '../systems/mapGenerationSystem.js'
-import { createStarterDeck } from '../../objects/blocks/blockData.js'
-import { createCombatantState } from '../systems/statusEffectSystem.js'
-import { STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
+import { createStarterDeck, hydrateBlock } from '../../objects/blocks/blockData.js'
+import {
+  addStatus,
+  applyWound,
+  createCombatantState,
+  resolveTurnEndStatuses,
+} from '../systems/statusEffectSystem.js'
+import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
 import { trackedLocalStorage } from './trackedStorage.js'
@@ -53,16 +58,33 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     }
   }),
   damagePlayer: (amount) => set((state) => {
-    const absorbed = Math.min(state.armor, amount)
+    const adjustedAmount = applyWound(Math.max(0, amount), state.combat.player.statuses)
+    const absorbed = Math.min(state.armor, adjustedAmount)
     state.armor -= absorbed
-    state.health = Math.max(0, state.health - (amount - absorbed))
+    state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
   }),
   clearArmor: () => set((state) => { state.armor = 0 }),
+  gainArmor: (amount) => set((state) => { state.armor += Math.max(0, amount) }),
   addGold: (amount) => set((state) => { state.gold = Math.max(0, state.gold + amount) }),
   addBlock: (block) => set((state) => { state.deck.push(block) }),
   removeBlock: (id) => set((state) => { state.deck = state.deck.filter((block) => block.id !== id) }),
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
+  applyCombatStatus: (target, statusId, stacks) => set((state) => {
+    if (!state.combat[target]) return
+    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks)
+  }),
+  resolvePlayerTurnEndStatuses: (placedCount) => set((state) => {
+    const result = resolveTurnEndStatuses({
+      health: state.health,
+      armor: state.armor,
+      statuses: state.combat.player.statuses,
+      placedCount,
+    })
+    state.health = result.health
+    state.armor = result.armor
+    state.combat.player.statuses = result.statuses
+  }),
   markPrologueSeen: () => set((state) => { state.prologueSeen = true }),
   beginBattle: (encounter) => set((state) => {
     state.pendingBattle = {
@@ -95,17 +117,25 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     }
   }),
   clearPendingBattle: () => set((state) => { state.pendingBattle = null }),
-  drawNextHand: () => set((state) => {
-    state.battlePiles = drawHand(discardHand(state.battlePiles))
+  drawNextHand: (extraCount = 0) => set((state) => {
+    state.battlePiles = drawHand(discardHand(state.battlePiles), HAND_SIZE + Math.max(0, extraCount))
   }),
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
   partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }) =>
     ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }),
-  merge: (persisted, current) => isValidSave(persisted)
-    ? { ...current, ...persisted, developerMode }
-    : current,
+  merge: (persisted, current) => {
+    if (!isValidSave(persisted)) return current
+    const deck = persisted.deck.map(hydrateBlock)
+    const pendingBattle = persisted.pendingBattle
+      ? {
+          ...persisted.pendingBattle,
+          deck: (persisted.pendingBattle.deck ?? persisted.deck).map(hydrateBlock),
+        }
+      : null
+    return { ...current, ...persisted, deck, pendingBattle, developerMode }
+  },
 }))
 
 export const normalRunStore = createRunStore({

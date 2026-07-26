@@ -29,6 +29,10 @@ describe('deck system', () => {
     const result = discardHand({ drawPile: [{ id: 1 }], hand: [{ id: 2 }], discardPile: [{ id: 3 }] })
     expect(result.discardPile.map(({ id }) => id)).toEqual([3, 2])
   })
+  it('draws additional blocks requested by a draw_block effect', () => {
+    const blocks = Array.from({ length: 10 }, (_, id) => ({ id }))
+    expect(drawHand({ drawPile: blocks, hand: [], discardPile: [] }, 7, () => 0).hand).toHaveLength(7)
+  })
   it('reports the draw cycle as thirteen, eight, then three including the current hand', () => {
     const blocks = Array.from({ length: 13 }, (_, id) => ({ id }))
     const first = drawHand({ drawPile: blocks, hand: [], discardPile: [] }, 5, () => 0)

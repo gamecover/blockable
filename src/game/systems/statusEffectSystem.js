@@ -1,9 +1,9 @@
 export const STATUS_EFFECTS = Object.freeze({
-  bleeding: { id: 'bleeding', name: '출혈', timing: 'turnEnd', ignoresArmor: true },
-  burn: { id: 'burn', name: '화상', timing: 'turnEnd', ignoresArmor: false },
-  weakness: { id: 'weakness', name: '약화', timing: 'outgoingDamage', target: 'damage' },
-  wound: { id: 'wound', name: '상처', timing: 'incomingDamage', target: 'damage' },
-  stun: { id: 'stun', name: '기절', timing: 'action', target: 'action' },
+  bleeding: { id: 'bleeding', name: '출혈', icon: '🩸', category: 'damage', categoryName: '상태 이상', timing: 'turnEnd', ignoresArmor: true },
+  burn: { id: 'burn', name: '화상', icon: '🔥', category: 'damage', categoryName: '상태 이상', timing: 'turnEnd', ignoresArmor: false },
+  weakness: { id: 'weakness', name: '약화', icon: '↓', category: 'debuff', categoryName: '디버프', timing: 'outgoingDamage', target: 'damage' },
+  wound: { id: 'wound', name: '상처', icon: '✚', category: 'debuff', categoryName: '디버프', timing: 'incomingDamage', target: 'damage' },
+  stun: { id: 'stun', name: '기절', icon: '★', category: 'control', categoryName: '군중 제어', timing: 'action', target: 'action' },
 })
 
 export const createCombatantState = () => ({

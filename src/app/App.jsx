@@ -3,9 +3,10 @@ import { useMachine } from '@xstate/react'
 import { useStore } from 'zustand'
 import { DEVELOPER_TOOLS_ENABLED } from '../config/developerMode.js'
 import { appMachine } from '../game/machines/appMachine.js'
-import { MONSTERS } from '../game/constants/gameConfig.js'
+import { DEFAULT_DUNGEON } from '../game/constants/gameConfig.js'
 import { pick } from '../game/systems/randomSystem.js'
 import { canDeveloperEnterNode } from '../game/systems/mapGenerationSystem.js'
+import { pickMonsterEncounter } from '../game/systems/monsterDesignSystem.js'
 import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem.js'
 import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
 import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
@@ -82,8 +83,11 @@ export function App() {
       send({ type: 'ENTER_EVENT' })
       return
     }
-    const pool = node.grade === 'named' ? MONSTERS.named : MONSTERS.normal
-    const monster = node.type === 'boss' ? MONSTERS.boss : pick(pool)
+    const monster = pickMonsterEncounter({
+      floor: node.floor,
+      difficultyTier: run.map.difficulty ?? DEFAULT_DUNGEON.difficulty,
+      gradeId: node.type === 'boss' ? 'boss' : node.grade ?? 'normal',
+    })
     const nextEncounter = { type: node.type, grade: node.grade, node, monster }
     setEncounter(nextEncounter)
     run.beginBattle(nextEncounter)
