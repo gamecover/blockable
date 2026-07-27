@@ -20,6 +20,9 @@ Blockable은 블록을 거푸집에 배치해 공격·방어·회복 효과와 �
 
 ## 전체 데이터 흐름
 
+- Blockable Block Designer: [Nyamkani/Blockable_Block_Designer](https://github.com/Nyamkani/Blockable_Block_Designer)
+- Blockable Monster Designer: [Nyamkani/Blockable_Monster_Designer](https://github.com/Nyamkani/Blockable_Monster_Designer)
+
 ```text
 Blockable Block Designer
 → 블록·조합 블록·색상·효과·범위 공격 등을 설계

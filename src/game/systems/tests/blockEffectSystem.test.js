@@ -24,6 +24,7 @@ describe('block effects and combinations', () => {
       effects: ['회복 5'],
     })
     expect(result.damage).toBe(20)
+    expect(result.damageByTarget).toEqual({ enemy: 20, allEnemies: 0 })
     expect(result.healing).toBe(5)
   })
 

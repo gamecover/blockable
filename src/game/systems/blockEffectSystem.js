@@ -39,6 +39,7 @@ export const resolveBlockEffects = (placedBlocks) => {
   ].flatMap((stage) => [...stage].sort((left, right) => left.order - right.order))
   const result = {
     damage: 0,
+    damageByTarget: { enemy: 0, allEnemies: 0 },
     armor: 0,
     healing: 0,
     drawCount: 0,
@@ -59,6 +60,16 @@ export const resolveBlockEffects = (placedBlocks) => {
     }),
   }
   effects.forEach((effect) => {
+    if (effect.effect_id === 'deal_damage') {
+      const amount = Number(effect.parameters.amount ?? 0)
+      result.damage += amount
+      if (effect.parameters.target === 'all_enemies') {
+        result.damageByTarget.allEnemies += amount
+      } else {
+        result.damageByTarget.enemy += amount
+      }
+      return
+    }
     const additive = ADDITIVE_EFFECTS[effect.effect_id]
     if (additive) {
       result[additive.resultKey] += Number(effect.parameters[additive.parameter] ?? 0)

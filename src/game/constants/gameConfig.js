@@ -4,7 +4,6 @@ export const DEFAULT_DUNGEON = {
   name: '잿빛 용광로',
   difficulty: 1,
   floorCount: 2,
-  nodeStepCount: 5,
 }
 export const MAX_FLOOR = DEFAULT_DUNGEON.floorCount
 export const STARTING_MAX_HEALTH = 75

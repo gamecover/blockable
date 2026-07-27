@@ -13,6 +13,7 @@ import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/game
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
 import { trackedLocalStorage } from './trackedStorage.js'
+import { completeWorldDungeon, createWorldMapState } from '../systems/worldMapSystem.js'
 
 const initialRun = (developerMode = false) => ({
   health: STARTING_MAX_HEALTH,
@@ -21,9 +22,10 @@ const initialRun = (developerMode = false) => ({
   gold: STARTING_GOLD,
   deck: createStarterDeck(),
   map: generateMap(),
+  worldMap: createWorldMapState(),
+  activeDungeonId: null,
   currentNodeId: null,
   floor: 1,
-  nodeStep: 1,
   prologueSeen: false,
   runStarted: false,
   developerMode,
@@ -47,14 +49,38 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   selectNode: (node) => set((state) => {
     state.currentNodeId = node.id
     state.floor = node.floor
-    state.nodeStep = node.step
+  }),
+  enterDungeon: (dungeon) => set((state) => {
+    state.activeDungeonId = dungeon.id
+    state.map = generateMap({
+      dungeonId: dungeon.id,
+      dungeonName: dungeon.name,
+      difficulty: dungeon.difficulty,
+    })
+    state.currentNodeId = null
+    state.floor = 1
+  }),
+  leaveDungeon: () => set((state) => {
+    state.activeDungeonId = null
+    state.currentNodeId = null
+  }),
+  completeDungeon: () => set((state) => {
+    if (!state.activeDungeonId) return
+    state.worldMap = completeWorldDungeon(state.worldMap, state.activeDungeonId)
+    state.activeDungeonId = null
+    state.currentNodeId = null
+  }),
+  moveToNode: (node) => set((state) => {
+    state.currentNodeId = node.id
+    state.floor = node.floor
   }),
   completeNode: () => set((state) => {
     const completedNode = findMapNode(state.map, state.currentNodeId)
     state.map = completeAndUnlockNext(state.map, state.currentNodeId)
-    if (completedNode?.type === 'boss' && !completedNode.isFinalBoss) {
+    if (completedNode?.type === 'stairs') {
       state.floor = completedNode.floor + 1
-      state.nodeStep = 1
+      state.currentNodeId = state.map.floors.find(({ number }) =>
+        number === state.floor)?.startNodeId ?? null
     }
   }),
   damagePlayer: (amount) => set((state) => {
@@ -123,8 +149,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }) =>
-    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const deck = persisted.deck.map(hydrateBlock)

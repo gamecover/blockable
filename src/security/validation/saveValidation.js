@@ -5,5 +5,12 @@ export const isValidSave = (value) => {
   return Boolean(state && Number.isFinite(state.health) && Number.isFinite(state.maxHealth)
     && Number.isFinite(state.gold) && Array.isArray(state.deck)
     && map && typeof map === 'object' && Array.isArray(map.floors)
-    && map.floors.every((floor) => Number.isInteger(floor.number) && Array.isArray(floor.steps)))
+    && map.schemaVersion === 2
+    && map.difficulty === 1
+    && map.floors.every((floor) => Number.isInteger(floor.number)
+      && Array.isArray(floor.nodes)
+      && Array.isArray(floor.corridors)
+      && floor.nodes.every((node) => typeof node.id === 'string'
+        && Number.isFinite(node.position?.x)
+        && Number.isFinite(node.position?.y))))
 }

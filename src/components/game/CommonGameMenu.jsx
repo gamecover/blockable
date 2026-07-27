@@ -2,12 +2,22 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
-import { isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
+import { getMapNodePosition, isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import './styles/common-game-menu.css'
 
 const statusLabels = { saving: '저장 중', saved: '저장 완료', failed: '저장 실패' }
-const mapSymbols = { start: '◆', battle: '⚔', event: '?', rest: '♥', boss: '♜', hidden: '·' }
+const mapSymbols = {
+  unique_block_selection: '◆',
+  floor_start: '●',
+  battle: '⚔',
+  elite: '☠',
+  event: '?',
+  rest: '♥',
+  stairs: '⇧',
+  boss: '♜',
+  hidden: '·',
+}
 
 function IconButton({ label, icon, onClick }) {
   return (
@@ -20,7 +30,6 @@ function IconButton({ label, icon, onClick }) {
 function RunMapModal({
   map,
   floor: currentFloor,
-  nodeStep,
   currentNodeId,
   concealFuture,
   onClose,
@@ -34,19 +43,27 @@ function RunMapModal({
             <strong>{floor.number}층</strong>
             {concealFuture && floor.number > currentFloor
               ? <p className="common-modal__hint">아직 확인할 수 없는 구역입니다.</p>
-              : <div className="run-map">
-              {floor.steps.map((nodes, index) => (
-                <div className="run-map__step" key={index}>
-                  <small>{floor.number}-{index + 1}</small>
-                  <div>{nodes.map((node) => {
-                    const revealed = !concealFuture || isNodeWithinKnownProgress(node, {
-                        floor: currentFloor,
-                        step: nodeStep,
-                      })
-                    return <span className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`} key={node.id}>{mapSymbols[revealed ? node.type : 'hidden']}</span>
-                  })}</div>
-                </div>
-              ))}
+              : <div className="run-map run-map--rooms">
+                <svg viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
+                  {floor.corridors.map((corridor) => {
+                    const from = floor.nodes.find(({ id }) => id === corridor.from)
+                    const to = floor.nodes.find(({ id }) => id === corridor.to)
+                    const start = getMapNodePosition(map, from)
+                    const end = getMapNodePosition(map, to)
+                    return <line key={corridor.id} x1={start.x * 10} y1={start.y * 4} x2={end.x * 10} y2={end.y * 4} />
+                  })}
+                </svg>
+                {floor.nodes.map((node) => {
+                  const position = getMapNodePosition(map, node)
+                  const revealed = !concealFuture || isNodeWithinKnownProgress(node)
+                  return (
+                    <span
+                      className={`run-map__node ${node.status}${node.id === currentNodeId ? ' current' : ''}`}
+                      style={{ left: `${position.x}%`, top: `${position.y}%` }}
+                      key={node.id}
+                    >{mapSymbols[revealed ? node.type : 'hidden']}</span>
+                  )
+                })}
               </div>}
           </section>
         ))}
@@ -91,7 +108,7 @@ function MainMenuConfirm({ onCancel, onConfirm }) {
   )
 }
 
-export function CommonGameMenu({ floor, nodeStep, map, deck, currentNodeId, currentScreen, onMainMenu }) {
+export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen, onMainMenu }) {
   const [modal, setModal] = useState(null)
   const saveStatus = useSyncExternalStore(saveStatusStore.subscribe, saveStatusStore.getSnapshot)
 
@@ -110,14 +127,14 @@ export function CommonGameMenu({ floor, nodeStep, map, deck, currentNodeId, curr
   return (
     <>
       <aside className={`common-game-menu common-game-menu--${currentScreen}`} aria-label="공통 게임 메뉴">
-        <strong className="common-game-menu__floor" aria-label={`현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{floor}/{MAX_FLOOR}F</strong>
-        {currentScreen !== 'map' && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
+        <strong className="common-game-menu__floor" aria-label={currentScreen === 'worldMap' ? '전체 지도' : `현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{currentScreen === 'worldMap' ? 'WORLD' : `${floor}/${MAX_FLOOR}F`}</strong>
+        {!['map', 'worldMap'].includes(currentScreen) && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
         {currentScreen !== 'battle' && <IconButton label="현재 덱 확인" icon="▦" onClick={() => setModal('deck')} />}
         <IconButton label="설정 열기" icon="⚙" onClick={() => setModal('settings')} />
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </aside>
       {modal && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
-        {modal === 'map' && <RunMapModal map={map} floor={floor} nodeStep={nodeStep} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
+        {modal === 'map' && <RunMapModal map={map} floor={floor} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
         {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}
         {modal === 'settings' && <GameSettingsModal onClose={() => setModal(null)} onRequestMainMenu={() => setModal('main')} />}
         {modal === 'main' && <MainMenuConfirm onCancel={() => setModal(null)} onConfirm={onMainMenu} />}
