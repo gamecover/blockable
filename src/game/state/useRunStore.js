@@ -145,6 +145,11 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.deck.push(block)
   }),
   removeBlock: (id) => set((state) => { state.deck = state.deck.filter((block) => block.id !== id) }),
+  replaceBlock: (id, block) => set((state) => {
+    const index = state.deck.findIndex((entry) => entry.id === id)
+    if (index < 0 || block.id !== id) return
+    state.deck[index] = block
+  }),
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
   applyCombatStatus: (target, statusId, stacks, newlyApplied = false) => set((state) => {

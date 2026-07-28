@@ -2,13 +2,54 @@ import { useState } from 'react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { rollGoldChest } from '../../game/systems/eventSystem.js'
 import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
+import {
+  changeBlockShape,
+  infuseBlockColor,
+  isModifiableStandardBlock,
+  STANDARD_BLOCK_COLORS,
+  STANDARD_BLOCK_SHAPES,
+} from '../../game/systems/blockModificationSystem.js'
+
+const colorLabels = { nature: '자연', water: '물', fire: '불', steel: '강철' }
+const shapeLabels = { '001': 'I형', '002': 'L형', '003': 'O형' }
 
 export function EventScreen({ event, gold, health, maxHealth, deck, onResolve }) {
   const [chestResult, setChestResult] = useState(null)
+  const [restAction, setRestAction] = useState(null)
+  const [restBlockId, setRestBlockId] = useState(null)
+  const modifiableBlocks = deck.filter(isModifiableStandardBlock)
+  const restBlock = modifiableBlocks.find(({ id }) => id === restBlockId)
 
   if (event === 'rest') return (
     <ScreenFrame title="용광로의 쉼터" subtitle="REST">
-      <div className="event-card rest"><div className="event-illustration">♥</div><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>잠시 장비를 내려놓고 숨을 고릅니다. 식어 가는 불씨의 온기가 지친 몸을 회복시킵니다.</p><div className="choice-preview">현재 체력 20 회복 · {health}/{maxHealth}</div><button className="primary-button" onClick={() => onResolve({ heal: 20 })}>휴식을 마치고 이동한다</button></article></div>
+      <div className="event-card rest"><div className="event-illustration">♥</div><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>몸을 회복하거나, 불씨를 이용해 일반 블록 하나를 다시 벼릴 수 있습니다. 한 가지 작업만 선택할 수 있습니다.</p>
+        {!restAction && <div className="event-options rest-options">
+          <button className="primary-button" onClick={() => setRestAction('color')}>속성 주입</button>
+          <button className="primary-button" onClick={() => onResolve({ heal: 20 })}>체력 +20</button>
+          <button className="primary-button" onClick={() => setRestAction('shape')}>모양 변환</button>
+        </div>}
+        {restAction && !restBlock && <>
+          <div className="choice-preview">{restAction === 'color' ? '속성을 변경할 일반 블록을 선택하세요.' : '모양을 변경할 일반 블록을 선택하세요.'}</div>
+          <div className="deck-strip" aria-label="변경 가능한 일반 블록">
+            {modifiableBlocks.map((block) => <button key={block.id} onClick={() => setRestBlockId(block.id)} aria-label={`${block.name} 선택`}><BlockPreview block={block} compact /><small>{block.name}</small></button>)}
+          </div>
+          <button className="text-button" onClick={() => setRestAction(null)}>이전 선택으로</button>
+        </>}
+        {restAction === 'color' && restBlock && <>
+          <div className="choice-preview">{restBlock.name}에 주입할 속성을 선택하세요.</div>
+          <div className="event-options">
+            {STANDARD_BLOCK_COLORS.map((color) => <button className="secondary-button" key={color} disabled={restBlock.color === color} onClick={() => onResolve({ replaceBlock: infuseBlockColor(restBlock, color) })}>{colorLabels[color]}</button>)}
+          </div>
+          <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
+        </>}
+        {restAction === 'shape' && restBlock && <>
+          <div className="choice-preview">{restBlock.name}을 바꿀 모양을 선택하세요.</div>
+          <div className="event-options">
+            {STANDARD_BLOCK_SHAPES.map((shapeId) => <button className="secondary-button" key={shapeId} disabled={restBlock.definitionId.endsWith(shapeId)} onClick={() => onResolve({ replaceBlock: changeBlockShape(restBlock, shapeId) })}>{shapeLabels[shapeId]}</button>)}
+          </div>
+          <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
+        </>}
+      </article></div>
     </ScreenFrame>
   )
 

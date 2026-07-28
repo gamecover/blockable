@@ -141,6 +141,7 @@ export function App() {
     if (result.gold) run.addGold(result.gold)
     if (result.maxHealth) run.gainMaxHealth(result.maxHealth)
     if (result.remove) run.removeBlock(result.remove)
+    if (result.replaceBlock) run.replaceBlock(result.replaceBlock.id, result.replaceBlock)
     if (result.heal) run.heal(result.heal)
     run.completeNode()
     send({ type: 'DONE' })

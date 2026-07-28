@@ -40,14 +40,17 @@ export const createCombatSlots = ({
   random = Math.random,
 }) => {
   const battleType = node.type === 'boss' ? 'boss' : 'normal'
+  const isEliteEncounter = node.type === 'elite' || node.grade === 'named'
   const normalCount = battleType === 'boss'
     ? 0
-    : 1 + Math.floor(random() * 2)
+    : isEliteEncounter
+      ? 2 + Math.floor(random() * 2)
+      : 1 + Math.floor(random() * 2)
   const normalSlots = Array.from({ length: normalCount }, (_, index) => {
     const monster = pickMonsterEncounter({
       floor,
       difficultyTier,
-      gradeId: node.grade === 'named' ? 'named' : 'normal',
+      gradeId: isEliteEncounter ? 'named' : 'normal',
       random,
     })
     return { ...monster, instanceId: `${monster.id}-${index + 1}`, slotId: index + 1 }

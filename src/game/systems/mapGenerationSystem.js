@@ -1,7 +1,7 @@
 import { DEFAULT_DUNGEON } from '../constants/gameConfig.js'
 
 export const MAP_SCHEMA_VERSION = 2
-export const MAP_GENERATOR_VERSION = '0.5.1'
+export const MAP_GENERATOR_VERSION = '0.6.0'
 
 export const DIFFICULTY_ONE_CONFIG = Object.freeze({
   difficulty: 1,
@@ -85,6 +85,7 @@ const createFloor = (floor, floorCount, random) => {
   const branchDirection = random() < 0.5 ? -1 : 1
   const isRiskBranch = random() < 0.5
   const branchId = `f${floor}_b1`
+  const restNodeIndex = Math.ceil((mainNodeCount - 1) / 2)
   const nodes = []
   const corridors = []
 
@@ -94,6 +95,7 @@ const createFloor = (floor, floorCount, random) => {
     let type = pickRoomType(random)
     if (isStart) type = 'floor_start'
     if (isDestination) type = isFinalFloor ? 'boss' : 'stairs'
+    if (index === restNodeIndex) type = 'rest'
     if (isFinalFloor && index === mainNodeCount - 2 && !['battle', 'rest'].includes(type)) {
       type = random() < 0.5 ? 'battle' : 'rest'
     }
@@ -197,6 +199,22 @@ export const getConnectedNodeIds = (map, floor, nodeId) =>
     if (to === nodeId) return [from]
     return []
   })
+
+export const getShortestPathNodeIds = (map, floor, startNodeId, destinationNodeId) => {
+  const visited = new Set([startNodeId])
+  const queue = [[startNodeId]]
+  while (queue.length) {
+    const path = queue.shift()
+    const currentId = path.at(-1)
+    if (currentId === destinationNodeId) return path
+    getConnectedNodeIds(map, floor, currentId).forEach((neighborId) => {
+      if (visited.has(neighborId)) return
+      visited.add(neighborId)
+      queue.push([...path, neighborId])
+    })
+  }
+  return []
+}
 
 export const getMapNodePosition = (map, node) => {
   const nodes = getMapNodes(map, node.floor)

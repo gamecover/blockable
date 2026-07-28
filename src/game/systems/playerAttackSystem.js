@@ -55,6 +55,33 @@ const mergeDamage = (target, source) => {
   source.forEach((amount, slotId) => target.set(slotId, (target.get(slotId) ?? 0) + amount))
 }
 
+export const getPlayerTargetSlotIds = ({
+  combatants,
+  selectedMonsterId,
+  battleType,
+  effects,
+}) => {
+  const selectedSlotId = combatants.find(({ instanceId }) =>
+    instanceId === selectedMonsterId)?.slotId
+  if (!selectedSlotId) return []
+  const livingSlotIds = combatants.filter(({ currentHealth }) =>
+    currentHealth > 0).map(({ slotId }) => slotId)
+  const damageEffects = [
+    ...(effects.baseDamageEffects ?? []),
+    ...(effects.independentDamageEffects ?? []),
+  ]
+  return [...new Set(damageEffects.flatMap((effect) =>
+    effect.range === 'all'
+      ? livingSlotIds
+      : getTargetSlotIds({
+          centerSlotId: selectedSlotId,
+          range: effect.range,
+          distance: effect.distance,
+          battleType,
+          occupiedSlotIds: livingSlotIds,
+        })))]
+}
+
 export const resolvePlayerAction = ({
   combatants,
   selectedMonsterId,
