@@ -35,7 +35,10 @@ export function App() {
   const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
   const run = runMode === 'developer' ? developerRun : normalRun
   const developerMode = DEVELOPER_TOOLS_ENABLED && runMode === 'developer' && run.developerMode
-  const uniqueBlockChoices = useMemo(() => createUniqueBlockChoices(), [])
+  const uniqueBlockChoices = useMemo(
+    () => createUniqueBlockChoices(run.uniqueBlockChoiceIds),
+    [run.uniqueBlockChoiceIds],
+  )
 
   useEffect(() => () => SoundManager.dispose(), [])
 
@@ -46,7 +49,7 @@ export function App() {
     const prologueSeen = targetRun.prologueSeen
     targetRun.startRun()
     setRunMode(mode)
-    send({ type: mode === 'developer' || prologueSeen ? 'CONTINUE' : 'START' })
+    send({ type: mode === 'developer' || prologueSeen ? 'START_CHOICE' : 'START' })
   }
 
   const continueRun = (mode = 'normal') => {
@@ -54,6 +57,10 @@ export function App() {
     const targetStore = mode === 'developer' ? developerRunStore : normalRunStore
     const targetRun = targetStore.getState()
     setRunMode(mode)
+    if (!targetRun.uniqueBlockId) {
+      send({ type: 'START_CHOICE' })
+      return
+    }
     if (targetRun.pendingBattle?.encounter) {
       setEncounter(targetRun.pendingBattle.encounter)
       targetRun.restorePendingBattle()
@@ -72,14 +79,7 @@ export function App() {
     }
 
     run.selectNode(node)
-    if (['unique_block_selection', 'floor_start'].includes(node.type)) {
-      if (node.type === 'floor_start') {
-        run.completeNode()
-        return
-      }
-      send({ type: 'ENTER_START' })
-      return
-    }
+    if (node.type === 'floor_start') return
     if (node.type === 'stairs') {
       run.completeNode()
       return
@@ -147,9 +147,8 @@ export function App() {
   }
 
   const chooseStartingBlock = (block) => {
-    run.addBlock(block)
-    run.completeNode()
-    send({ type: 'DONE' })
+    run.chooseUniqueBlock(block)
+    send({ type: run.activeDungeonId ? 'DONE_DUNGEON' : 'DONE' })
   }
 
   const abandonBattle = () => {
@@ -179,7 +178,7 @@ export function App() {
   if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
   if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onSelect={enterDungeon} />
   if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
-  if (current === 'startChoice') screen = <StartBlockChoiceScreen dungeonName={run.map.dungeonName} floor={run.floor} choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
+  if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
   if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { run.clearPendingBattle(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
@@ -191,7 +190,10 @@ export function App() {
     <CommonGameMenu
         floor={run.floor}
         map={run.map}
+        worldMap={run.worldMap}
         deck={run.deck}
+        activeDungeonId={run.activeDungeonId}
+        discoveredBlueprintIds={run.discoveredBlueprintIds}
         currentNodeId={run.currentNodeId}
         currentScreen={current}
         onMainMenu={backToMenu}

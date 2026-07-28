@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createBlock,
   createStarterDeck,
+  createUniqueBlockChoiceIds,
   createUniqueBlockChoices,
   cycleStandardBlockColor,
 } from '../../../objects/blocks/blockData.js'
@@ -50,6 +51,15 @@ describe('official block rules', () => {
     expect(createUniqueBlockChoices().map(({ definitionId }) => definitionId)).toEqual([
       'a001', 'a002', 'a003', 'a004', 'a005', 'a006',
     ])
+  })
+
+  it('offers three distinct random unique blocks for one run-wide choice', () => {
+    const choiceIds = createUniqueBlockChoiceIds(3, () => 0)
+
+    expect(choiceIds).toHaveLength(3)
+    expect(new Set(choiceIds)).toHaveLength(3)
+    expect(createUniqueBlockChoices(choiceIds).map(({ definitionId }) => definitionId))
+      .toEqual(choiceIds)
   })
 
   it('cycles a standard block through developer colors while preserving its instance and shape', () => {

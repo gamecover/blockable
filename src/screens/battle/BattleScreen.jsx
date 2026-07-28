@@ -3,6 +3,7 @@ import { useMachine } from '@xstate/react'
 import { GameContainer } from './GameContainer.jsx'
 import { BattleHud } from './components/BattleHud.jsx'
 import { BattleDebugPanel } from './components/BattleDebugPanel.jsx'
+import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
@@ -13,6 +14,8 @@ import {
   resolveTurnEndStatuses,
 } from '../../game/systems/statusEffectSystem.js'
 import { resolvePlayerAction } from '../../game/systems/playerAttackSystem.js'
+import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
+import { isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
 import {
   applyMonsterEvent,
   applyMonsterTurnTriggers,
@@ -71,6 +74,7 @@ export function BattleScreen({
     return (battleType === 'boss' ? initial.find(({ slotId }) => slotId === 5) : initial[0])?.instanceId
   })
   const [activeMonsterId, setActiveMonsterId] = useState(null)
+  const [blueprintNotice, setBlueprintNotice] = useState([])
   const [turn, setTurn] = useState(1)
   const victoryHandled = useRef(false)
   const runStore = useRunStoreApi()
@@ -97,12 +101,20 @@ export function BattleScreen({
     drawNextHand,
     applyCombatStatus,
     resolvePlayerTurnEndStatuses,
+    discoverBlueprints,
+    discoveredBlueprintIds,
   } = useRunStore()
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
     setBoard(nextBoard)
     if (developerMode) addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
   }), [addLog, developerMode])
+
+  useEffect(() => {
+    if (!blueprintNotice.length) return undefined
+    const timeoutId = window.setTimeout(() => setBlueprintNotice([]), 3600)
+    return () => window.clearTimeout(timeoutId)
+  }, [blueprintNotice])
 
   const finishVictory = useCallback((source) => {
     if (victoryHandled.current) return
@@ -120,6 +132,19 @@ export function BattleScreen({
     send({ type: 'END_TURN' })
     const playerStatuses = runStore.getState().combat.player.statuses
     const rawResult = resolvePlayerTurn(board)
+    if (rawResult.combinations.length) {
+      const previouslyDiscovered = new Set(discoveredBlueprintIds)
+      const newlyDiscovered = rawResult.combinations
+        .map((id) => BLOCK_RULE_INDEX.combinations.get(id))
+        .filter((combination) =>
+          combination
+          && !isStarterBlueprint(combination)
+          && !previouslyDiscovered.has(combination.id))
+      if (newlyDiscovered.length) {
+        setBlueprintNotice(newlyDiscovered.map(({ display_name: name }) => name))
+      }
+      discoverBlueprints(rawResult.combinations)
+    }
     const playerAction = resolvePlayerAction({
       combatants,
       selectedMonsterId: selectedMonster.instanceId,
@@ -142,11 +167,17 @@ export function BattleScreen({
     }
 
     window.setTimeout(() => {
-      if (battleType === 'boss' && isCombatVictory(battleType, afterPlayerAction)) {
+      if (isCombatVictory(battleType, afterPlayerAction)) {
         finishVictory('battle')
         return
       }
       const hasExtraTurn = rawResult.extraTurns > 0
+      if (!hasExtraTurn) {
+        const nextActingMonster = [...afterPlayerAction]
+          .sort((left, right) => left.slotId - right.slotId)
+          .find(({ currentHealth }) => currentHealth > 0)
+        setActiveMonsterId(nextActingMonster?.instanceId ?? null)
+      }
       send({ type: hasExtraTurn ? 'PLAYER_EXTRA' : 'PLAYER_DONE' })
       window.setTimeout(() => {
         let playerDefeated = false
@@ -277,7 +308,7 @@ export function BattleScreen({
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, damagePlayer, developerMode, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn])
+  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn])
 
   const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
@@ -313,6 +344,21 @@ export function BattleScreen({
           )
         })}
       </div>
+      {machineState.matches('playerInput') && (
+        <QuickBlueprintPanel
+          hand={battlePiles.hand}
+          placedBlocks={board.placedBlocks}
+          discoveredBlueprintIds={discoveredBlueprintIds}
+        />
+      )}
+      {blueprintNotice.length > 0 && (
+        <div className="blueprint-discovery" role="status" aria-live="polite">
+          <b>새로운 조합 발견</b>
+          <strong>{blueprintNotice.join(', ')}</strong>
+          <span>이제 청사진에서 확인할 수 있습니다.</span>
+          <button type="button" onClick={() => setBlueprintNotice([])} aria-label="조합 발견 알림 닫기">×</button>
+        </div>
+      )}
       <div className="monster-stage">
         {machineState.matches('monsterAction') && (
           <div className="monster-ability-name" role="status">{displayMonster?.turnPlan.ability?.display_name ?? '기본 공격'}</div>

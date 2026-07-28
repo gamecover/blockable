@@ -29,7 +29,7 @@ describe('combat slots', () => {
     expect(isCombatVictory('boss', monsters)).toBe(true)
   })
 
-  it('fills at most four fixed slots in a normal battle', () => {
+  it('fills at most two fixed slots in a normal battle', () => {
     const combat = createCombatSlots({
       node: { type: 'battle', grade: 'normal' },
       floor: 1,
@@ -38,10 +38,10 @@ describe('combat slots', () => {
     })
 
     expect(combat.battleType).toBe('normal')
-    expect(combat.monsters.map(({ slotId }) => slotId)).toEqual([1, 2, 3, 4])
+    expect(combat.monsters.map(({ slotId }) => slotId)).toEqual([1, 2])
   })
 
-  it('reserves slot five for the boss even when no minions appear', () => {
+  it('uses only slot five for a boss battle', () => {
     const combat = createCombatSlots({
       node: { type: 'boss', grade: 'boss' },
       floor: 2,

@@ -3,6 +3,7 @@ import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import { resolveBlockEffects } from '../../systems/blockEffectSystem.js'
+import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
 import curseTexture from '../../../assets/sprites/blocks/block_curse.png'
@@ -62,6 +63,7 @@ export class BattleScene extends Phaser.Scene {
     this.placementOrder = 0
     this.unsubReset = null
     this.unsubInput = null
+    this.unsubQuickCombination = null
   }
 
   preload() {
@@ -91,6 +93,10 @@ export class BattleScene extends Phaser.Scene {
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
     this.unsubReset = gameBridge.on(GAME_EVENTS.RESET_BOARD, () => this.resetBoard())
+    this.unsubQuickCombination = gameBridge.on(
+      GAME_EVENTS.QUICK_COMBINATION_DROP,
+      (payload) => this.placeQuickCombination(payload),
+    )
     this.unsubInput = gameBridge.on(GAME_EVENTS.SET_INPUT_ENABLED, (enabled) => {
       this.input.enabled = enabled
       if (this.input.keyboard) this.input.keyboard.enabled = enabled
@@ -103,6 +109,7 @@ export class BattleScene extends Phaser.Scene {
       this.input.off('pointerup', this.releaseSelected, this)
       this.unsubReset?.()
       this.unsubInput?.()
+      this.unsubQuickCombination?.()
     })
     this.emitBoardState()
   }
@@ -324,6 +331,59 @@ export class BattleScene extends Phaser.Scene {
     for (const [key, id] of this.occupied.entries()) if (id === piece.block.id) this.occupied.delete(key)
     piece.placed = false
     piece.placedOrder = null
+    this.refreshPlacedHighlights()
+    this.emitBoardState()
+  }
+
+  placeQuickCombination({ combinationId, clientX, clientY }) {
+    const canvasBounds = this.game.canvas.getBoundingClientRect()
+    if (clientX < canvasBounds.left || clientX > canvasBounds.right
+      || clientY < canvasBounds.top || clientY > canvasBounds.bottom) return
+    const unplacedPieces = this.pieces.filter(({ placed }) => !placed)
+    const plan = getQuickCombinationPlan(
+      combinationId,
+      unplacedPieces.map(({ block }) => block),
+    )
+    const placedCount = this.pieces.filter(({ placed }) => placed).length
+    if (!plan || placedCount + plan.assignments.length > PLACEMENTS_PER_TURN) return
+
+    const worldX = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
+    const worldY = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
+    const topLeftX = worldX - ((plan.layout.width - 1) * BOARD_METRICS.cellSize) / 2
+    const topLeftY = worldY - ((plan.layout.height - 1) * BOARD_METRICS.cellSize) / 2
+    const anchor = worldToGrid(topLeftX, topLeftY, BOARD_METRICS)
+    const occupiedKeys = new Set(this.occupied.keys())
+    const placements = []
+
+    for (const assignment of plan.assignments) {
+      const piece = unplacedPieces.find(({ block }) => block.id === assignment.blockId)
+      if (!piece) return
+      const rotation = assignment.rotation / 90
+      const column = anchor.column + assignment.origin.x
+      const row = anchor.row + assignment.origin.y
+      const cells = getPlacedCells(piece.block.cells, rotation, column, row)
+      if (!canPlaceBlock({
+        cells,
+        activeCellKeys: this.activeCellKeys,
+        occupiedCellKeys: occupiedKeys,
+      })) return
+      cells.forEach((cell) => occupiedKeys.add(cellKey(cell)))
+      placements.push({ piece, rotation, column, row, cells })
+    }
+
+    placements.forEach(({ piece, rotation, column, row, cells }) => {
+      piece.rotation = rotation
+      piece.placed = true
+      piece.placedOrder = ++this.placementOrder
+      piece.boardX = column
+      piece.boardY = row
+      cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
+      const world = gridToWorld(row, column, BOARD_METRICS)
+      const blockAnchor = getBlockAnchorOffset(
+        layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS),
+      )
+      piece.container.setPosition(world.x + blockAnchor.x, world.y + blockAnchor.y)
+    })
     this.refreshPlacedHighlights()
     this.emitBoardState()
   }

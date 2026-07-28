@@ -3,6 +3,9 @@ import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
 import { getMapNodePosition, isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
+import { getKnownBlueprints } from '../../game/systems/blueprintSystem.js'
+import globalMap from '../../screens/map/assets/pictures/global_map.png'
+import { BlueprintRecipe } from './BlueprintRecipe.jsx'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import './styles/common-game-menu.css'
 
@@ -73,6 +76,28 @@ function RunMapModal({
   )
 }
 
+function WorldMapModal({ worldMap, activeDungeonId, onClose }) {
+  return (
+    <div className="common-modal__panel common-modal__panel--world-map" role="dialog" aria-modal="true" aria-labelledby="world-map-title">
+      <header><div><small>현재 원정의 전체 위치</small><h2 id="world-map-title">전체 지도</h2></div><button type="button" onClick={onClose} aria-label="전체 지도 닫기">×</button></header>
+      <div className="world-map common-world-map" style={{ backgroundImage: `url(${globalMap})` }} aria-label="읽기 전용 전체 지도">
+        {worldMap.dungeons.map((dungeon) => (
+          <div
+            className={`world-dungeon world-dungeon--${dungeon.kind} ${dungeon.status}${dungeon.id === activeDungeonId ? ' current' : ''}`}
+            style={{ left: `${dungeon.position.x}%`, top: `${dungeon.position.y}%` }}
+            key={dungeon.id}
+          >
+            <b aria-hidden="true">{dungeon.kind === 'final' ? '♜' : '◆'}</b>
+            <span>{dungeon.name}</span>
+            <small>{dungeon.id === activeDungeonId ? '현재 위치' : dungeon.status === 'complete' ? '완료' : '입장 가능'}</small>
+          </div>
+        ))}
+      </div>
+      <p className="common-modal__hint">던전 안에서는 전체 지도를 확인할 수만 있으며 다른 던전으로 이동할 수 없습니다.</p>
+    </div>
+  )
+}
+
 function DeckModal({ deck, onClose }) {
   const blockCounts = deck.reduce((counts, block) => {
     const key = `${block.shape}-${block.color}`
@@ -98,6 +123,23 @@ function DeckModal({ deck, onClose }) {
   )
 }
 
+function BlueprintModal({ discoveredBlueprintIds, onClose }) {
+  const blueprints = getKnownBlueprints(discoveredBlueprintIds)
+  return (
+    <div className="common-modal__panel common-modal__panel--blueprints" role="dialog" aria-modal="true" aria-labelledby="blueprint-title">
+      <header><div><small>발견한 조합 기록</small><h2 id="blueprint-title">청사진 · {blueprints.length}개</h2></div><button type="button" onClick={onClose} aria-label="청사진 닫기">×</button></header>
+      <div className="blueprint-catalog">
+        {blueprints.map((combination) => (
+          <article className="blueprint-catalog__item" key={combination.id}>
+            <BlueprintRecipe combination={combination} />
+          </article>
+        ))}
+      </div>
+      <p className="common-modal__hint">3×3 이하 조합은 기본 공개되며, 더 큰 조합은 전투에서 실제 발동하면 기록됩니다.</p>
+    </div>
+  )
+}
+
 function MainMenuConfirm({ onCancel, onConfirm }) {
   return (
     <div className="common-modal__panel common-modal__panel--confirm" role="alertdialog" aria-modal="true" aria-labelledby="main-confirm-title">
@@ -108,7 +150,17 @@ function MainMenuConfirm({ onCancel, onConfirm }) {
   )
 }
 
-export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen, onMainMenu }) {
+export function CommonGameMenu({
+  floor,
+  map,
+  worldMap,
+  deck,
+  activeDungeonId,
+  discoveredBlueprintIds,
+  currentNodeId,
+  currentScreen,
+  onMainMenu,
+}) {
   const [modal, setModal] = useState(null)
   const saveStatus = useSyncExternalStore(saveStatusStore.subscribe, saveStatusStore.getSnapshot)
 
@@ -129,13 +181,17 @@ export function CommonGameMenu({ floor, map, deck, currentNodeId, currentScreen,
       <aside className={`common-game-menu common-game-menu--${currentScreen}`} aria-label="공통 게임 메뉴">
         <strong className="common-game-menu__floor" aria-label={currentScreen === 'worldMap' ? '전체 지도' : `현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{currentScreen === 'worldMap' ? 'WORLD' : `${floor}/${MAX_FLOOR}F`}</strong>
         {!['map', 'worldMap'].includes(currentScreen) && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
+        {activeDungeonId && <IconButton label="전체 지도 확인" icon="◎" onClick={() => setModal('worldMap')} />}
         {currentScreen !== 'battle' && <IconButton label="현재 덱 확인" icon="▦" onClick={() => setModal('deck')} />}
+        <IconButton label="청사진 확인" icon="▧" onClick={() => setModal('blueprints')} />
         <IconButton label="설정 열기" icon="⚙" onClick={() => setModal('settings')} />
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </aside>
       {modal && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
         {modal === 'map' && <RunMapModal map={map} floor={floor} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
+        {modal === 'worldMap' && <WorldMapModal worldMap={worldMap} activeDungeonId={activeDungeonId} onClose={() => setModal(null)} />}
         {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}
+        {modal === 'blueprints' && <BlueprintModal discoveredBlueprintIds={discoveredBlueprintIds} onClose={() => setModal(null)} />}
         {modal === 'settings' && <GameSettingsModal onClose={() => setModal(null)} onRequestMainMenu={() => setModal('main')} />}
         {modal === 'main' && <MainMenuConfirm onCancel={() => setModal(null)} onConfirm={onMainMenu} />}
       </div>}

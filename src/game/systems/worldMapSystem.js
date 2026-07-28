@@ -26,21 +26,16 @@ export const createWorldMapState = () => ({
   requiredClearCount: 2,
   dungeons: WORLD_DUNGEONS.map((dungeon) => ({
     ...dungeon,
-    status: dungeon.kind === 'final' ? 'locked' : 'available',
+    status: 'available',
   })),
 })
 
 export const completeWorldDungeon = (worldMap, dungeonId) => {
   const completed = worldMap.dungeons.map((dungeon) =>
     dungeon.id === dungeonId ? { ...dungeon, status: 'complete' } : dungeon)
-  const normalClearCount = completed.filter(({ kind, status }) =>
-    kind === 'normal' && status === 'complete').length
   return {
     ...worldMap,
-    dungeons: completed.map((dungeon) =>
-      dungeon.kind === 'final' && normalClearCount >= worldMap.requiredClearCount
-        ? { ...dungeon, status: dungeon.status === 'complete' ? 'complete' : 'available' }
-        : dungeon),
+    dungeons: completed,
   }
 }
 

@@ -92,7 +92,7 @@ const createFloor = (floor, floorCount, random) => {
     const isStart = index === 0
     const isDestination = index === mainNodeCount - 1
     let type = pickRoomType(random)
-    if (isStart) type = floor === 1 ? 'unique_block_selection' : 'floor_start'
+    if (isStart) type = 'floor_start'
     if (isDestination) type = isFinalFloor ? 'boss' : 'stairs'
     if (isFinalFloor && index === mainNodeCount - 2 && !['battle', 'rest'].includes(type)) {
       type = random() < 0.5 ? 'battle' : 'rest'
@@ -276,13 +276,20 @@ export const completeAndUnlockNext = (map, nodeId) => {
   }
 }
 
+export const enterFloorAtStart = (map, floorNumber) => {
+  const startNodeId = map.floors.find(({ number }) => number === floorNumber)?.startNodeId ?? null
+  return {
+    map: startNodeId ? completeAndUnlockNext(map, startNodeId) : map,
+    currentNodeId: startNodeId,
+  }
+}
+
 export const isNodeWithinKnownProgress = (node) =>
   node.revealState === 'revealed' || node.status !== 'locked'
 
 export const validateFloorMap = (floor) => {
   const nodeIds = new Set(floor.nodes.map(({ id }) => id))
-  const startCount = floor.nodes.filter(({ type }) =>
-    ['unique_block_selection', 'floor_start'].includes(type)).length
+  const startCount = floor.nodes.filter(({ type }) => type === 'floor_start').length
   const destinationCount = floor.nodes.filter(({ type }) => ['stairs', 'boss'].includes(type)).length
   const corridorKeys = new Set()
   const errors = []

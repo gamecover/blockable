@@ -3,6 +3,7 @@ import {
   canTravelToNode,
   completeAndUnlockNext,
   DIFFICULTY_ONE_CONFIG,
+  enterFloorAtStart,
   findMapNode,
   generateMap,
   getConnectedNodeIds,
@@ -41,12 +42,12 @@ describe('Darkest Dungeon-style map generation', () => {
     expect(floor.corridors.every(({ bidirectional }) => bidirectional)).toBe(true)
   })
 
-  it('creates a unique-block room, first-floor stairs, and final-floor boss', () => {
+  it('creates floor starts, first-floor stairs, and a final-floor boss', () => {
     const map = generateMap({ seed: 42 })
     const firstFloor = map.floors[0]
     const finalFloor = map.floors[1]
 
-    expect(findMapNode(map, firstFloor.startNodeId).type).toBe('unique_block_selection')
+    expect(findMapNode(map, firstFloor.startNodeId).type).toBe('floor_start')
     expect(findMapNode(map, firstFloor.destinationNodeId).type).toBe('stairs')
     expect(findMapNode(map, finalFloor.startNodeId).type).toBe('floor_start')
     expect(findMapNode(map, finalFloor.destinationNodeId)).toMatchObject({
@@ -103,5 +104,18 @@ describe('Darkest Dungeon-style map generation', () => {
 
     expect(findMapNode(next, stairsId).status).toBe('complete')
     expect(findMapNode(next, nextStartId).status).toBe('available')
+  })
+
+  it('moves directly to a floor start and completes it on entry', () => {
+    const map = generateMap({ seed: 42 })
+    const entered = enterFloorAtStart(map, 1)
+    const connected = getConnectedNodeIds(entered.map, 1, entered.currentNodeId)
+
+    expect(findMapNode(entered.map, entered.currentNodeId)).toMatchObject({
+      type: 'floor_start',
+      status: 'complete',
+    })
+    expect(connected.every((nodeId) =>
+      findMapNode(entered.map, nodeId).status === 'available')).toBe(true)
   })
 })
