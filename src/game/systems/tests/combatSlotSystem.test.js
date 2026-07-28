@@ -41,6 +41,24 @@ describe('combat slots', () => {
     expect(combat.monsters.map(({ slotId }) => slotId)).toEqual([1, 2])
   })
 
+  it('fills two to three slots in an elite battle', () => {
+    const minimum = createCombatSlots({
+      node: { type: 'elite', grade: 'named' },
+      floor: 1,
+      difficultyTier: 1,
+      random: () => 0,
+    })
+    const maximum = createCombatSlots({
+      node: { type: 'elite', grade: 'named' },
+      floor: 1,
+      difficultyTier: 1,
+      random: () => 0.999,
+    })
+
+    expect(minimum.monsters.map(({ slotId }) => slotId)).toEqual([1, 2])
+    expect(maximum.monsters.map(({ slotId }) => slotId)).toEqual([1, 2, 3])
+  })
+
   it('uses only slot five for a boss battle', () => {
     const combat = createCombatSlots({
       node: { type: 'boss', grade: 'boss' },

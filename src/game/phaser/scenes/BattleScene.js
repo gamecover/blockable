@@ -64,6 +64,17 @@ export class BattleScene extends Phaser.Scene {
     this.unsubReset = null
     this.unsubInput = null
     this.unsubQuickCombination = null
+    this.inputEnabled = true
+    this.handleWindowKeyDown = (event) => {
+      if (!this.inputEnabled) return
+      if (event.code === 'KeyR' && this.selected) {
+        event.preventDefault()
+        this.rotateSelected()
+      }
+      if (event.code === 'KeyZ' && this.developerMode && !this.selected) {
+        this.cycleLatestPlacedBlockColor()
+      }
+    }
   }
 
   preload() {
@@ -87,8 +98,7 @@ export class BattleScene extends Phaser.Scene {
       color: '#9c8b75',
     })
     this.hand.forEach((block, index) => this.createPiece(block, index))
-    this.input.keyboard.on('keydown-R', this.rotateSelected, this)
-    if (this.developerMode) this.input.keyboard.on('keydown-Z', this.cycleLatestPlacedBlockColor, this)
+    window.addEventListener('keydown', this.handleWindowKeyDown)
     this.input.on('pointerdown', this.selectPieceAtPointer, this)
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
@@ -98,12 +108,12 @@ export class BattleScene extends Phaser.Scene {
       (payload) => this.placeQuickCombination(payload),
     )
     this.unsubInput = gameBridge.on(GAME_EVENTS.SET_INPUT_ENABLED, (enabled) => {
+      this.inputEnabled = enabled
       this.input.enabled = enabled
       if (this.input.keyboard) this.input.keyboard.enabled = enabled
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard.off('keydown-R', this.rotateSelected, this)
-      if (this.developerMode) this.input.keyboard.off('keydown-Z', this.cycleLatestPlacedBlockColor, this)
+      window.removeEventListener('keydown', this.handleWindowKeyDown)
       this.input.off('pointerdown', this.selectPieceAtPointer, this)
       this.input.off('pointermove', this.moveSelected, this)
       this.input.off('pointerup', this.releaseSelected, this)
@@ -140,22 +150,24 @@ export class BattleScene extends Phaser.Scene {
   }
 
   createEffectSummary() {
-    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 240, 68, 0x17120f, 0.86)
+    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 270, 78, 0x0d0a08, 0.98)
       .setOrigin(0, 0.5)
-      .setStrokeStyle(1, 0x725438, 0.8)
-      .setDepth(8)
+      .setStrokeStyle(2, 0xb47a43, 1)
+      .setDepth(28)
     this.formworkEffectText = this.add.text(
       EFFECT_SUMMARY_X + 8,
       EFFECT_SUMMARY_Y,
-      '피해 0  방어 0  회복 0\n조합 없음',
+      '예상 효과 없음\n조합 없음',
       {
         fontFamily: 'DNF Forged Blade Medium',
-        fontSize: '10px',
+        fontSize: '12px',
         lineSpacing: 4,
-        color: '#d8c4a5',
-        wordWrap: { width: 222 },
+        color: '#f1dfc2',
+        stroke: '#080604',
+        strokeThickness: 2,
+        wordWrap: { width: 250 },
       },
-    ).setOrigin(0, 0.5).setDepth(9)
+    ).setOrigin(0, 0.5).setDepth(29)
   }
 
   drawDisabledFormworkCells() {
@@ -420,8 +432,17 @@ export class BattleScene extends Phaser.Scene {
           `${name} · ${appliedEffects.length ? appliedEffects.join(', ') : '추가 효과 없음'}`)
         .join('\n')
       : '조합 없음'
+    const effectValues = [
+      ['공격력', effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)],
+      ['효과', effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)],
+      ['방어', effects.armor],
+      ['회복', effects.healing],
+    ]
+      .filter(([, value]) => value !== 0)
+      .map(([label, value]) => `${label} ${value}`)
+      .join('  ')
     this.formworkEffectText?.setText(
-      `기본 ${effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)}  독립 ${effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)}  방어 ${effects.armor}  회복 ${effects.healing}\n${combinationText}`,
+      `${effectValues || '예상 효과 없음'}\n${combinationText}`,
     )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,

@@ -4,6 +4,7 @@ import { GameContainer } from './GameContainer.jsx'
 import { BattleHud } from './components/BattleHud.jsx'
 import { BattleDebugPanel } from './components/BattleDebugPanel.jsx'
 import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
+import { StatusEffectList } from './components/StatusEffectList.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
@@ -13,7 +14,10 @@ import {
   consumeStun,
   resolveTurnEndStatuses,
 } from '../../game/systems/statusEffectSystem.js'
-import { resolvePlayerAction } from '../../game/systems/playerAttackSystem.js'
+import {
+  getPlayerTargetSlotIds,
+  resolvePlayerAction,
+} from '../../game/systems/playerAttackSystem.js'
 import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
 import { isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
 import {
@@ -33,6 +37,9 @@ const prepareMonsterTurn = (monster, runtime, turn, health) => {
   const triggeredRuntime = applyMonsterTurnTriggers(monster.definition, runtime, context)
   return selectMonsterAbility(monster.definition, triggeredRuntime, context)
 }
+
+const waitForPresentation = (milliseconds) =>
+  new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
 const createCombatant = (monster) => {
   const definition = getMonsterDefinition(monster.designId ?? monster.id)
@@ -74,6 +81,7 @@ export function BattleScreen({
     return (battleType === 'boss' ? initial.find(({ slotId }) => slotId === 5) : initial[0])?.instanceId
   })
   const [activeMonsterId, setActiveMonsterId] = useState(null)
+  const [monsterActionNotice, setMonsterActionNotice] = useState(null)
   const [blueprintNotice, setBlueprintNotice] = useState([])
   const [turn, setTurn] = useState(1)
   const victoryHandled = useRef(false)
@@ -176,22 +184,48 @@ export function BattleScreen({
         const nextActingMonster = [...afterPlayerAction]
           .sort((left, right) => left.slotId - right.slotId)
           .find(({ currentHealth }) => currentHealth > 0)
-        setActiveMonsterId(nextActingMonster?.instanceId ?? null)
+        if (nextActingMonster) {
+          const stunned = nextActingMonster.statuses.some(({ id, stacks }) =>
+            id === 'stun' && stacks > 0)
+          setMonsterActionNotice({
+            slotId: nextActingMonster.slotId,
+            abilityName: stunned
+              ? '기절 · 행동 취소'
+              : nextActingMonster.turnPlan.ability?.display_name ?? '기본 공격',
+            cancelled: stunned,
+          })
+        }
       }
       send({ type: hasExtraTurn ? 'PLAYER_EXTRA' : 'PLAYER_DONE' })
-      window.setTimeout(() => {
+      window.setTimeout(async () => {
         let playerDefeated = false
-        afterPlayerAction = (hasExtraTurn
-          ? afterPlayerAction
-          : [...afterPlayerAction].sort((left, right) => left.slotId - right.slotId)
-          .map((entry) => {
-            if (entry.currentHealth <= 0 || playerDefeated) return entry
+        if (!hasExtraTurn) {
+          const actingOrder = [...afterPlayerAction]
+            .filter(({ currentHealth }) => currentHealth > 0)
+            .sort((left, right) => left.slotId - right.slotId)
+          for (let index = 0; index < actingOrder.length; index += 1) {
+            const entry = afterPlayerAction.find(({ instanceId }) =>
+              instanceId === actingOrder[index].instanceId)
+            if (!entry || entry.currentHealth <= 0 || playerDefeated) continue
             const stun = consumeStun(entry.statuses)
+            setActiveMonsterId(entry.instanceId)
+            setMonsterActionNotice({
+              slotId: entry.slotId,
+              abilityName: stun.skipAction
+                ? '기절 · 행동 취소'
+                : entry.turnPlan.ability?.display_name ?? '기본 공격',
+              cancelled: stun.skipAction,
+            })
+            await waitForPresentation(stun.skipAction ? 400 : 300)
             if (stun.skipAction) {
               if (developerMode) addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
-              return { ...entry, statuses: stun.statuses }
+              afterPlayerAction = afterPlayerAction.map((candidate) =>
+                candidate.instanceId === entry.instanceId
+                  ? { ...candidate, statuses: stun.statuses }
+                  : candidate)
+              setCombatants(afterPlayerAction)
+              continue
             }
-            setActiveMonsterId(entry.instanceId)
             const triggered = applyMonsterEvent(
               entry.definition,
               entry.turnPlan.runtime,
@@ -226,7 +260,7 @@ export function BattleScreen({
               (current, status) => addStatus(current, status.id, status.stacks, true),
               existingStatuses,
             )
-            return {
+            const resolvedEntry = {
               ...entry,
               currentHealth: Math.min(entry.health, Math.max(0,
                 entry.currentHealth - (action.selfDamage - selfAbsorbed)) + action.selfHealing),
@@ -238,9 +272,18 @@ export function BattleScreen({
               statuses,
               turnPlan: { ...entry.turnPlan, runtime: triggered.runtime },
             }
-          }))
+            afterPlayerAction = afterPlayerAction.map((candidate) =>
+              candidate.instanceId === entry.instanceId ? resolvedEntry : candidate)
+            setCombatants(afterPlayerAction)
+            await waitForPresentation(320)
+            if (!playerDefeated && index < actingOrder.length - 1) {
+              await waitForPresentation(180)
+            }
+          }
+        }
         setCombatants(afterPlayerAction)
         setActiveMonsterId(null)
+        setMonsterActionNotice(null)
         if (playerDefeated) {
           send({ type: 'PLAYER_DEFEATED' })
           onLose()
@@ -312,6 +355,53 @@ export function BattleScreen({
 
   const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
+  const previewEffects = useMemo(() => resolvePlayerTurn(board), [board])
+  const previewTargetSlotIds = useMemo(() => getPlayerTargetSlotIds({
+    combatants,
+    selectedMonsterId,
+    battleType,
+    effects: previewEffects,
+  }), [battleType, combatants, previewEffects, selectedMonsterId])
+  const monsterFormation = useMemo(() => {
+    const focusId = activeMonsterId ?? selectedMonsterId
+    const normalMonsters = [...combatants]
+      .filter(({ slotId }) => slotId !== 5)
+      .sort((left, right) => left.slotId - right.slotId)
+    const focusedNormal = normalMonsters.find(({ instanceId }) => instanceId === focusId)
+    const backgroundMonsters = focusedNormal
+      ? normalMonsters.filter(({ instanceId }) => instanceId !== focusId)
+      : normalMonsters
+    const backgroundLayouts = {
+      1: [42],
+      2: [32, 52],
+      3: [22, 42, 62],
+      4: [12, 32, 52, 72],
+    }
+    const positions = new Map()
+    backgroundMonsters.forEach((entry, index) => {
+      positions.set(entry.instanceId, {
+        role: 'background',
+        left: backgroundLayouts[backgroundMonsters.length]?.[index] ?? 42,
+        bottom: 35,
+        width: 16,
+      })
+    })
+    if (focusedNormal) {
+      positions.set(focusedNormal.instanceId, {
+        role: 'foreground',
+        left: 40,
+        bottom: 0,
+        width: 20,
+      })
+    }
+    combatants.filter(({ slotId }) => slotId === 5).forEach((entry) => {
+      const focused = entry.instanceId === focusId
+      positions.set(entry.instanceId, focused
+        ? { role: 'foreground boss-focus', left: 40, bottom: 16, width: 20 }
+        : { role: 'boss-rear', left: 42, bottom: 72, width: 16 })
+    })
+    return positions
+  }, [activeMonsterId, combatants, selectedMonsterId])
 
   return (
     <main className="battle-screen">
@@ -326,20 +416,43 @@ export function BattleScreen({
         placedCount={board.placedCount}
         playerStatuses={combat.player.statuses}
       />
-      <div className={`monster-slots monster-slots--${battleType}`} aria-label="몬스터 전투 슬롯">
+      <div className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
         {combatants.map((entry) => {
           const slotIntent = describeMonsterAbility(entry.turnPlan.ability)
+          const selected = entry.instanceId === selectedMonsterId
+          const inRange = previewTargetSlotIds.includes(entry.slotId)
+          const acting = entry.instanceId === activeMonsterId
+          const formation = monsterFormation.get(entry.instanceId)
           return (
             <button
               type="button"
               key={entry.instanceId}
-              className={`monster-slot slot-${entry.slotId}${entry.instanceId === selectedMonsterId ? ' selected' : ''}${entry.currentHealth <= 0 ? ' dead' : ''}`}
+              className={`monster-slot slot-${entry.slotId} formation-${formation?.role ?? 'background'}${selected ? ' selected' : ''}${inRange ? ' in-range' : ''}${acting ? ' acting' : ''}${acting && !monsterActionNotice?.cancelled ? ' attacking' : ''}${entry.currentHealth <= 0 ? ' dead' : ''}`}
+              style={{
+                left: `${formation?.left ?? 42}%`,
+                bottom: `${formation?.bottom ?? 35}%`,
+                width: `${formation?.width ?? 16}%`,
+              }}
               disabled={entry.currentHealth <= 0 || !machineState.matches('playerInput')}
               onClick={() => setSelectedMonsterId(entry.instanceId)}
+              aria-label={`${entry.slotId}번 ${entry.name}, 체력 ${entry.currentHealth}/${entry.health}, ${selected ? '현재 공격 대상' : inRange ? '범위 공격 대상' : ''}`}
             >
-              <b>{entry.slotId}</b>
-              <span>{entry.name}</span>
-              <small>♥ {entry.currentHealth}/{entry.health} · {slotIntent.icon} {slotIntent.amount ?? slotIntent.label}</small>
+              <b className="monster-slot__number">{entry.slotId}</b>
+              <span className="monster-slot__portrait">
+                {entry.imageUrl
+                  ? <img src={entry.imageUrl} alt="" />
+                  : <i aria-hidden="true">{entry.glyph}</i>}
+              </span>
+              <span className="monster-slot__details">
+                <span className="monster-slot__name">{entry.name}</span>
+                <span className="monster-slot__health">
+                  <i style={{ width: `${Math.max(0, entry.currentHealth / entry.health) * 100}%` }} />
+                </span>
+                <small>{slotIntent.icon} {slotIntent.amount ?? slotIntent.label}</small>
+                <StatusEffectList statuses={entry.statuses} ownerName={entry.name} />
+                {selected && <em>중심 대상</em>}
+                {!selected && inRange && <em>범위 대상</em>}
+              </span>
             </button>
           )
         })}
@@ -360,8 +473,11 @@ export function BattleScreen({
         </div>
       )}
       <div className="monster-stage">
-        {machineState.matches('monsterAction') && (
-          <div className="monster-ability-name" role="status">{displayMonster?.turnPlan.ability?.display_name ?? '기본 공격'}</div>
+        {machineState.matches('monsterAction') && monsterActionNotice && (
+          <div className={`monster-ability-name${monsterActionNotice.cancelled ? ' cancelled' : ''}`} role="status">
+            <b>{monsterActionNotice.slotId}번 몬스터 행동</b>
+            <span>{monsterActionNotice.abilityName}</span>
+          </div>
         )}
         <div className="monster-intent">{intent.icon} {intent.amount ?? intent.label}</div>
         {displayMonster?.imageUrl

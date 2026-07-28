@@ -7,6 +7,7 @@ import {
   findMapNode,
   generateMap,
   getConnectedNodeIds,
+  getShortestPathNodeIds,
   getMapNodes,
   validateFloorMap,
 } from '../mapGenerationSystem.js'
@@ -55,6 +56,22 @@ describe('Darkest Dungeon-style map generation', () => {
       grade: 'boss',
       isFinalBoss: true,
     })
+  })
+
+  it('places a guaranteed rest room at the destination-side midpoint of every shortest main path', () => {
+    for (let seed = 0; seed < 100; seed += 1) {
+      const map = generateMap({ seed })
+      map.floors.forEach((floor) => {
+        const shortestPath = getShortestPathNodeIds(
+          map,
+          floor.number,
+          floor.startNodeId,
+          floor.destinationNodeId,
+        )
+        const midpoint = shortestPath[Math.ceil((shortestPath.length - 1) / 2)]
+        expect(findMapNode(map, midpoint).type).toBe('rest')
+      })
+    }
   })
 
   it('generates an identical saved graph from the same seed', () => {
