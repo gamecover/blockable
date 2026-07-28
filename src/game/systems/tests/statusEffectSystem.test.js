@@ -31,6 +31,31 @@ describe('status effects', () => {
     })
   })
 
+  it('stops remaining turn-end statuses when bleeding defeats the combatant', () => {
+    const statuses = addStatus(addStatus([], 'bleeding', 2), 'burn', 6)
+    expect(resolveTurnEndStatuses({ health: 5, armor: 3, placedCount: 3, statuses })).toEqual({
+      health: 0,
+      armor: 3,
+      damage: 6,
+      statuses: [{ id: 'bleeding', stacks: 1 }, { id: 'burn', stacks: 6 }],
+    })
+  })
+
+  it('preserves newly applied weakness and wound stacks that have not affected damage yet', () => {
+    const statuses = addStatus(
+      addStatus([{ id: 'weakness', stacks: 2 }], 'weakness', 3, true),
+      'wound',
+      2,
+      true,
+    )
+    expect(resolveTurnEndStatuses({ health: 20, statuses })).toMatchObject({
+      statuses: [
+        { id: 'weakness', stacks: 4 },
+        { id: 'wound', stacks: 2 },
+      ],
+    })
+  })
+
   it('applies weakness, wound, and one-action stun rules', () => {
     expect(applyWeakness(100, [{ id: 'weakness', stacks: 2 }])).toBe(80)
     expect(applyWound(100, [{ id: 'wound', stacks: 3 }])).toBe(130)

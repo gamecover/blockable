@@ -1,18 +1,28 @@
 import { createStore } from 'zustand/vanilla'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { generateMap, completeAndUnlockNext, findMapNode } from '../systems/mapGenerationSystem.js'
-import { createStarterDeck, hydrateBlock } from '../../objects/blocks/blockData.js'
+import {
+  generateMap,
+  completeAndUnlockNext,
+  enterFloorAtStart,
+  findMapNode,
+} from '../systems/mapGenerationSystem.js'
+import {
+  createStarterDeck,
+  createUniqueBlockChoiceIds,
+  hydrateBlock,
+} from '../../objects/blocks/blockData.js'
 import {
   addStatus,
-  applyWound,
   createCombatantState,
+  getDamageMultiplier,
   resolveTurnEndStatuses,
 } from '../systems/statusEffectSystem.js'
 import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
 import { trackedLocalStorage } from './trackedStorage.js'
+import { completeWorldDungeon, createWorldMapState } from '../systems/worldMapSystem.js'
 
 const initialRun = (developerMode = false) => ({
   health: STARTING_MAX_HEALTH,
@@ -21,11 +31,15 @@ const initialRun = (developerMode = false) => ({
   gold: STARTING_GOLD,
   deck: createStarterDeck(),
   map: generateMap(),
+  worldMap: createWorldMapState(),
+  activeDungeonId: null,
   currentNodeId: null,
   floor: 1,
-  nodeStep: 1,
   prologueSeen: false,
   runStarted: false,
+  uniqueBlockId: null,
+  uniqueBlockChoiceIds: [],
+  discoveredBlueprintIds: [],
   developerMode,
   battlePiles: { drawPile: [], hand: [], discardPile: [], remainingCount: 0 },
   combat: {
@@ -35,30 +49,86 @@ const initialRun = (developerMode = false) => ({
   pendingBattle: null,
 })
 
+const isUniqueBlock = (block) =>
+  block.typeId === 'special' || block.tags?.includes('unique')
+
+const keepFirstUniqueBlock = (blocks) => {
+  let keptUnique = false
+  return blocks.filter((block) => {
+    if (!isUniqueBlock(block)) return true
+    if (keptUnique) return false
+    keptUnique = true
+    return true
+  })
+}
+
 const createRunStore = ({ storageName, developerMode }) => createStore(persist(immer((set) => ({
   ...initialRun(developerMode),
   startRun: () => set((state) => {
     const prologueSeen = state.prologueSeen
     Object.assign(state, initialRun(developerMode))
     state.deck = createStarterDeck()
+    state.uniqueBlockChoiceIds = createUniqueBlockChoiceIds()
     state.runStarted = true
     state.prologueSeen = prologueSeen
+  }),
+  chooseUniqueBlock: (block) => set((state) => {
+    if (state.uniqueBlockId || !state.uniqueBlockChoiceIds.includes(block.definitionId)) return
+    state.deck.push(block)
+    state.uniqueBlockId = block.definitionId
+    state.uniqueBlockChoiceIds = []
+  }),
+  discoverBlueprints: (combinationIds) => set((state) => {
+    const discovered = new Set(state.discoveredBlueprintIds)
+    combinationIds.forEach((id) => discovered.add(id))
+    state.discoveredBlueprintIds = [...discovered]
   }),
   selectNode: (node) => set((state) => {
     state.currentNodeId = node.id
     state.floor = node.floor
-    state.nodeStep = node.step
+  }),
+  enterDungeon: (dungeon) => set((state) => {
+    state.activeDungeonId = dungeon.id
+    const generatedMap = generateMap({
+      dungeonId: dungeon.id,
+      dungeonName: dungeon.name,
+      difficulty: dungeon.difficulty,
+    })
+    const enteredFloor = enterFloorAtStart(generatedMap, 1)
+    state.map = enteredFloor.map
+    state.currentNodeId = enteredFloor.currentNodeId
+    state.floor = 1
+  }),
+  leaveDungeon: () => set((state) => {
+    state.activeDungeonId = null
+    state.currentNodeId = null
+  }),
+  completeDungeon: () => set((state) => {
+    if (!state.activeDungeonId) return
+    state.worldMap = completeWorldDungeon(state.worldMap, state.activeDungeonId)
+    state.activeDungeonId = null
+    state.currentNodeId = null
+  }),
+  moveToNode: (node) => set((state) => {
+    state.currentNodeId = node.id
+    state.floor = node.floor
   }),
   completeNode: () => set((state) => {
     const completedNode = findMapNode(state.map, state.currentNodeId)
     state.map = completeAndUnlockNext(state.map, state.currentNodeId)
-    if (completedNode?.type === 'boss' && !completedNode.isFinalBoss) {
+    if (completedNode?.type === 'stairs') {
       state.floor = completedNode.floor + 1
-      state.nodeStep = 1
+      const enteredFloor = enterFloorAtStart(state.map, state.floor)
+      state.map = enteredFloor.map
+      state.currentNodeId = enteredFloor.currentNodeId
     }
   }),
-  damagePlayer: (amount) => set((state) => {
-    const adjustedAmount = applyWound(Math.max(0, amount), state.combat.player.statuses)
+  damagePlayer: (amount, attackerStatuses = []) => set((state) => {
+    const adjustedAmount = Math.max(0, Math.floor(
+      amount
+      * getDamageMultiplier(attackerStatuses, 'outgoing')
+      * getDamageMultiplier(state.combat.player.statuses, 'incoming'),
+    ))
     const absorbed = Math.min(state.armor, adjustedAmount)
     state.armor -= absorbed
     state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
@@ -66,13 +136,20 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   clearArmor: () => set((state) => { state.armor = 0 }),
   gainArmor: (amount) => set((state) => { state.armor += Math.max(0, amount) }),
   addGold: (amount) => set((state) => { state.gold = Math.max(0, state.gold + amount) }),
-  addBlock: (block) => set((state) => { state.deck.push(block) }),
+  addBlock: (block) => set((state) => {
+    if (isUniqueBlock(block)) {
+      if (state.uniqueBlockId) return
+      state.uniqueBlockId = block.definitionId
+      state.uniqueBlockChoiceIds = []
+    }
+    state.deck.push(block)
+  }),
   removeBlock: (id) => set((state) => { state.deck = state.deck.filter((block) => block.id !== id) }),
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
-  applyCombatStatus: (target, statusId, stacks) => set((state) => {
+  applyCombatStatus: (target, statusId, stacks, newlyApplied = false) => set((state) => {
     if (!state.combat[target]) return
-    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks)
+    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks, newlyApplied)
   }),
   resolvePlayerTurnEndStatuses: (placedCount) => set((state) => {
     const result = resolveTurnEndStatuses({
@@ -123,18 +200,46 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }) =>
-    ({ health, maxHealth, gold, deck, map, currentNodeId, floor, nodeStep, prologueSeen, runStarted, developerMode, pendingBattle }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
-    const deck = persisted.deck.map(hydrateBlock)
+    const hydratedDeck = persisted.deck.map(hydrateBlock)
+    const uniqueBlocks = hydratedDeck.filter(isUniqueBlock)
+    const uniqueBlockId = persisted.uniqueBlockId ?? uniqueBlocks[0]?.definitionId ?? null
+    const deck = keepFirstUniqueBlock(hydratedDeck)
     const pendingBattle = persisted.pendingBattle
       ? {
           ...persisted.pendingBattle,
-          deck: (persisted.pendingBattle.deck ?? persisted.deck).map(hydrateBlock),
+          deck: keepFirstUniqueBlock(
+            (persisted.pendingBattle.deck ?? persisted.deck).map(hydrateBlock),
+          ),
         }
       : null
-    return { ...current, ...persisted, deck, pendingBattle, developerMode }
+    const worldMap = persisted.worldMap
+      ? {
+          ...persisted.worldMap,
+          dungeons: persisted.worldMap.dungeons.map((dungeon) =>
+            dungeon.kind === 'final' && dungeon.status === 'locked'
+              ? { ...dungeon, status: 'available' }
+              : dungeon),
+        }
+      : current.worldMap
+    return {
+      ...current,
+      ...persisted,
+      deck,
+      worldMap,
+      pendingBattle,
+      developerMode,
+      uniqueBlockId,
+      uniqueBlockChoiceIds: uniqueBlockId ? [] : (persisted.uniqueBlockChoiceIds?.length
+        ? persisted.uniqueBlockChoiceIds
+        : createUniqueBlockChoiceIds()),
+      discoveredBlueprintIds: Array.isArray(persisted.discoveredBlueprintIds)
+        ? [...new Set(persisted.discoveredBlueprintIds)]
+        : [],
+    }
   },
 }))
 

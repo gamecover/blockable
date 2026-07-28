@@ -1,17 +1,34 @@
-import rules from '../../../docs/references/designs/blockable_block_design.json'
+import rules from '../../../docs/references/designs/blockable_block_design_beta.json'
 
-export const SUPPORTED_BLOCK_RULES_SCHEMA = '1.1.0'
+export const SUPPORTED_BLOCK_RULES_SCHEMA = '1.2.0'
 export const SUPPORTED_BLOCK_EFFECT_IDS = new Set([
   'deal_damage',
   'gain_block',
   'heal',
   'apply_status',
-  'apply_buff',
   'draw_block',
   'gain_gold',
   'modify_next_effect',
 ])
 const SUPPORTED_SLOT_KINDS = new Set(['exact_block', 'any_block', 'type', 'color', 'tag'])
+const SUPPORTED_CONDITION_KINDS = new Set([
+  'all_same_color',
+  'all_different_colors',
+  'contains_color',
+  'color_count',
+  'color_set',
+  'same_type',
+  'block_count',
+  'tag_match',
+])
+const SUPPORTED_BLOCK_STATUS_IDS = new Set([
+  'bleeding',
+  'burn',
+  'weakness',
+  'wound',
+  'stun',
+  'double_attack',
+])
 
 const duplicateIds = (items) => {
   const seen = new Set()
@@ -31,9 +48,61 @@ const validateEffect = (effect, effectDefinitions, location, errors) => {
   if (!SUPPORTED_BLOCK_EFFECT_IDS.has(effect.effect_id)) {
     errors.push(`${location}.effect_id: 게임에서 지원하지 않는 효과 ${effect.effect_id}`)
   }
-  definition.parameters.filter(({ required }) => required).forEach(({ key }) => {
-    if (!(key in (effect.parameters ?? {}))) errors.push(`${location}.parameters.${key}: 필수 값 누락`)
+  const parameters = effect.parameters ?? {}
+  definition.parameters.forEach(({ key, required, required_when: requiredWhen }) => {
+    const conditionallyRequired = requiredWhen && Object.entries(requiredWhen)
+      .every(([conditionKey, allowed]) => allowed.includes(parameters[conditionKey]))
+    if ((required || conditionallyRequired) && !(key in parameters)) {
+      errors.push(`${location}.parameters.${key}: 필수 값 누락`)
+    }
   })
+  definition.parameters.forEach(({
+    key,
+    value_type: valueType,
+    options = [],
+    minimum,
+    allow_negative: allowNegative = false,
+  }) => {
+    const value = parameters[key]
+    if (value === undefined) return
+    if (valueType === 'enum' && !options.includes(value)) {
+      errors.push(`${location}.parameters.${key}: 허용되지 않은 값 ${value}`)
+    }
+    if (valueType === 'integer' && !Number.isInteger(value)) {
+      errors.push(`${location}.parameters.${key}: 정수가 필요합니다.`)
+    }
+    if (valueType === 'number' && !Number.isFinite(value)) {
+      errors.push(`${location}.parameters.${key}: 숫자가 필요합니다.`)
+    }
+    if (['integer', 'number'].includes(valueType)
+      && Number.isFinite(minimum)
+      && value < minimum
+      && !allowNegative) {
+      errors.push(`${location}.parameters.${key}: 최솟값 ${minimum}보다 작습니다.`)
+    }
+  })
+  if (effect.effect_id === 'apply_status' && !SUPPORTED_BLOCK_STATUS_IDS.has(parameters.status_id)) {
+    errors.push(`${location}.parameters.status_id: 게임에 연결되지 않은 상태 ${parameters.status_id}`)
+  }
+}
+
+const validateCondition = (condition, colorIds, location, errors) => {
+  if (!condition || !SUPPORTED_CONDITION_KINDS.has(condition.kind)) {
+    errors.push(`${location}.kind: 지원하지 않는 조건 ${condition?.kind ?? '없음'}`)
+    return
+  }
+  const parameters = condition.parameters ?? {}
+  if (parameters.color_id && !colorIds.has(parameters.color_id)) {
+    errors.push(`${location}.parameters.color_id: 알 수 없는 색상 ${parameters.color_id}`)
+  }
+  parameters.color_ids?.forEach((colorId) => {
+    if (!colorIds.has(colorId)) {
+      errors.push(`${location}.parameters.color_ids: 알 수 없는 색상 ${colorId}`)
+    }
+  })
+  if ('count' in parameters && (!Number.isInteger(parameters.count) || parameters.count < 0)) {
+    errors.push(`${location}.parameters.count: 0 이상의 정수가 필요합니다.`)
+  }
 }
 
 export const validateBlockRules = (value = rules) => {
@@ -57,6 +126,10 @@ export const validateBlockRules = (value = rules) => {
   const typeIds = new Set(value.block_types.map(({ id }) => id))
   const blocks = new Map(value.blocks.map((block) => [block.id, block]))
   const effects = new Map(value.effect_definitions.map((effect) => [effect.id, effect]))
+  const statusOptions = effects.get('apply_status')?.parameters
+    .find(({ key }) => key === 'status_id')?.options ?? []
+  statusOptions.filter((id) => !SUPPORTED_BLOCK_STATUS_IDS.has(id))
+    .forEach((id) => warnings.push(`effect_definitions.apply_status: 게임에 연결되지 않은 상태 ID ${id}`))
 
   value.blocks.forEach((block) => {
     if (!typeIds.has(block.type_id)) errors.push(`blocks.${block.id}.type_id: ${block.type_id}`)
@@ -105,13 +178,22 @@ export const validateBlockRules = (value = rules) => {
     })
     combination.effects.forEach((effect, index) =>
       validateEffect(effect, effects, `combinations.${combination.id}.effects[${index}]`, errors))
-    combination.conditional_effects.forEach((entry, index) =>
+    combination.conditional_effects.forEach((entry, index) => {
+      validateCondition(
+        entry.condition,
+        colorIds,
+        `combinations.${combination.id}.conditional_effects[${index}].condition`,
+        errors,
+      )
       entry.effects?.forEach((effect, effectIndex) =>
-        validateEffect(effect, effects, `combinations.${combination.id}.conditional_effects[${index}].effects[${effectIndex}]`, errors)))
+        validateEffect(effect, effects, `combinations.${combination.id}.conditional_effects[${index}].effects[${effectIndex}]`, errors))
+    })
   })
-  value.color_synergies.forEach((synergy) =>
+  value.color_synergies.forEach((synergy) => {
+    validateCondition(synergy.condition, colorIds, `color_synergies.${synergy.id}.condition`, errors)
     synergy.effects.forEach((effect, index) =>
-      validateEffect(effect, effects, `color_synergies.${synergy.id}.effects[${index}]`, errors)))
+      validateEffect(effect, effects, `color_synergies.${synergy.id}.effects[${index}]`, errors))
+  })
   return { valid: errors.length === 0, errors, warnings }
 }
 

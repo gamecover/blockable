@@ -29,7 +29,7 @@ Python 패키지는 src/blockable_block_designer입니다.
 
 본 게임 저장소 수정, Git 커밋과 푸시는 별도 허가 없이는 수행하지 마세요.
 ```
-
+ㄱ
 ## 2. 필수 확인 순서
 
 Codex는 매 작업마다 다음 순서를 지킨다.
@@ -42,14 +42,49 @@ Codex는 매 작업마다 다음 순서를 지킨다.
 6. 테스트와 문서 검사를 실행한다.
 7. 변경 파일, 동작 결과, 남은 제한사항을 보고한다.
 
+### JSON 기반 지침서 재작성 및 전달 절차
+
+사용자가 새로 작성한 디자인 JSON을 지정하면 기존 지침서의 수치와 ID를 그대로
+재사용하지 않는다. 다음 순서로 이 문서를 새 JSON 기준으로 다시 작성한 뒤 다른
+프로젝트에 적용한다.
+
+1. 지정된 JSON 전체를 파싱하고 `schema_version`과
+   `metadata.validation_status`를 확인한다.
+2. 색상, Type, 효과 정의, 블록, 조합식, 시너지의 개수와 실제 ID를 다시 집계한다.
+3. 모든 참조, 회전값, 겹침, 효과 parameter와 조건을 편집기 검증기로 검사한다.
+4. 이 문서의 현재 기준 파일 경로, 스냅샷, 실제 사용 ID와 주의사항을 새 결과로
+   교체한다. 이전 JSON에서만 유효한 수치나 ID는 남기지 않는다.
+5. JSON 원본과 갱신된 이 지침서를 하나의 전달 세트로 준비한다.
+6. 대상 프로젝트에서 그 프로젝트의 `AGENTS.md`와 필수 문서를 먼저 읽는다.
+7. 대상 프로젝트 구조에 맞는 상대 경로를 결정하고 JSON 로더, 타입, 판정과 효과
+   dispatch를 연결한다.
+8. 게임 수치와 조합을 코드에 중복 하드코딩하지 않고 전달된 JSON을 단일 데이터
+   원본으로 사용한다.
+9. 적용 테스트와 원본 JSON 대비 누락·변형 검사를 실행한다.
+
+우선순위는 다음과 같다.
+
+1. 대상 프로젝트의 `AGENTS.md`: 대상 저장소의 작업·경로·검증 규칙
+2. 전달된 디자인 JSON: 블록, 조합, 효과와 수치의 실제 원본
+3. 이 지침서: JSON 해석과 통합 방법
+
+지침서와 JSON의 수치가 다르면 JSON을 우선하고, 지침서를 즉시 다시 생성하거나
+갱신한다. 불일치를 임의 추측으로 보정하지 않는다.
+
 현재 필수 문서:
 
 - `docs/BLOCKABLE_BLOCK_DESIGNER_PLAN.md`
 - `docs/RULE_SCHEMA_1_1.md`
+- `docs/BLOCKABLE_COMBAT_EFFECT_STANDARD.md`
 - `docs/BLOCKABLE_BLOCK_DESIGN_CODEX_INTERACTION_INSTRUCTION.md`
 
 기획안, 프로그램 동작, JSON 계약, 프로젝트 경로, 실행 명령 또는 Codex 작업
 절차가 변경되면 이 문서도 같은 작업에서 함께 수정한다.
+
+`docs/BLOCKABLE_COMBAT_EFFECT_STANDARD.md`는 본 게임 Blockable이 소유하는
+읽기 전용 기준 문서다. 이 저장소에서는 수정하지 않는다. 표준과 의미가 명확히
+같은 사용자 정의 효과는 표준 ID·파라미터로 통합하고 중복 정의를 제거한다.
+추가 동작이 있거나 의미가 애매한 효과는 추측해서 통합하지 않는다.
 
 ## 3. 프로젝트 식별 정보
 
@@ -60,7 +95,7 @@ Codex는 매 작업마다 다음 순서를 지킨다.
 | Python 패키지 | `blockable_block_designer` |
 | Python 소스 | `src/blockable_block_designer/` |
 | 현재 버전 | `v1.2.2` |
-| JSON 스키마 | `1.1.0` |
+| 프로그램 저장 JSON 스키마 | `1.2.0` |
 | 기본 저장 파일 | `blockable_block_design.json` |
 | 현재 기준 디자인 JSON | `examples/blockable_block_design.json` |
 | 최소 스키마 예제 | `examples/blockable_rules.example.json` |
@@ -76,7 +111,7 @@ Codex가 Blockable 게임 적용이나 규칙 분석을 수행할 때 사용하�
 
 | 항목 | 현재 값 |
 |---|---|
-| `schema_version` | `1.1.0` |
+| 원본 `schema_version` | `1.1.0` (Designer에서 열고 저장하면 `1.2.0`) |
 | `metadata.validation_status` | `valid` |
 | 색상 | 7개 |
 | Block Type | 7개 |
@@ -101,16 +136,18 @@ fire, water, nature, special, legend, steel, curse
 색상 `legendary`와 Type `legend`는 이름이 다르다. 표시 이름이나 유사한 철자를
 근거로 동일 ID로 바꾸지 않는다.
 
-현재 효과 정의 ID:
+원본 JSON의 효과 정의 ID:
 
 ```text
 deal_damage, gain_block, heal, apply_status,
 apply_buff, draw_block, gain_gold, modify_next_effect
 ```
 
-현재 데이터에서 실제 사용 중인 효과 ID는 `deal_damage`, `gain_block`, `heal`,
-`apply_status`, `draw_block`이다. 정의되어 있지만 현재 배치에 사용되지 않는 효과도
-삭제하거나 무시하지 않는다.
+게임 적용 전 Designer로 다시 저장하거나 동일한 마이그레이션을 수행한다.
+`apply_buff`는 `apply_status`로 통합하고, 모든 효과 인스턴스는
+`docs/BLOCKABLE_COMBAT_EFFECT_STANDARD.md`의 ID·파라미터·대상·범위 규칙을
+따라야 한다. 사용자 정의 효과와 사용자 정의 상태는 보존하되, 게임 런타임에
+해당 ID 처리기가 있는지 별도로 확인한다.
 
 블록은 Type별로 다음과 같이 구성된다.
 
@@ -337,6 +374,8 @@ Codex는 게임 적용 작업을 다음 순서로 수행한다.
 5. 블록 좌표 변환, 슬롯 조건, 조합 전체 변환, 효과 dispatch, 조건부 효과와
    공통 시너지를 구현한다.
 6. JSON 원본은 명시적인 데이터 수정 요청이 없으면 변경하지 않는다.
+7. 적용 완료 후 대상 프로젝트의 로더가 원본 JSON의 배열 개수, ID와 배열 순서를
+   보존했는지 비교한다.
 
 `metadata.validation_status`가 `invalid`인 파일은 편집 초안이다. 게임 빌드나
 런타임 데이터로 조용히 받아들이지 말고 명확한 오류로 거부한다.

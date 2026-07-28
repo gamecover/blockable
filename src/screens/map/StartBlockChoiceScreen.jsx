@@ -2,13 +2,13 @@ import { motion } from 'motion/react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
 
-export function StartBlockChoiceScreen({ dungeonName, floor, choices, onChoose }) {
+export function StartBlockChoiceScreen({ choices, onChoose }) {
   return (
-    <ScreenFrame title={dungeonName} subtitle={`${floor}층`} barVariant="dungeon">
+    <ScreenFrame title="원정 준비" subtitle="새 게임">
       <div className="reward-summary">
         <span className="victory-mark">◆</span>
         <h3>고유 블록을 선택하세요</h3>
-        <p>선택한 블록 하나가 시작 도구 주머니에 추가됩니다.</p>
+        <p>무작위로 제안된 세 종류 중 하나를 선택하세요. 이 선택은 현재 게임 전체에서 유지됩니다.</p>
       </div>
       <div className="reward-grid">
         {choices.map((block) => (

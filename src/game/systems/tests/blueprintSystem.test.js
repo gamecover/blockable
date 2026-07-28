@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest'
+import { createBlock } from '../../../objects/blocks/blockData.js'
+import {
+  getBlueprintLayout,
+  getKnownBlueprints,
+  getQuickCombinationPlan,
+  isStarterBlueprint,
+} from '../blueprintSystem.js'
+import { BLOCK_RULE_INDEX, BLOCK_RULES } from '../blockRulesSystem.js'
+
+describe('blueprint system', () => {
+  it('reveals every recipe whose normalized footprint fits within 3 by 3', () => {
+    const known = getKnownBlueprints([])
+
+    expect(known.length).toBeGreaterThan(0)
+    expect(known.every(isStarterBlueprint)).toBe(true)
+    expect(known.every((combination) => {
+      const layout = getBlueprintLayout(combination)
+      return layout.width <= 3 && layout.height <= 3
+    })).toBe(true)
+  })
+
+  it('reveals a larger recipe only after its id is discovered', () => {
+    const hidden = BLOCK_RULES.combinations.find((combination) => !isStarterBlueprint(combination))
+
+    expect(hidden).toBeDefined()
+    expect(getKnownBlueprints([])).not.toContainEqual(hidden)
+    expect(getKnownBlueprints([hidden.id])).toContainEqual(hidden)
+  })
+
+  it('assigns distinct real hand blocks to a quick combination', () => {
+    const recipe = BLOCK_RULE_INDEX.combinations.get('base_33_01_steel')
+    const blocks = [
+      createBlock('s001', 'quick-1'),
+      createBlock('s002', 'quick-2'),
+      createBlock('s003', 'unused'),
+    ]
+    const plan = getQuickCombinationPlan(recipe.id, blocks)
+
+    expect(plan.assignments).toHaveLength(recipe.instances.length)
+    expect(new Set(plan.assignments.map(({ blockId }) => blockId)).size)
+      .toBe(recipe.instances.length)
+  })
+
+  it('does not create a quick plan when required hand blocks are missing', () => {
+    const blocks = [createBlock('s003', 'only-one')]
+
+    expect(getQuickCombinationPlan('base_33_01_steel', blocks)).toBeNull()
+  })
+})

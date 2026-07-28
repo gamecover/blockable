@@ -5,6 +5,7 @@ import {
 } from '../../game/systems/blockRulesSystem.js'
 
 const LEGACY_TYPES = { I: 's001', L: 's002', O: 's003' }
+const STANDARD_COLOR_ORDER = ['steel', 'water', 'nature', 'fire']
 
 const getShapeLabel = (definition) => {
   if (definition.id.endsWith('001') && definition.shape.cells.length === 3) return 'I'
@@ -41,8 +42,27 @@ export const createStarterDeck = () =>
     .flatMap((definition) => Array.from({ length: 4 }, () => definition.id))
     .map((id, index) => createBlock(id, index))
 
-export const createUniqueBlockChoices = () =>
-  getUniqueBlockDefinitions().map(({ id }, index) => createBlock(id, `unique-${index}`))
+export const createUniqueBlockChoiceIds = (count = 3, random = Math.random) => {
+  const definitions = [...getUniqueBlockDefinitions()]
+  for (let index = definitions.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1))
+    ;[definitions[index], definitions[target]] = [definitions[target], definitions[index]]
+  }
+  return definitions.slice(0, Math.min(count, definitions.length)).map(({ id }) => id)
+}
+
+export const createUniqueBlockChoices = (definitionIds = getUniqueBlockDefinitions().map(({ id }) => id)) =>
+  definitionIds.map((id, index) => createBlock(id, `unique-${index}`))
+
+export const cycleStandardBlockColor = (block) => {
+  const colorIndex = STANDARD_COLOR_ORDER.indexOf(block?.color)
+  if (colorIndex < 0 || !STANDARD_COLOR_ORDER.includes(block?.typeId)) return block
+  const nextColor = STANDARD_COLOR_ORDER[(colorIndex + 1) % STANDARD_COLOR_ORDER.length]
+  const shapeSuffix = block.definitionId?.slice(-3)
+  const nextDefinition = getRuleBlock(`${nextColor[0]}${shapeSuffix}`)
+  if (!nextDefinition) return block
+  return { ...createBlock(nextDefinition.id, 'developer-color'), id: block.id }
+}
 
 export const hydrateBlock = (block, index = 0) => {
   if (block?.definitionId && getRuleBlock(block.definitionId)) {

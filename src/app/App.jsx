@@ -5,8 +5,8 @@ import { DEVELOPER_TOOLS_ENABLED } from '../config/developerMode.js'
 import { appMachine } from '../game/machines/appMachine.js'
 import { DEFAULT_DUNGEON } from '../game/constants/gameConfig.js'
 import { pick } from '../game/systems/randomSystem.js'
-import { canDeveloperEnterNode } from '../game/systems/mapGenerationSystem.js'
-import { pickMonsterEncounter } from '../game/systems/monsterDesignSystem.js'
+import { canTravelToNode } from '../game/systems/mapGenerationSystem.js'
+import { createCombatSlots } from '../game/systems/combatSlotSystem.js'
 import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem.js'
 import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
 import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
@@ -15,6 +15,7 @@ import { SplashScreen } from '../screens/main/SplashScreen.jsx'
 import { MainScreen } from '../screens/main/MainScreen.jsx'
 import { PrologueScreen } from '../screens/prologue/PrologueScreen.jsx'
 import { MapScreen } from '../screens/map/MapScreen.jsx'
+import { WorldMapScreen } from '../screens/map/WorldMapScreen.jsx'
 import { BattleScreen } from '../screens/battle/BattleScreen.jsx'
 import { RewardScreen } from '../screens/reward/RewardScreen.jsx'
 import { EventScreen } from '../screens/event/EventScreen.jsx'
@@ -34,7 +35,10 @@ export function App() {
   const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
   const run = runMode === 'developer' ? developerRun : normalRun
   const developerMode = DEVELOPER_TOOLS_ENABLED && runMode === 'developer' && run.developerMode
-  const uniqueBlockChoices = useMemo(() => createUniqueBlockChoices(), [])
+  const uniqueBlockChoices = useMemo(
+    () => createUniqueBlockChoices(run.uniqueBlockChoiceIds),
+    [run.uniqueBlockChoiceIds],
+  )
 
   useEffect(() => () => SoundManager.dispose(), [])
 
@@ -45,7 +49,7 @@ export function App() {
     const prologueSeen = targetRun.prologueSeen
     targetRun.startRun()
     setRunMode(mode)
-    send({ type: mode === 'developer' || prologueSeen ? 'CONTINUE' : 'START' })
+    send({ type: mode === 'developer' || prologueSeen ? 'START_CHOICE' : 'START' })
   }
 
   const continueRun = (mode = 'normal') => {
@@ -53,24 +57,31 @@ export function App() {
     const targetStore = mode === 'developer' ? developerRunStore : normalRunStore
     const targetRun = targetStore.getState()
     setRunMode(mode)
+    if (!targetRun.uniqueBlockId) {
+      send({ type: 'START_CHOICE' })
+      return
+    }
     if (targetRun.pendingBattle?.encounter) {
       setEncounter(targetRun.pendingBattle.encounter)
       targetRun.restorePendingBattle()
       send({ type: 'CONTINUE_BATTLE' })
       return
     }
-    send({ type: 'CONTINUE' })
+    send({ type: targetRun.activeDungeonId ? 'CONTINUE_DUNGEON' : 'CONTINUE' })
   }
 
   const enterNode = (node) => {
-    const canEnter = developerMode
-      ? canDeveloperEnterNode({ floor: run.floor, step: run.nodeStep }, node)
-      : node.status === 'available'
+    const canEnter = canTravelToNode(run.map, run.currentNodeId, node.id, developerMode)
     if (!canEnter) return
+    if (node.status === 'complete') {
+      run.moveToNode(node)
+      return
+    }
 
     run.selectNode(node)
-    if (node.type === 'start') {
-      send({ type: 'ENTER_START' })
+    if (node.type === 'floor_start') return
+    if (node.type === 'stairs') {
+      run.completeNode()
       return
     }
     if (node.type === 'rest') {
@@ -83,15 +94,21 @@ export function App() {
       send({ type: 'ENTER_EVENT' })
       return
     }
-    const monster = pickMonsterEncounter({
+    const combat = createCombatSlots({
+      node,
       floor: node.floor,
       difficultyTier: run.map.difficulty ?? DEFAULT_DUNGEON.difficulty,
-      gradeId: node.type === 'boss' ? 'boss' : node.grade ?? 'normal',
     })
-    const nextEncounter = { type: node.type, grade: node.grade, node, monster }
+    const nextEncounter = { type: node.type, grade: node.grade, node, ...combat, monster: combat.monsters[0] }
     setEncounter(nextEncounter)
     run.beginBattle(nextEncounter)
     send({ type: 'ENTER_BATTLE' })
+  }
+
+  const enterDungeon = (dungeon) => {
+    if (dungeon.status === 'locked' && !developerMode) return
+    run.enterDungeon(dungeon)
+    send({ type: 'ENTER_DUNGEON' })
   }
 
   const winBattle = useCallback(() => {
@@ -101,7 +118,9 @@ export function App() {
     run.clearPendingBattle()
     if (encounter?.type === 'boss') {
       run.completeNode()
-      send({ type: encounter.node?.isFinalBoss ? 'BOSS_WIN' : 'FLOOR_BOSS_WIN' })
+      const activeDungeon = run.worldMap.dungeons.find(({ id }) => id === run.activeDungeonId)
+      run.completeDungeon()
+      send({ type: activeDungeon?.kind === 'final' ? 'BOSS_WIN' : 'DUNGEON_WIN' })
       return
     }
     setRewards(createBlockRewards())
@@ -128,9 +147,8 @@ export function App() {
   }
 
   const chooseStartingBlock = (block) => {
-    run.addBlock(block)
-    run.completeNode()
-    send({ type: 'DONE' })
+    run.chooseUniqueBlock(block)
+    send({ type: run.activeDungeonId ? 'DONE_DUNGEON' : 'DONE' })
   }
 
   const abandonBattle = () => {
@@ -158,9 +176,10 @@ export function App() {
 
   let screen = null
   if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onSelect={enterNode} />
-  if (current === 'startChoice') screen = <StartBlockChoiceScreen dungeonName={run.map.dungeonName} floor={run.floor} choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
-  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} onWin={winBattle} onLose={() => { run.clearPendingBattle(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
+  if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onSelect={enterDungeon} />
+  if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
+  if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
+  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { run.clearPendingBattle(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
   if (current === 'gameover') screen = <ResultScreen floor={run.floor} onMenu={backToMenu} />
@@ -170,9 +189,11 @@ export function App() {
     {screen}
     <CommonGameMenu
         floor={run.floor}
-        nodeStep={run.nodeStep}
         map={run.map}
+        worldMap={run.worldMap}
         deck={run.deck}
+        activeDungeonId={run.activeDungeonId}
+        discoveredBlueprintIds={run.discoveredBlueprintIds}
         currentNodeId={run.currentNodeId}
         currentScreen={current}
         onMainMenu={backToMenu}

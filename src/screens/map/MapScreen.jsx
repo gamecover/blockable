@@ -1,89 +1,123 @@
 import { motion } from 'motion/react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
-import { canDeveloperEnterNode, getFloor, getMapEdges, getMapNodePosition, getMapNodes } from '../../game/systems/mapGenerationSystem.js'
+import {
+  canTravelToNode,
+  getFloor,
+  getMapEdges,
+  getMapNodePosition,
+  getMapNodes,
+} from '../../game/systems/mapGenerationSystem.js'
 import mapBase from './assets/pictures/map_base_alpha.png'
-import straightArrow from './assets/pictures/map_arrow_short_01.png'
-import diagonalArrow from './assets/pictures/map_arrow_short_02.png'
 
-const symbols = { start: '◆', battle: '⚔', event: '?', rest: '♥', boss: '♜' }
-const labels = { start: '고유 블록 선택', battle: '전투', event: '사건', rest: '휴식', boss: '보스' }
+const symbols = {
+  unique_block_selection: '◆',
+  floor_start: '●',
+  battle: '⚔',
+  elite: '☠',
+  event: '?',
+  rest: '♥',
+  stairs: '⇧',
+  boss: '♜',
+}
+
+const labels = {
+  unique_block_selection: '고유 블록',
+  floor_start: '층 시작',
+  battle: '전투',
+  elite: '강적',
+  event: '사건',
+  rest: '휴식',
+  stairs: '계단',
+  boss: '보스',
+}
 
 export function MapScreen({
   map,
   floor,
-  nodeStep,
   currentNodeId,
   health,
   maxHealth,
   gold,
   developerMode = false,
   onDebugAddGold,
+  onDebugAddHealth,
+  onLeaveDungeon,
   onSelect,
 }) {
   const selectedFloor = getFloor(map, floor)
   const nodes = getMapNodes(map, floor)
   const positions = new Map(nodes.map((node) => [node.id, getMapNodePosition(map, node)]))
-  const edges = getMapEdges(map, floor)
+  const corridors = getMapEdges(map, floor)
 
   return (
-    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · 난이도 ${map.difficulty}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
       <div className="map-toolbar">
-        <div className="map-legend"><span><i className="dot available" /> 이동 가능</span><span><i className="dot complete" /> 완료</span><span>· 미확인</span></div>
-        {developerMode && <div className="developer-map-tools"><strong>DEV</strong><button type="button" onClick={onDebugAddGold}>골드 +1000</button></div>}
+        <div className="map-legend">
+          <span><i className="dot available" /> 이동 가능</span>
+          <span><i className="dot complete" /> 완료</span>
+          <span><i className="dot risk" /> 위험 가지</span>
+        </div>
+        <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>
+        {developerMode && (
+          <div className="developer-map-tools">
+            <strong>DEV · seed {map.seed} · {map.generatorVersion}</strong>
+            <div>
+              <button type="button" onClick={onDebugAddGold}>골드 +1000</button>
+              <button type="button" onClick={onDebugAddHealth}>현재/최대 체력 +25</button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="dungeon-map-viewport">
-        <div className="dungeon-map" style={{ backgroundImage: `linear-gradient(#120e0b52,#17110d52), url(${mapBase})` }} aria-label={`${map.dungeonName} ${floor}층 지도`}>
-          <svg className="map-connections" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
-            {edges.map(({ from, to }) => {
-              const start = positions.get(from)
-              const end = positions.get(to)
+        <div
+          className="dungeon-map dungeon-map--rooms"
+          style={{ backgroundImage: `linear-gradient(#090807c7,#110d0bc7), url(${mapBase})` }}
+          aria-label={`${map.dungeonName} ${floor}층 방 지도`}
+        >
+          <svg className="room-corridors" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+            {corridors.map((corridor) => {
+              const start = positions.get(corridor.from)
+              const end = positions.get(corridor.to)
               if (!start || !end) return null
-              const completed = nodes.find(({ id }) => id === from)?.status === 'complete'
-              const x1 = start.x * 10
-              const y1 = start.y * 6
-              const x2 = end.x * 10
-              const y2 = end.y * 6
-              const deltaX = x2 - x1
-              const deltaY = y2 - y1
-              const length = Math.hypot(deltaX, deltaY)
-              const width = Math.max(1, length - 76)
-              const height = width * 104 / 233
-              const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI
-              const arrow = Math.abs(deltaY) < 1 ? straightArrow : diagonalArrow
-              const transform = `translate(${(x1 + x2) / 2} ${(y1 + y2) / 2}) rotate(${angle}) translate(${-width / 2} ${-height / 2})`
+              const traveled = [corridor.from, corridor.to].every((id) =>
+                nodes.find((node) => node.id === id)?.status === 'complete')
               return (
-                <g key={`${from}-${to}`} className={completed ? 'traveled' : ''}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} />
-                  <image href={arrow} width={width} height={height} transform={transform} preserveAspectRatio="xMidYMid meet" />
+                <g
+                  key={corridor.id}
+                  className={`${corridor.pathRole}${traveled ? ' traveled' : ''}`}
+                >
+                  <line x1={start.x * 10} y1={start.y * 6} x2={end.x * 10} y2={end.y * 6} />
                 </g>
               )
             })}
           </svg>
-          {selectedFloor.steps.map((_, index) => {
-            const step = index + 1
-            const x = getMapNodePosition(map, { floor, step, lane: 0 }).x
-            return <span className="node-step-number" style={{ left: `${x}%` }} key={step}>{floor}-{step}</span>
-          })}
           {nodes.map((node) => {
             const position = positions.get(node.id)
-            const developerSelectable = developerMode
-              && canDeveloperEnterNode({ floor, step: nodeStep }, node)
-            const selectable = node.status === 'available' || developerSelectable
+            const selectable = canTravelToNode(map, currentNodeId, node.id, developerMode)
             return (
-              <div className="map-node-position" style={{ left: `${position.x}%`, top: `${position.y}%` }} key={node.id}>
+              <div className="room-node-position" style={{ left: `${position.x}%`, top: `${position.y}%` }} key={node.id}>
                 <motion.button
+                  type="button"
                   whileHover={selectable ? { scale: 1.08 } : {}}
                   disabled={!selectable}
-                  className={`map-node ${node.status} ${node.type}${developerSelectable ? ' developer-selectable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
+                  className={`room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
                   onClick={() => onSelect(node)}
-                  aria-label={`${node.floor}층 ${node.step}번째 위치 ${labels[node.type]}`}
-                ><b>{symbols[node.type]}</b><small>{labels[node.type]}</small></motion.button>
+                  aria-label={`${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
+                >
+                  <b>{symbols[node.type]}</b>
+                  <small>{labels[node.type]}</small>
+                </motion.button>
               </div>
             )
           })}
+          <aside className="map-floor-summary">
+            <b>{floor}F</b>
+            <span>방 {selectedFloor.actualNodeCount}</span>
+            <span>막다른 가지 {selectedFloor.branches.length}</span>
+          </aside>
         </div>
       </div>
-      <p className="map-hint">현재 위치에서 오른쪽으로 연결된 다음 노드만 선택할 수 있습니다.</p>
+      <p className="map-hint">통로로 연결된 방을 탐험하고, 막다른 가지를 돌아 나온 뒤 계단 또는 보스로 향할 수 있습니다.</p>
     </ScreenFrame>
   )
 }
