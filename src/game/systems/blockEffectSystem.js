@@ -23,6 +23,33 @@ const normalizeEffect = (effect) => {
   }
 }
 
+export const describeBlockEffect = (rawEffect) => {
+  const effect = normalizeEffect(rawEffect)
+  const parameters = effect.parameters ?? {}
+  switch (effect.effect_id) {
+    case 'deal_damage': return `공격력 ${effect.value}`
+    case 'gain_block': return `방어력 ${effect.value}`
+    case 'heal': return `체력 회복 ${effect.value}`
+    case 'draw_block': return `추가 드로우 ${effect.value}`
+    case 'gain_gold': return `골드 ${effect.value}`
+    case 'apply_status': return `${parameters.status_name ?? parameters.status_id} ${parameters.stacks ?? 1}`
+    case 'apply_buff': return `${parameters.buff_name ?? parameters.buff_id}`
+    case 'modify_next_effect': return `다음 효과 ×${parameters.multiplier}`
+    default: {
+      const typedLabel = {
+        BASE_DAMAGE: '공격력',
+        INDEPENDENT_DAMAGE: '효과 피해',
+        BLOCK: '방어력',
+        RECOVERY: '체력 회복',
+        DRAW: '추가 드로우',
+        HIT_COUNT: '공격 횟수',
+        EXTRA_TURN: '추가 턴',
+      }[effect.type]
+      return typedLabel ? `${typedLabel} ${effect.value}` : effect.effect_id
+    }
+  }
+}
+
 const effectLabel = (effect) => {
   const parameters = effect.parameters ?? {}
   switch (effect.effect_id) {

@@ -44,6 +44,11 @@ describe('deck system', () => {
       8,
       3,
     ])
+    expect([first.remainingBlocks.length, second.remainingBlocks.length, third.remainingBlocks.length]).toEqual([
+      13,
+      8,
+      3,
+    ])
     expect(third.hand).toHaveLength(5)
   })
 })

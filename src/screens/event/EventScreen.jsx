@@ -31,21 +31,27 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
         {restAction && !restBlock && <>
           <div className="choice-preview">{restAction === 'color' ? '속성을 변경할 일반 블록을 선택하세요.' : '모양을 변경할 일반 블록을 선택하세요.'}</div>
           <div className="deck-strip" aria-label="변경 가능한 일반 블록">
-            {modifiableBlocks.map((block) => <button key={block.id} onClick={() => setRestBlockId(block.id)} aria-label={`${block.name} 선택`}><BlockPreview block={block} compact /><small>{block.name}</small></button>)}
+            {modifiableBlocks.map((block) => <button key={block.id} onClick={() => setRestBlockId(block.id)} aria-label={`${block.name} 선택`}><BlockPreview block={block} compact /></button>)}
           </div>
           <button className="text-button" onClick={() => setRestAction(null)}>이전 선택으로</button>
         </>}
         {restAction === 'color' && restBlock && <>
-          <div className="choice-preview">{restBlock.name}에 주입할 속성을 선택하세요.</div>
-          <div className="event-options">
-            {STANDARD_BLOCK_COLORS.map((color) => <button className="secondary-button" key={color} disabled={restBlock.color === color} onClick={() => onResolve({ replaceBlock: infuseBlockColor(restBlock, color) })}>{colorLabels[color]}</button>)}
+          <div className="choice-preview rest-block-preview"><BlockPreview block={restBlock} compact /><span>주입할 속성을 선택하세요.</span></div>
+          <div className="event-options rest-image-options">
+            {STANDARD_BLOCK_COLORS.map((color) => {
+              const previewBlock = infuseBlockColor(restBlock, color)
+              return <button className="secondary-button" key={color} disabled={restBlock.color === color} onClick={() => onResolve({ replaceBlock: previewBlock })} aria-label={`${colorLabels[color]} 속성으로 변경`} title={colorLabels[color]}><BlockPreview block={previewBlock} compact /></button>
+            })}
           </div>
           <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
         </>}
         {restAction === 'shape' && restBlock && <>
-          <div className="choice-preview">{restBlock.name}을 바꿀 모양을 선택하세요.</div>
-          <div className="event-options">
-            {STANDARD_BLOCK_SHAPES.map((shapeId) => <button className="secondary-button" key={shapeId} disabled={restBlock.definitionId.endsWith(shapeId)} onClick={() => onResolve({ replaceBlock: changeBlockShape(restBlock, shapeId) })}>{shapeLabels[shapeId]}</button>)}
+          <div className="choice-preview rest-block-preview"><BlockPreview block={restBlock} compact /><span>바꿀 모양을 선택하세요.</span></div>
+          <div className="event-options rest-image-options">
+            {STANDARD_BLOCK_SHAPES.map((shapeId) => {
+              const previewBlock = changeBlockShape(restBlock, shapeId)
+              return <button className="secondary-button" key={shapeId} disabled={restBlock.definitionId.endsWith(shapeId)} onClick={() => onResolve({ replaceBlock: previewBlock })} aria-label={`${shapeLabels[shapeId]} 모양으로 변경`} title={shapeLabels[shapeId]}><BlockPreview block={previewBlock} compact /></button>
+            })}
           </div>
           <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
         </>}
@@ -74,7 +80,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
   const cost = 50
   return (
     <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
-      <div className="event-card shop"><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요.</p><div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>{deck.map((block) => <button aria-label={`${block.name} 삭제 · ${cost} 골드`} disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><BlockPreview block={block} compact /><small>◆ {cost}</small></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
+      <div className="event-card shop"><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요. 블록 삭제 비용은 ◆ {cost}입니다.</p><div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>{deck.map((block) => <button aria-label={`${block.name} 삭제 · ${cost} 골드`} disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><BlockPreview block={block} compact /></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
     </ScreenFrame>
   )
 }

@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
-import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
+import { BlockChoiceDetails } from '../../components/ui/BlockChoiceDetails.jsx'
 
 export function StartBlockChoiceScreen({ choices, onChoose }) {
   return (
@@ -18,10 +18,9 @@ export function StartBlockChoiceScreen({ choices, onChoose }) {
             className="block-card"
             key={block.id}
             onClick={() => onChoose(block)}
+            aria-label={`${block.name} 선택`}
           >
-            <BlockPreview block={block} />
-            <strong>{block.name}</strong>
-            <small>{block.description}</small>
+            <BlockChoiceDetails block={block} />
             <em>도구 주머니에 추가</em>
           </motion.button>
         ))}

@@ -6,6 +6,7 @@ import {
   getSpawnableMonsters,
   monsterDesignDiagnostics,
   resolveMonsterAbility,
+  describeMonsterAbility,
   selectMonsterAbility,
 } from '../monsterDesignSystem.js'
 
@@ -53,6 +54,23 @@ describe('monster design integration', () => {
       selfHealing: 7,
       playerStatuses: [{ id: 'bleeding', sourceId: 'bleed', stacks: 2 }],
     })
+  })
+
+  it('공격·방어·회복 행동을 몬스터 머리 위 의도 목록으로 설명한다', () => {
+    const description = describeMonsterAbility({
+      display_name: '복합 행동',
+      effects: [
+        { effect_id: 'deal_damage', order: 0, parameters: { target: 'player', amount: 9 } },
+        { effect_id: 'gain_block', order: 1, parameters: { target: 'self', amount: 6 } },
+        { effect_id: 'heal', order: 2, parameters: { target: 'self', amount: 4 } },
+      ],
+    })
+
+    expect(description.indicators).toEqual([
+      { kind: 'attack', icon: '⚔', label: '공격', amount: 9 },
+      { kind: 'armor', icon: '◆', label: '방어', amount: 6 },
+      { kind: 'heal', icon: '✚', label: '회복', amount: 4 },
+    ])
   })
 
   it('오탈자 상태와 스키마 target 충돌을 숨기지 않는다', () => {

@@ -209,14 +209,20 @@ export const resolveMonsterAbility = (ability) => {
 }
 
 export const describeMonsterAbility = (ability) => {
-  if (!ability) return { label: '행동 없음', icon: '·', amount: null }
-  const damage = ability.effects
-    .filter(({ effect_id: id, parameters }) => id === 'deal_damage' && parameters.target === 'player')
-    .reduce((sum, { parameters }) => sum + parameters.amount, 0)
+  if (!ability) return { label: '행동 없음', icon: '·', amount: null, indicators: [] }
+  const resolved = resolveMonsterAbility(ability)
+  const indicators = [
+    { kind: 'attack', icon: '⚔', label: '공격', amount: resolved.playerDamage },
+    { kind: 'armor', icon: '◆', label: '방어', amount: resolved.selfArmor },
+    { kind: 'heal', icon: '✚', label: '회복', amount: resolved.selfHealing },
+  ].filter(({ amount }) => amount > 0)
+  const primary = indicators[0]
   return {
     label: ability.display_name,
-    icon: ability.intent?.type === 'attack' ? '⚔' : ability.intent?.type === 'defend' ? '◆' : '✦',
-    amount: damage || null,
+    icon: primary?.icon
+      ?? (ability.intent?.type === 'attack' ? '⚔' : ability.intent?.type === 'defend' ? '◆' : '✦'),
+    amount: primary?.amount ?? null,
+    indicators,
   }
 }
 
