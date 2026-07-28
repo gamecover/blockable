@@ -1,15 +1,20 @@
 # Game Project Instructions
 
-## Required documentation
+## Documentation policy
 
-Before planning or modifying code, read:
+Do not automatically read all documents before every task.
 
-- `docs/BLOCKABLE_CODEX_DEVELOPMENT_GUIDE.md`
-- `docs/BLOCKABLE_GAME_DESIGN.md`
-<!-- - `docs/BLOCKABLE_BLOCK_DESIGN_CODEX_INTERACTION_INSTRUCTION.md`
-- `docs/BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md` -->
+Read documentation selectively:
 
-Follow that document unless the current user request explicitly overrides it.
+- Read `docs/BLOCKABLE_CODEX_DEVELOPMENT_GUIDE.md` only when the task affects project architecture, coding conventions, file structure, shared systems, or implementation policy.
+- Read `docs/BLOCKABLE_GAME_DESIGN.md` only when the task affects gameplay rules, combat behavior, game data, balance, progression, or player-facing behavior.
+- For local bug fixes or small UI/code changes, inspect the relevant code first and read only the related document sections when needed.
+- If a document was already read during the current task and has not changed, do not read it again.
+- Read an entire document only for broad refactors, new systems, conflicting requirements, or when the user explicitly requests it.
+- When a Markdown document is modified, read the entire modified document once after editing to verify consistency, contradictions, duplicated content, and outdated references.
+- Do not reread the document during the same task unless it is modified again.
+- The current user request overrides documentation when it explicitly changes an existing rule.
+
 
 ## Core rule
 

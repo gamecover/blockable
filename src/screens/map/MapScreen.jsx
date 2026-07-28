@@ -40,6 +40,7 @@ export function MapScreen({
   gold,
   developerMode = false,
   onDebugAddGold,
+  onDebugAddHealth,
   onLeaveDungeon,
   onSelect,
 }) {
@@ -60,7 +61,10 @@ export function MapScreen({
         {developerMode && (
           <div className="developer-map-tools">
             <strong>DEV · seed {map.seed} · {map.generatorVersion}</strong>
-            <button type="button" onClick={onDebugAddGold}>골드 +1000</button>
+            <div>
+              <button type="button" onClick={onDebugAddGold}>골드 +1000</button>
+              <button type="button" onClick={onDebugAddHealth}>현재/최대 체력 +25</button>
+            </div>
           </div>
         )}
       </div>

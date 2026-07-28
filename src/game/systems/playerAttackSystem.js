@@ -1,0 +1,144 @@
+import { getTargetSlotIds } from './combatSlotSystem.js'
+import {
+  addStatus,
+  getBuffDamageBonus,
+  getDamageMultiplier,
+  getStatusStacks,
+} from './statusEffectSystem.js'
+
+const groupDamageEffects = (effects) => [...effects.reduce((groups, effect) => {
+  const key = `${effect.target}:${effect.range}:${effect.distance}`
+  const current = groups.get(key)
+  groups.set(key, current
+    ? { ...current, amount: current.amount + effect.amount }
+    : { ...effect })
+  return groups
+}, new Map()).values()]
+
+const applyDamage = (combatant, rawDamage, attackerStatuses) => {
+  const damage = Math.max(0, Math.floor(rawDamage
+    * getDamageMultiplier(attackerStatuses, 'outgoing')
+    * getDamageMultiplier(combatant.statuses, 'incoming')))
+  const absorbed = Math.min(combatant.armor, damage)
+  return {
+    combatant: {
+      ...combatant,
+      armor: combatant.armor - absorbed,
+      currentHealth: Math.max(0, combatant.currentHealth - (damage - absorbed)),
+    },
+    damage,
+  }
+}
+
+const applyDamageGroup = ({ combatants, effect, selectedSlotId, battleType, attackerStatuses }) => {
+  const livingSlotIds = combatants.filter(({ currentHealth }) => currentHealth > 0).map(({ slotId }) => slotId)
+  const targetSlotIds = effect.range === 'all'
+    ? livingSlotIds
+    : getTargetSlotIds({
+        centerSlotId: selectedSlotId,
+        range: effect.range,
+        distance: effect.distance,
+        battleType,
+        occupiedSlotIds: livingSlotIds,
+      })
+  const damageBySlot = new Map()
+  const nextCombatants = combatants.map((entry) => {
+    if (!targetSlotIds.includes(entry.slotId) || entry.currentHealth <= 0) return entry
+    const applied = applyDamage(entry, effect.amount, attackerStatuses)
+    damageBySlot.set(entry.slotId, applied.damage)
+    return applied.combatant
+  })
+  return { combatants: nextCombatants, damageBySlot }
+}
+
+const mergeDamage = (target, source) => {
+  source.forEach((amount, slotId) => target.set(slotId, (target.get(slotId) ?? 0) + amount))
+}
+
+export const resolvePlayerAction = ({
+  combatants,
+  selectedMonsterId,
+  battleType,
+  effects,
+  playerStatuses = [],
+}) => {
+  let nextCombatants = combatants
+  const initialTarget = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
+  const selectedSlotId = initialTarget?.slotId
+  const damageBySlot = new Map()
+  const baseGroups = groupDamageEffects(effects.baseDamageEffects ?? [])
+    .map((effect, index) => index === 0
+      ? { ...effect, amount: effect.amount + getBuffDamageBonus(playerStatuses) }
+      : effect)
+  const independentGroups = groupDamageEffects(effects.independentDamageEffects ?? [])
+  const hitCount = Math.max(1, 1
+    + getStatusStacks(playerStatuses, 'double_attack')
+    + Number(effects.hitCountModifier ?? 0))
+
+  let baseAttackCancelled = !initialTarget || initialTarget.currentHealth <= 0
+  let bossDefeated = false
+  for (let hit = 0; hit < hitCount && !baseAttackCancelled && !bossDefeated; hit += 1) {
+    for (const effect of baseGroups) {
+      const center = nextCombatants.find(({ slotId }) => slotId === selectedSlotId)
+      if (effect.range !== 'all' && (!center || center.currentHealth <= 0)) {
+        baseAttackCancelled = true
+        break
+      }
+      const applied = applyDamageGroup({
+        combatants: nextCombatants,
+        effect,
+        selectedSlotId,
+        battleType,
+        attackerStatuses: playerStatuses,
+      })
+      nextCombatants = applied.combatants
+      mergeDamage(damageBySlot, applied.damageBySlot)
+      bossDefeated = battleType === 'boss'
+        && nextCombatants.some(({ slotId, currentHealth }) => slotId === 5 && currentHealth <= 0)
+      if (bossDefeated) break
+    }
+  }
+
+  independentGroups.forEach((effect) => {
+    if (bossDefeated) return
+    const center = nextCombatants.find(({ slotId }) => slotId === selectedSlotId)
+    if (effect.range !== 'all' && (!center || center.currentHealth <= 0)) return
+    const applied = applyDamageGroup({
+      combatants: nextCombatants,
+      effect,
+      selectedSlotId,
+      battleType,
+      attackerStatuses: playerStatuses,
+    })
+    nextCombatants = applied.combatants
+    mergeDamage(damageBySlot, applied.damageBySlot)
+    bossDefeated = battleType === 'boss'
+      && nextCombatants.some(({ slotId, currentHealth }) => slotId === 5 && currentHealth <= 0)
+  })
+
+  const statusTarget = nextCombatants.find(({ slotId }) => slotId === selectedSlotId)
+  if (!bossDefeated && statusTarget?.currentHealth > 0) {
+    nextCombatants = nextCombatants.map((entry) => entry.slotId === selectedSlotId
+      ? {
+          ...entry,
+          armor: entry.armor + effects.statuses
+            .filter(({ id }) => id === 'ironclad')
+            .reduce((sum, status) => sum + status.stacks, 0),
+          statuses: effects.statuses.reduce(
+            (statuses, status) => addStatus(statuses, status.id, status.stacks, true),
+            entry.statuses,
+          ),
+        }
+      : entry)
+  }
+
+  return {
+    combatants: nextCombatants,
+    damageBySlot,
+    baseAttackPerHit: baseGroups.reduce((sum, effect) => sum + effect.amount, 0),
+    independentDamage: independentGroups.reduce((sum, effect) => sum + effect.amount, 0),
+    hitCount,
+    baseAttackCancelled,
+    bossDefeated,
+  }
+}

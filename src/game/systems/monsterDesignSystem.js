@@ -9,7 +9,9 @@ const STATUS_ADAPTER = Object.freeze({
   weak: 'weakness',
   injury: 'wound',
   stun: 'stun',
-  doubleAttack: 'doubleAttack',
+  doubleAttack: 'double_attack',
+  rage: 'rage',
+  ironclad: 'ironclad',
 })
 
 const compare = (actual, operator, expected) => {
@@ -186,11 +188,18 @@ export const resolveMonsterAbility = (ability) => {
     unsupportedStatuses: [],
   }
   for (const effect of [...(ability?.effects ?? [])].sort((a, b) => a.order - b.order)) {
-    const { target, amount = 0, status_id: statusId, stacks = 1 } = effect.parameters
-    if (effect.effect_id === 'deal_damage') result[target === 'self' ? 'selfDamage' : 'playerDamage'] += amount
-    if (effect.effect_id === 'heal' && target === 'self') result.selfHealing += amount
-    if (effect.effect_id === 'gain_block' && target === 'self') result.selfArmor += amount
-    if (effect.effect_id === 'apply_status') {
+    const parameters = effect.parameters ?? {}
+    const type = effect.type?.toUpperCase()
+    const target = effect.target ?? parameters.target
+    const amount = Number(effect.value ?? parameters.amount ?? 0)
+    const statusId = effect.reference_id ?? parameters.status_id
+    const stacks = Number(effect.value ?? parameters.stacks ?? 1)
+    if (effect.effect_id === 'deal_damage' || ['BASE_DAMAGE', 'INDEPENDENT_DAMAGE', 'STATUS_DAMAGE'].includes(type)) {
+      result[target === 'self' ? 'selfDamage' : 'playerDamage'] += amount
+    }
+    if ((effect.effect_id === 'heal' || type === 'RECOVERY') && target === 'self') result.selfHealing += amount
+    if ((effect.effect_id === 'gain_block' || type === 'BLOCK') && target === 'self') result.selfArmor += amount
+    if (effect.effect_id === 'apply_status' || ['DEBUFF', 'CROWD_CONTROL', 'BUFF'].includes(type)) {
       const mappedStatusId = STATUS_ADAPTER[statusId]
       if (!mappedStatusId) result.unsupportedStatuses.push(statusId)
       else result[target === 'self' ? 'selfStatuses' : 'playerStatuses'].push({ id: mappedStatusId, sourceId: statusId, stacks })

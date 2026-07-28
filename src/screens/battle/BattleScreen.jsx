@@ -7,7 +7,12 @@ import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
 import { isCombatVictory } from '../../game/systems/combatSlotSystem.js'
-import { addStatus, applyWeakness, applyWound } from '../../game/systems/statusEffectSystem.js'
+import {
+  addStatus,
+  consumeStun,
+  resolveTurnEndStatuses,
+} from '../../game/systems/statusEffectSystem.js'
+import { resolvePlayerAction } from '../../game/systems/playerAttackSystem.js'
 import {
   applyMonsterEvent,
   applyMonsterTurnTriggers,
@@ -113,51 +118,48 @@ export function BattleScreen({
   const endTurn = useCallback(() => {
     if (!board.placedCount || !machineState.matches('playerInput') || !selectedMonster) return
     send({ type: 'END_TURN' })
-    resolvePlayerTurnEndStatuses(board.placedCount)
     const playerStatuses = runStore.getState().combat.player.statuses
     const rawResult = resolvePlayerTurn(board)
-    const directDamage = rawResult.damageByTarget?.enemy ?? rawResult.damage
-    const areaDamage = rawResult.damageByTarget?.allEnemies ?? 0
-    let afterPlayerAction = combatants.map((entry) => {
-      if (entry.currentHealth <= 0) return entry
-      const rawDamage = areaDamage + (entry.instanceId === selectedMonster.instanceId ? directDamage : 0)
-      const receivesStatus = entry.instanceId === selectedMonster.instanceId && rawResult.statuses.length > 0
-      if (rawDamage <= 0 && !receivesStatus) return entry
-      const damage = applyWound(applyWeakness(rawDamage, playerStatuses), entry.statuses)
-      const absorbed = Math.min(entry.armor, damage)
-      const statuses = entry.instanceId === selectedMonster.instanceId
-        ? rawResult.statuses.reduce(
-            (next, status) => addStatus(next, status.id, status.stacks),
-            entry.statuses,
-          )
-        : entry.statuses
-      return {
-        ...entry,
-        armor: entry.armor - absorbed,
-        currentHealth: Math.max(0, entry.currentHealth - (damage - absorbed)),
-        statuses,
-      }
+    const playerAction = resolvePlayerAction({
+      combatants,
+      selectedMonsterId: selectedMonster.instanceId,
+      battleType,
+      effects: rawResult,
+      playerStatuses,
     })
+    let afterPlayerAction = playerAction.combatants
     if (rawResult.armor) gainArmor(rawResult.armor)
     if (rawResult.healing) heal(rawResult.healing)
     if (rawResult.gold) addGold(rawResult.gold)
+    rawResult.playerStatuses.forEach((status) => {
+      applyCombatStatus('player', status.id, status.stacks, true)
+      if (status.id === 'ironclad') gainArmor(status.stacks)
+    })
     setCombatants(afterPlayerAction)
     if (developerMode) {
       const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
-      addLog(`턴 ${turn} · ${selectedMonster.slotId}번 ${selectedMonster.name}에게 피해 ${directDamage + areaDamage} · HP ${target.currentHealth}/${target.health}`)
+      addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
     }
 
     window.setTimeout(() => {
-      if (isCombatVictory(battleType, afterPlayerAction)) {
+      if (battleType === 'boss' && isCombatVictory(battleType, afterPlayerAction)) {
         finishVictory('battle')
         return
       }
-      send({ type: 'PLAYER_DONE' })
+      const hasExtraTurn = rawResult.extraTurns > 0
+      send({ type: hasExtraTurn ? 'PLAYER_EXTRA' : 'PLAYER_DONE' })
       window.setTimeout(() => {
         let playerDefeated = false
-        afterPlayerAction = [...afterPlayerAction].sort((left, right) => left.slotId - right.slotId)
+        afterPlayerAction = (hasExtraTurn
+          ? afterPlayerAction
+          : [...afterPlayerAction].sort((left, right) => left.slotId - right.slotId)
           .map((entry) => {
             if (entry.currentHealth <= 0 || playerDefeated) return entry
+            const stun = consumeStun(entry.statuses)
+            if (stun.skipAction) {
+              if (developerMode) addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
+              return { ...entry, statuses: stun.statuses }
+            }
             setActiveMonsterId(entry.instanceId)
             const triggered = applyMonsterEvent(
               entry.definition,
@@ -171,45 +173,88 @@ export function BattleScreen({
                 ...triggered.immediateAbilities.flatMap(({ effects }) => effects),
               ],
             })
-            const doubleAttack = entry.statuses.some(({ id, stacks }) => id === 'doubleAttack' && stacks > 0)
+            const doubleAttack = entry.statuses.some(({ id, stacks }) => id === 'double_attack' && stacks > 0)
             const before = runStore.getState()
-            damagePlayer(action.playerDamage * (doubleAttack ? 2 : 1))
-            action.playerStatuses.forEach((status) => applyCombatStatus('player', status.id, status.stacks))
+            const monsterHitCount = doubleAttack ? 2 : 1
+            for (let hit = 0; hit < monsterHitCount; hit += 1) {
+              damagePlayer(action.playerDamage, entry.statuses)
+            }
+            action.playerStatuses.forEach((status) => applyCombatStatus('player', status.id, status.stacks, true))
             const after = runStore.getState()
             if (developerMode) {
               addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
             }
             playerDefeated = after.health <= 0
             const selfAbsorbed = Math.min(entry.armor, action.selfDamage)
-            const statuses = [
-              ...(doubleAttack
-                ? entry.statuses.map((status) => status.id === 'doubleAttack'
+            const existingStatuses = doubleAttack
+              ? entry.statuses.map((status) => status.id === 'double_attack'
                   ? { ...status, stacks: status.stacks - 1 }
                   : status).filter(({ stacks }) => stacks > 0)
-                : entry.statuses),
-              ...action.selfStatuses,
-            ]
+              : entry.statuses
+            const statuses = action.selfStatuses.reduce(
+              (current, status) => addStatus(current, status.id, status.stacks, true),
+              existingStatuses,
+            )
             return {
               ...entry,
               currentHealth: Math.min(entry.health, Math.max(0,
                 entry.currentHealth - (action.selfDamage - selfAbsorbed)) + action.selfHealing),
-              armor: Math.max(0, entry.armor - selfAbsorbed) + action.selfArmor,
+              armor: Math.max(0, entry.armor - selfAbsorbed)
+                + action.selfArmor
+                + action.selfStatuses
+                  .filter(({ id }) => id === 'ironclad')
+                  .reduce((sum, status) => sum + status.stacks, 0),
               statuses,
               turnPlan: { ...entry.turnPlan, runtime: triggered.runtime },
             }
-          })
+          }))
         setCombatants(afterPlayerAction)
-        clearArmor()
         setActiveMonsterId(null)
         if (playerDefeated) {
           send({ type: 'PLAYER_DEFEATED' })
           onLose()
           return
         }
-        if (isCombatVictory(battleType, afterPlayerAction)) {
+        if (battleType === 'boss' && isCombatVictory(battleType, afterPlayerAction)) {
           finishVictory('battle')
           return
         }
+        resolvePlayerTurnEndStatuses(board.placedCount)
+        const afterPlayerStatuses = runStore.getState()
+        if (afterPlayerStatuses.health <= 0) {
+          send({ type: 'PLAYER_DEFEATED' })
+          onLose()
+          return
+        }
+        const statusResolvedCombatants = []
+        let bossDefeatedByStatus = false
+        for (const entry of [...afterPlayerAction].sort((left, right) => left.slotId - right.slotId)) {
+          if (entry.currentHealth <= 0 || bossDefeatedByStatus) {
+            statusResolvedCombatants.push(entry)
+            continue
+          }
+          const resolved = resolveTurnEndStatuses({
+            health: entry.currentHealth,
+            armor: entry.armor,
+            statuses: entry.statuses,
+            placedCount: board.placedCount,
+          })
+          const nextEntry = {
+            ...entry,
+            currentHealth: resolved.health,
+            armor: resolved.armor,
+            statuses: resolved.statuses,
+          }
+          statusResolvedCombatants.push(nextEntry)
+          bossDefeatedByStatus = battleType === 'boss' && entry.slotId === 5 && resolved.health <= 0
+        }
+        afterPlayerAction = statusResolvedCombatants
+        setCombatants(afterPlayerAction)
+        if (bossDefeatedByStatus || isCombatVictory(battleType, afterPlayerAction)) {
+          finishVictory('battle')
+          return
+        }
+        clearArmor()
         const nextTurn = turn + 1
         const planned = afterPlayerAction.map((entry) => entry.currentHealth > 0
           ? {
@@ -225,7 +270,7 @@ export function BattleScreen({
             ? planned.find(({ slotId, currentHealth }) => slotId === 5 && currentHealth > 0)
             : planned.find(({ currentHealth }) => currentHealth > 0))?.instanceId)
         }
-        send({ type: 'MONSTER_DONE' })
+        send({ type: hasExtraTurn ? 'TURN_ENDED' : 'MONSTER_DONE' })
         drawNextHand(rawResult.drawCount)
         gameBridge.emit(GAME_EVENTS.RESET_BOARD)
         setTurn(nextTurn)
@@ -278,7 +323,7 @@ export function BattleScreen({
           : <span className="monster-glyph" aria-label={displayMonster?.name}>{displayMonster?.glyph}</span>}
         <div className="monster-shadow" />
       </div>
-      <GameContainer hand={battlePiles.hand} health={health} />
+      <GameContainer hand={battlePiles.hand} health={health} developerMode={developerMode} />
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>

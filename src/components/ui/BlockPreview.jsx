@@ -1,11 +1,17 @@
 import fireTexture from '../../assets/sprites/blocks/block_fire.png'
+import curseTexture from '../../assets/sprites/blocks/block_curse.png'
+import legendTexture from '../../assets/sprites/blocks/block_legend.png'
 import natureTexture from '../../assets/sprites/blocks/block_nature.png'
+import specialTexture from '../../assets/sprites/blocks/block_special.png'
 import steelTexture from '../../assets/sprites/blocks/block_steel.png'
 import waterTexture from '../../assets/sprites/blocks/block_water.png'
 
 const TEXTURES = {
+  curse: curseTexture,
   fire: fireTexture,
+  legendary: legendTexture,
   nature: natureTexture,
+  special: specialTexture,
   steel: steelTexture,
   water: waterTexture,
 }

@@ -5,8 +5,8 @@ import { generateMap, completeAndUnlockNext, findMapNode } from '../systems/mapG
 import { createStarterDeck, hydrateBlock } from '../../objects/blocks/blockData.js'
 import {
   addStatus,
-  applyWound,
   createCombatantState,
+  getDamageMultiplier,
   resolveTurnEndStatuses,
 } from '../systems/statusEffectSystem.js'
 import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
@@ -83,8 +83,12 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
         number === state.floor)?.startNodeId ?? null
     }
   }),
-  damagePlayer: (amount) => set((state) => {
-    const adjustedAmount = applyWound(Math.max(0, amount), state.combat.player.statuses)
+  damagePlayer: (amount, attackerStatuses = []) => set((state) => {
+    const adjustedAmount = Math.max(0, Math.floor(
+      amount
+      * getDamageMultiplier(attackerStatuses, 'outgoing')
+      * getDamageMultiplier(state.combat.player.statuses, 'incoming'),
+    ))
     const absorbed = Math.min(state.armor, adjustedAmount)
     state.armor -= absorbed
     state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
@@ -96,9 +100,9 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   removeBlock: (id) => set((state) => { state.deck = state.deck.filter((block) => block.id !== id) }),
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
-  applyCombatStatus: (target, statusId, stacks) => set((state) => {
+  applyCombatStatus: (target, statusId, stacks, newlyApplied = false) => set((state) => {
     if (!state.combat[target]) return
-    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks)
+    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks, newlyApplied)
   }),
   resolvePlayerTurnEndStatuses: (placedCount) => set((state) => {
     const result = resolveTurnEndStatuses({

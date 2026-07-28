@@ -4,8 +4,12 @@ import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import { resolveBlockEffects } from '../../systems/blockEffectSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
+import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
+import curseTexture from '../../../assets/sprites/blocks/block_curse.png'
 import fireTexture from '../../../assets/sprites/blocks/block_fire.png'
+import legendTexture from '../../../assets/sprites/blocks/block_legend.png'
 import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
+import specialTexture from '../../../assets/sprites/blocks/block_special.png'
 import steelTexture from '../../../assets/sprites/blocks/block_steel.png'
 import waterTexture from '../../../assets/sprites/blocks/block_water.png'
 import anvilTexture from '../../../screens/battle/assets/pictures/anvil_alpha.png'
@@ -35,8 +39,11 @@ const STROKES = {
 }
 const DRAG_ALPHA = 0.58
 const BLOCK_TEXTURES = {
+  curse: { key: 'block-curse', url: curseTexture },
   fire: { key: 'block-fire', url: fireTexture },
+  legendary: { key: 'block-legend', url: legendTexture },
   nature: { key: 'block-nature', url: natureTexture },
+  special: { key: 'block-special', url: specialTexture },
   steel: { key: 'block-steel', url: steelTexture },
   water: { key: 'block-water', url: waterTexture },
 }
@@ -46,6 +53,7 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.hand = data.hand ?? []
+    this.developerMode = data.developerMode === true
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
@@ -67,7 +75,10 @@ export class BattleScene extends Phaser.Scene {
     this.drawBoard()
     this.createEffectSummary()
     this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'DNF Forged Blade Medium', fontSize: '17px', color: '#ecd9b7' })
-    this.add.text(24, HAND_SURFACE_Y - 30, '드래그해 배치\n드래그 중 R로 회전', {
+    const controlsText = this.developerMode
+      ? '드래그해 배치\n드래그 중 R로 회전\nZ로 최근 일반 블록 색상 변경'
+      : '드래그해 배치\n드래그 중 R로 회전'
+    this.add.text(24, HAND_SURFACE_Y - 30, controlsText, {
       fontFamily: 'DNF Forged Blade Medium',
       fontSize: '11px',
       lineSpacing: 2,
@@ -75,6 +86,7 @@ export class BattleScene extends Phaser.Scene {
     })
     this.hand.forEach((block, index) => this.createPiece(block, index))
     this.input.keyboard.on('keydown-R', this.rotateSelected, this)
+    if (this.developerMode) this.input.keyboard.on('keydown-Z', this.cycleLatestPlacedBlockColor, this)
     this.input.on('pointerdown', this.selectPieceAtPointer, this)
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
@@ -85,6 +97,7 @@ export class BattleScene extends Phaser.Scene {
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard.off('keydown-R', this.rotateSelected, this)
+      if (this.developerMode) this.input.keyboard.off('keydown-Z', this.cycleLatestPlacedBlockColor, this)
       this.input.off('pointerdown', this.selectPieceAtPointer, this)
       this.input.off('pointermove', this.moveSelected, this)
       this.input.off('pointerup', this.releaseSelected, this)
@@ -272,6 +285,19 @@ export class BattleScene extends Phaser.Scene {
     else this.layoutPieceForHand(this.selected)
   }
 
+  cycleLatestPlacedBlockColor() {
+    if (this.selected) return
+    const piece = this.pieces
+      .filter((candidate) => candidate.placed && ['steel', 'water', 'nature', 'fire'].includes(candidate.block.color))
+      .sort((left, right) => right.placedOrder - left.placedOrder)[0]
+    if (!piece) return
+    const nextBlock = cycleStandardBlockColor(piece.block)
+    if (nextBlock === piece.block) return
+    piece.block = nextBlock
+    this.refreshPlacedHighlights()
+    this.emitBoardState()
+  }
+
   tryPlace(piece) {
     const candidate = this.getPlacementCandidate(piece)
     if (!candidate.valid) {
@@ -335,7 +361,7 @@ export class BattleScene extends Phaser.Scene {
         .join('\n')
       : '조합 없음'
     this.formworkEffectText?.setText(
-      `피해 ${effects.damage}  방어 ${effects.armor}  회복 ${effects.healing}\n${combinationText}`,
+      `기본 ${effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)}  독립 ${effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)}  방어 ${effects.armor}  회복 ${effects.healing}\n${combinationText}`,
     )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
