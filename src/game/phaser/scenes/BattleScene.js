@@ -2,7 +2,10 @@ import Phaser from 'phaser'
 import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
-import { resolveBlockEffects } from '../../systems/blockEffectSystem.js'
+import {
+  describeDamageRange,
+  resolveBlockEffects,
+} from '../../systems/blockEffectSystem.js'
 import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
@@ -47,6 +50,11 @@ const BLOCK_TEXTURES = {
   special: { key: 'block-special', url: specialTexture },
   steel: { key: 'block-steel', url: steelTexture },
   water: { key: 'block-water', url: waterTexture },
+}
+const COMBINATION_NAME_COLORS = {
+  fire: '#ef6a4a',
+  nature: '#69bd72',
+  water: '#69aef5',
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -150,14 +158,14 @@ export class BattleScene extends Phaser.Scene {
   }
 
   createEffectSummary() {
-    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 270, 78, 0x0d0a08, 0.98)
+    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 270, 96, 0x0d0a08, 0.98)
       .setOrigin(0, 0.5)
       .setStrokeStyle(2, 0xb47a43, 1)
       .setDepth(28)
     this.formworkEffectText = this.add.text(
       EFFECT_SUMMARY_X + 8,
-      EFFECT_SUMMARY_Y,
-      '예상 효과 없음\n조합 없음',
+      EFFECT_SUMMARY_Y - 17,
+      '예상 효과 없음',
       {
         fontFamily: 'DNF Forged Blade Medium',
         fontSize: '12px',
@@ -168,6 +176,10 @@ export class BattleScene extends Phaser.Scene {
         wordWrap: { width: 250 },
       },
     ).setOrigin(0, 0.5).setDepth(29)
+    this.formworkCombinationContainer = this.add.container(
+      EFFECT_SUMMARY_X + 8,
+      EFFECT_SUMMARY_Y + 8,
+    ).setDepth(29)
   }
 
   drawDisabledFormworkCells() {
@@ -426,24 +438,53 @@ export class BattleScene extends Phaser.Scene {
       ).map(([x, y]) => ({ x, y })),
     }))
     const effects = resolveBlockEffects(placedBlocks)
-    const combinationText = effects.combinationDetails.length
-      ? effects.combinationDetails
-        .map(({ name, effects: appliedEffects }) =>
-          `${name} · ${appliedEffects.length ? appliedEffects.join(', ') : '추가 효과 없음'}`)
-        .join('\n')
-      : '조합 없음'
     const effectValues = [
-      ['공격력', effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)],
-      ['효과', effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0)],
-      ['방어', effects.armor],
-      ['회복', effects.healing],
+      [
+        '공격력',
+        effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0),
+        effects.baseDamageEffects,
+      ],
+      [
+        '효과',
+        effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0),
+        effects.independentDamageEffects,
+      ],
+      ['방어', effects.armor, []],
+      ['회복', effects.healing, []],
     ]
       .filter(([, value]) => value !== 0)
-      .map(([label, value]) => `${label} ${value}`)
+      .map(([label, value, damageEffects]) => {
+        const ranges = [...new Set(damageEffects.map(describeDamageRange))]
+        return `${label} ${value}${ranges.length ? ` · 범위 ${ranges.join('/')}` : ''}`
+      })
       .join('  ')
-    this.formworkEffectText?.setText(
-      `${effectValues || '예상 효과 없음'}\n${combinationText}`,
-    )
+    this.formworkEffectText?.setText(effectValues || '예상 효과 없음')
+    this.formworkCombinationContainer?.removeAll(true)
+    const combinationDetails = effects.combinationDetails.length
+      ? effects.combinationDetails
+      : [{ name: '조합 없음', color: null, effects: [] }]
+    combinationDetails.forEach(({ name, color, effects: appliedEffects }, index) => {
+      const nameText = this.add.text(0, index * 18, name, {
+        fontFamily: 'DNF Forged Blade Medium',
+        fontSize: '12px',
+        color: COMBINATION_NAME_COLORS[color] ?? '#f1dfc2',
+        stroke: '#080604',
+        strokeThickness: 2,
+      })
+      const effectText = this.add.text(
+        nameText.width + 4,
+        index * 18,
+        appliedEffects.length ? `· ${appliedEffects.join(', ')}` : '',
+        {
+          fontFamily: 'DNF Forged Blade Medium',
+          fontSize: '12px',
+          color: '#f1dfc2',
+          stroke: '#080604',
+          strokeThickness: 2,
+        },
+      )
+      this.formworkCombinationContainer.add([nameText, effectText])
+    })
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
       occupiedCells: this.occupied.size,

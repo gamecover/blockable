@@ -42,6 +42,17 @@ describe('blueprint system', () => {
       .toBe(recipe.instances.length)
   })
 
+  it('allows a known normal-block blueprint to use same-shape blocks of other colors', () => {
+    const blocks = [
+      createBlock('f001', 'quick-fire'),
+      createBlock('w002', 'quick-water'),
+    ]
+    const plan = getQuickCombinationPlan('base_33_01_steel', blocks)
+
+    expect(plan).not.toBeNull()
+    expect(plan.assignments).toHaveLength(2)
+  })
+
   it('does not create a quick plan when required hand blocks are missing', () => {
     const blocks = [createBlock('s003', 'only-one')]
 

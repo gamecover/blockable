@@ -5,6 +5,8 @@ import { BattleHud } from './components/BattleHud.jsx'
 import { BattleDebugPanel } from './components/BattleDebugPanel.jsx'
 import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
 import { StatusEffectList } from './components/StatusEffectList.jsx'
+import { BattlePileModal } from './components/BattlePileModal.jsx'
+import { MonsterPartyFrame } from './components/MonsterPartyFrame.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
@@ -83,6 +85,7 @@ export function BattleScreen({
   const [activeMonsterId, setActiveMonsterId] = useState(null)
   const [monsterActionNotice, setMonsterActionNotice] = useState(null)
   const [blueprintNotice, setBlueprintNotice] = useState([])
+  const [openPile, setOpenPile] = useState(null)
   const [turn, setTurn] = useState(1)
   const victoryHandled = useRef(false)
   const runStore = useRunStoreApi()
@@ -372,24 +375,24 @@ export function BattleScreen({
       ? normalMonsters.filter(({ instanceId }) => instanceId !== focusId)
       : normalMonsters
     const backgroundLayouts = {
-      1: [42],
-      2: [32, 52],
-      3: [22, 42, 62],
-      4: [12, 32, 52, 72],
+      1: [50],
+      2: [40, 60],
+      3: [30, 50, 70],
+      4: [20, 40, 60, 80],
     }
     const positions = new Map()
     backgroundMonsters.forEach((entry, index) => {
       positions.set(entry.instanceId, {
         role: 'background',
         left: backgroundLayouts[backgroundMonsters.length]?.[index] ?? 42,
-        bottom: 35,
+        bottom: 62,
         width: 16,
       })
     })
     if (focusedNormal) {
       positions.set(focusedNormal.instanceId, {
         role: 'foreground',
-        left: 40,
+        left: 48,
         bottom: 0,
         width: 20,
       })
@@ -397,8 +400,8 @@ export function BattleScreen({
     combatants.filter(({ slotId }) => slotId === 5).forEach((entry) => {
       const focused = entry.instanceId === focusId
       positions.set(entry.instanceId, focused
-        ? { role: 'foreground boss-focus', left: 40, bottom: 16, width: 20 }
-        : { role: 'boss-rear', left: 42, bottom: 72, width: 16 })
+        ? { role: 'foreground boss-focus', left: 48, bottom: 16, width: 20 }
+        : { role: 'boss-rear', left: 50, bottom: 72, width: 16 })
     })
     return positions
   }, [activeMonsterId, combatants, selectedMonsterId])
@@ -438,6 +441,16 @@ export function BattleScreen({
               aria-label={`${entry.slotId}번 ${entry.name}, 체력 ${entry.currentHealth}/${entry.health}, ${selected ? '현재 공격 대상' : inRange ? '범위 공격 대상' : ''}`}
             >
               <b className="monster-slot__number">{entry.slotId}</b>
+              {slotIntent.indicators.length > 0 && (
+                <span className="monster-slot__intent" aria-label={`${entry.name} 다음 행동`}>
+                  {slotIntent.indicators.map((indicator) => (
+                    <span className={`monster-slot__intent-item ${indicator.kind}`} key={indicator.kind} title={`${indicator.label} ${indicator.amount}`}>
+                      <i aria-hidden="true">{indicator.icon}</i>
+                      <b>{indicator.amount}</b>
+                    </span>
+                  ))}
+                </span>
+              )}
               <span className="monster-slot__portrait">
                 {entry.imageUrl
                   ? <img src={entry.imageUrl} alt="" />
@@ -448,7 +461,6 @@ export function BattleScreen({
                 <span className="monster-slot__health">
                   <i style={{ width: `${Math.max(0, entry.currentHealth / entry.health) * 100}%` }} />
                 </span>
-                <small>{slotIntent.icon} {slotIntent.amount ?? slotIntent.label}</small>
                 <StatusEffectList statuses={entry.statuses} ownerName={entry.name} />
                 {selected && <em>중심 대상</em>}
                 {!selected && inRange && <em>범위 대상</em>}
@@ -457,6 +469,14 @@ export function BattleScreen({
           )
         })}
       </div>
+      <MonsterPartyFrame
+        combatants={combatants}
+        selectedMonsterId={selectedMonsterId}
+        activeMonsterId={activeMonsterId}
+        targetSlotIds={previewTargetSlotIds}
+        canSelect={machineState.matches('playerInput')}
+        onSelect={setSelectedMonsterId}
+      />
       {machineState.matches('playerInput') && (
         <QuickBlueprintPanel
           hand={battlePiles.hand}
@@ -479,7 +499,6 @@ export function BattleScreen({
             <span>{monsterActionNotice.abilityName}</span>
           </div>
         )}
-        <div className="monster-intent">{intent.icon} {intent.amount ?? intent.label}</div>
         {displayMonster?.imageUrl
           ? <img className="monster-image" src={displayMonster.imageUrl} alt={displayMonster.name} />
           : <span className="monster-glyph" aria-label={displayMonster?.name}>{displayMonster?.glyph}</span>}
@@ -489,12 +508,19 @@ export function BattleScreen({
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>
-        <div><button className="pile-button">남은 블록 <b>{battlePiles.remainingCount ?? battlePiles.drawPile.length + battlePiles.hand.length}</b></button><button className="pile-button">버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
+        <div><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.remainingCount ?? battlePiles.drawPile.length + battlePiles.hand.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
         <div className="battle-action-buttons">
           {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
           <button className="end-turn" disabled={!board.placedCount || !livingCombatants.length || !machineState.matches('playerInput')} onClick={endTurn}>{machineState.matches('playerInput') ? '턴 종료' : '처리 중…'} <span>→</span></button>
         </div>
       </div>
+      {openPile && <BattlePileModal
+        title={openPile === 'remaining' ? '남은 블록' : '버린 블록'}
+        blocks={openPile === 'remaining'
+          ? battlePiles.remainingBlocks
+          : battlePiles.discardPile}
+        onClose={() => setOpenPile(null)}
+      />}
     </main>
   )
 }

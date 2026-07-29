@@ -41,7 +41,7 @@ const initialRun = (developerMode = false) => ({
   uniqueBlockChoiceIds: [],
   discoveredBlueprintIds: [],
   developerMode,
-  battlePiles: { drawPile: [], hand: [], discardPile: [], remainingCount: 0 },
+  battlePiles: { drawPile: [], hand: [], discardPile: [], remainingCount: 0, remainingBlocks: [] },
   combat: {
     player: createCombatantState(),
     monster: createCombatantState(),

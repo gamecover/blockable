@@ -2,12 +2,13 @@ import { HAND_SIZE } from '../constants/gameConfig.js'
 import { shuffle } from './randomSystem.js'
 
 export const startBattleDeck = (deck, random = Math.random) => ({
-  drawPile: shuffle(deck, random), hand: [], discardPile: [],
+  drawPile: shuffle(deck, random), hand: [], discardPile: [], remainingBlocks: [],
 })
 
 export const drawHand = (piles, count = HAND_SIZE, random = Math.random) => {
   let drawPile = [...piles.drawPile]
   let discardPile = [...piles.discardPile]
+  const remainingBlocks = [...(drawPile.length ? drawPile : discardPile)]
   const remainingCount = drawPile.length || discardPile.length
   const hand = []
   while (hand.length < count && (drawPile.length || discardPile.length)) {
@@ -17,7 +18,7 @@ export const drawHand = (piles, count = HAND_SIZE, random = Math.random) => {
     }
     hand.push(drawPile.shift())
   }
-  return { drawPile, hand, discardPile, remainingCount }
+  return { drawPile, hand, discardPile, remainingCount, remainingBlocks }
 }
 
 export const discardHand = (piles) => ({
@@ -25,4 +26,5 @@ export const discardHand = (piles) => ({
   hand: [],
   discardPile: [...piles.discardPile, ...piles.hand],
   remainingCount: piles.remainingCount,
+  remainingBlocks: piles.remainingBlocks,
 })

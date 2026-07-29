@@ -7,14 +7,14 @@ import lavaHeartImage from './lava_heart/assets/lava_heart.png'
 import rustedGolemImage from './rusty_golem/assets/rusted golem.png'
 
 const MONSTER_IMAGE_ASSETS = Object.freeze({
-  'ashen_bat.png': ashenBatImage,
-  'seething_furnace_knight.png': seethingFurnaceKnightImage,
-  'ember_slime_alpha.png': emberSlimeImage,
-  'explosion_soul.png': explosionSoulImage,
-  'flame_ghoul_alpha.png': flameGhoulImage,
-  'lava_heart.png': lavaHeartImage,
-  'rusted golem.png': rustedGolemImage,
+  cinder_bat: ashenBatImage,
+  seething_furnace_knight: seethingFurnaceKnightImage,
+  ember_slime: emberSlimeImage,
+  explosive_soul: explosionSoulImage,
+  flame_ghoul: flameGhoulImage,
+  lava_heart: lavaHeartImage,
+  rusty_golem: rustedGolemImage,
 })
 
-export const getMonsterImageAsset = (resourceId) =>
-  MONSTER_IMAGE_ASSETS[resourceId] ?? null
+export const hasMonsterImageAsset = (monsterId) => monsterId in MONSTER_IMAGE_ASSETS
+export const getMonsterImageAsset = (monsterId) => MONSTER_IMAGE_ASSETS[monsterId] ?? null

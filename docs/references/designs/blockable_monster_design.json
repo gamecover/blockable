@@ -1,381 +1,129 @@
 {
-  "schema_version": "1.3.0",
-  "invalid": false,
-  "metadata": {},
-  "monster_grades": [
-    {
-      "id": "normal",
-      "display_name": "일반"
-    },
-    {
-      "id": "named",
-      "display_name": "네임드"
-    },
-    {
-      "id": "boss",
-      "display_name": "보스"
-    }
-  ],
-  "effect_definitions": [
-    {
-      "id": "deal_damage",
-      "display_name": "피해",
-      "parameters": [
-        {
-          "key": "target",
-          "display_name": "대상",
-          "value_type": "enum",
-          "required": true,
-          "options": [
-            "player"
-          ]
-        },
-        {
-          "key": "amount",
-          "display_name": "피해량",
-          "value_type": "integer",
-          "required": true,
-          "minimum": 0
-        }
-      ]
-    },
-    {
-      "id": "heal",
-      "display_name": "회복",
-      "parameters": [
-        {
-          "key": "target",
-          "display_name": "대상",
-          "value_type": "enum",
-          "required": true,
-          "options": [
-            "self",
-            "player"
-          ]
-        },
-        {
-          "key": "amount",
-          "display_name": "회복량",
-          "value_type": "integer",
-          "required": true,
-          "minimum": 0
-        }
-      ]
-    },
-    {
-      "id": "gain_block",
-      "display_name": "방어도 획득",
-      "parameters": [
-        {
-          "key": "target",
-          "display_name": "대상",
-          "value_type": "enum",
-          "required": true,
-          "options": [
-            "self"
-          ]
-        },
-        {
-          "key": "amount",
-          "display_name": "방어도",
-          "value_type": "integer",
-          "required": true,
-          "minimum": 0
-        }
-      ]
-    },
-    {
-      "id": "apply_status",
-      "display_name": "상태이상 부여",
-      "parameters": [
-        {
-          "key": "target",
-          "display_name": "대상",
-          "value_type": "enum",
-          "required": true,
-          "options": [
-            "player",
-            "self"
-          ]
-        },
-        {
-          "key": "status_id",
-          "display_name": "상태이상 ID",
-          "value_type": "string",
-          "required": true
-        },
-        {
-          "key": "stacks",
-          "display_name": "스택",
-          "value_type": "integer",
-          "required": true,
-          "minimum": 1
-        }
-      ]
-    }
-  ],
-  "condition_definitions": [
-    {
-      "id": "floor",
-      "display_name": "층",
-      "value_type": "integer",
-      "allowed_operators": [
-        "eq",
-        "lt",
-        "lte",
-        "gt",
-        "gte"
-      ],
-      "minimum": 1
-    },
-    {
-      "id": "dungeon_id",
-      "display_name": "던전 ID",
-      "value_type": "string",
-      "allowed_operators": [
-        "eq",
-        "neq"
-      ]
-    },
-    {
-      "id": "difficulty",
-      "display_name": "난이도",
-      "value_type": "string",
-      "allowed_operators": [
-        "eq",
-        "neq",
-        "in"
-      ]
-    },
-    {
-      "id": "monster_hp_ratio",
-      "display_name": "몬스터 HP 비율",
-      "value_type": "number",
-      "allowed_operators": [
-        "lt",
-        "lte",
-        "gt",
-        "gte",
-        "eq"
-      ],
-      "minimum": 0.0,
-      "maximum": 1.0
-    },
-    {
-      "id": "turn",
-      "display_name": "전투 턴",
-      "value_type": "integer",
-      "allowed_operators": [
-        "eq",
-        "lt",
-        "lte",
-        "gt",
-        "gte"
-      ],
-      "minimum": 1
-    }
-  ],
-  "event_definitions": [
-    {
-      "id": "battle_started",
-      "display_name": "전투 시작"
-    },
-    {
-      "id": "turn_started",
-      "display_name": "턴 시작"
-    },
-    {
-      "id": "monster_hp_changed",
-      "display_name": "몬스터 HP 변경"
-    },
-    {
-      "id": "ability_used",
-      "display_name": "어빌리티 사용"
-    }
-  ],
-  "intent_definitions": [
-    {
-      "id": "attack",
-      "display_name": "공격"
-    },
-    {
-      "id": "attack_debuff",
-      "display_name": "공격 + 약화"
-    },
-    {
-      "id": "defense",
-      "display_name": "방어"
-    },
-    {
-      "id": "buff",
-      "display_name": "강화"
-    },
-    {
-      "id": "debuff",
-      "display_name": "약화"
-    },
-    {
-      "id": "special",
-      "display_name": "특수"
-    },
-    {
-      "id": "self_destruct",
-      "display_name": "자폭"
-    },
-    {
-      "id": "unknown",
-      "display_name": "알 수 없음"
-    }
-  ],
-  "trigger_response_definitions": [
-    {
-      "id": "immediate",
-      "display_name": "즉시 행동",
-      "target_kind": "ability"
-    },
-    {
-      "id": "replace_intent",
-      "display_name": "예정 행동 교체",
-      "target_kind": "ability"
-    },
-    {
-      "id": "queue_next",
-      "display_name": "다음 행동 예약",
-      "target_kind": "ability"
-    },
-    {
-      "id": "append_action",
-      "display_name": "추가 행동",
-      "target_kind": "ability"
-    },
-    {
-      "id": "transition_phase",
-      "display_name": "페이즈 전환",
-      "target_kind": "phase"
-    }
-  ],
+  "schema_version": "1.0.0",
+  "data_type": "blockable_monster_design",
+  "metadata": {
+    "project_name": "Blockable",
+    "designer_name": "Blockable Monster Designer",
+    "updated_at": "2026-07-29T10:12:25+09:00",
+    "validation_status": "valid",
+    "migrated_from_schema": "1.4.0"
+  },
   "monsters": [
     {
-      "id": "ember_slime",
-      "display_name": "잉걸불 슬라임",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 1
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 1
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 80
-      },
-      "abilities": [
+      "monster_id": "ember_slime",
+      "monster_name": "잉걸불 슬라임",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 80,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 1
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0001",
-          "display_name": "점액 파편",
+          "skill_id": "a0001",
+          "skill_name": "점액 파편",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 5
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 5
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0002",
-          "display_name": "자가 회복",
+          "skill_id": "a0002",
+          "skill_name": "자가 회복",
           "description": "",
           "effects": [
             {
-              "effect_id": "heal",
-              "order": 0,
+              "effect_id": "heal_01",
+              "effect_name": "회복",
+              "description": "",
+              "target": "self",
+              "value": 20,
+              "type": "RECOVERY",
               "parameters": {
-                "target": "self",
-                "amount": 20
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "buff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0001"
+                  "type": "SKILL",
+                  "skill_id": "a0001"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -385,7 +133,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -393,21 +141,21 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "a0001",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "a0001",
               "steps": [
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0001",
+                      "skill_id": "a0001",
                       "weight": 80
                     },
                     {
-                      "ability_id": "a0002",
+                      "skill_id": "a0002",
                       "weight": 20
                     }
                   ]
@@ -417,122 +165,112 @@
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "ember_slime_alpha.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "cinder_bat",
-      "display_name": "잔불 박쥐",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 1
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 1
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 50
-      },
-      "abilities": [
+      "monster_id": "cinder_bat",
+      "monster_name": "잔불 박쥐",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 50,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 1
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0003",
-          "display_name": "깨물기",
+          "skill_id": "a0003",
+          "skill_name": "깨물기",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 2,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "bleed",
-                "stacks": 2
+                "id": "BLEEDING",
+                "duration": 0,
+                "intensify": 2
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "basic_attack",
+                      "skill_id": "basic_attack",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0003",
+                      "skill_id": "a0003",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0003"
+                  "type": "SKILL",
+                  "skill_id": "a0003"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -542,7 +280,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -550,21 +288,21 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "basic_attack",
+                      "skill_id": "basic_attack",
                       "weight": 70
                     },
                     {
-                      "ability_id": "a0003",
+                      "skill_id": "a0003",
                       "weight": 30
                     }
                   ]
@@ -574,258 +312,233 @@
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "ashen_bat.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "rusty_golem",
-      "display_name": "녹슨 골렘",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 2
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 1
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 2
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 90
-      },
-      "abilities": [
+      "monster_id": "rusty_golem",
+      "monster_name": "녹슨 골렘",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 90,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 2
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0004",
-          "display_name": "강철 타격",
+          "skill_id": "a0004",
+          "skill_name": "강철 타격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 10,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "defense"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0004"
+                  "type": "SKILL",
+                  "skill_id": "a0004"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "rusted golem.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "explosive_soul",
-      "display_name": "폭발하는 영혼",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 2,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 2
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 100
-      },
-      "abilities": [
+      "monster_id": "explosive_soul",
+      "monster_name": "폭발하는 영혼",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 100,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0005",
-          "display_name": "화염 공격",
+          "skill_id": "a0005",
+          "skill_name": "화염 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0006",
-          "display_name": "자폭",
+          "skill_id": "a0006",
+          "skill_name": "자폭",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "self",
+              "value": 100,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "self",
-                "amount": 100
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "deal_damage",
-              "order": 1,
+              "effect_id": "deal_damage_02",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 50,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 50
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "self_destruct"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0005"
+                  "type": "SKILL",
+                  "skill_id": "a0005"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0006"
+                  "type": "SKILL",
+                  "skill_id": "a0006"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "destruct",
-                "event_id": "ability_used",
+                "trigger_id": "destruct",
+                "event_id": "SKILL_USED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -835,131 +548,115 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "immediate",
+                  "type": "IMMEDIATE",
                   "cancel_current_intent": false,
-                  "ability_id": "a0006"
+                  "skill_id": "a0006"
                 }
               }
             ]
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "explosion_soul.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "hanging_ashes",
-      "display_name": "매달리는 잿더미",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 2,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 2
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 120
-      },
-      "abilities": [
+      "monster_id": "hanging_ashes",
+      "monster_name": "매달리는 잿더미",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 120,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0007",
-          "display_name": "잿빛 기습",
+          "skill_id": "a0007",
+          "skill_name": "잿빛 기습",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 1,
+              "type": "CROWD_CONTROL",
               "parameters": {
-                "target": "player",
-                "status_id": "stun",
-                "stacks": 1
+                "id": "STUN",
+                "duration": 0,
+                "intensify": 1
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "bleed",
-                "stacks": 5
+                "id": "BLEEDING",
+                "duration": 0,
+                "intensify": 5
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0007"
+                  "type": "SKILL",
+                  "skill_id": "a0007"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 4
                 },
                 "priority": 0,
@@ -969,7 +666,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -977,257 +674,235 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "smog_wraith",
-      "display_name": "매연 망령",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 3,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 130
-      },
-      "abilities": [
+      "monster_id": "smog_wraith",
+      "monster_name": "매연 망령",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 130,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 3,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0008",
-          "display_name": "매연 폭풍",
+          "skill_id": "a0008",
+          "skill_name": "매연 폭풍",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             },
             {
-              "effect_id": "heal",
-              "order": 1,
+              "effect_id": "heal_02",
+              "effect_name": "회복",
+              "description": "",
+              "target": "self",
+              "value": 20,
+              "type": "RECOVERY",
               "parameters": {
-                "target": "self",
-                "amount": 20
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0008"
+                  "type": "SKILL",
+                  "skill_id": "a0008"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "flame_ghoul",
-      "display_name": "화염 구울",
-      "grade_id": "named",
-      "difficulty_tier": {
-        "min": 2,
-        "max": 2
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 2
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 50
-      },
-      "abilities": [
+      "monster_id": "flame_ghoul",
+      "monster_name": "화염 구울",
+      "description": "",
+      "grade": "ELITE",
+      "hp": 50,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 2
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0009",
-          "display_name": "폭발성 구토",
+          "skill_id": "a0009",
+          "skill_name": "폭발성 구토",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 2,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injry",
-                "stacks": 2
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 2
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0010",
-          "display_name": "시체 폭발",
+          "skill_id": "a0010",
+          "skill_name": "시체 폭발",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0009"
+                  "type": "SKILL",
+                  "skill_id": "a0009"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -1237,7 +912,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -1245,33 +920,33 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0010"
+                  "type": "SKILL",
+                  "skill_id": "a0010"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "explode",
-                "event_id": "monster_hp_changed",
+                "trigger_id": "explode",
+                "event_id": "MONSTER_HP_CHANGED",
                 "condition": {
-                  "condition_id": "monster_hp_ratio",
-                  "operator": "lte",
+                  "condition_id": "MONSTER_HP_RATIO",
+                  "operator": "LTE",
                   "value": 0.0
                 },
                 "priority": 0,
@@ -1281,144 +956,127 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "immediate",
+                  "type": "IMMEDIATE",
                   "cancel_current_intent": false,
-                  "ability_id": "a0010"
+                  "skill_id": "a0010"
                 }
               }
             ]
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "flame_ghoul_alpha.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "lava_heart",
-      "display_name": "용암 심장",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 2,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 2
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 150
-      },
-      "abilities": [
+      "monster_id": "lava_heart",
+      "monster_name": "용암 심장",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 150,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0011",
-          "display_name": "용암 심막",
+          "skill_id": "a0011",
+          "skill_name": "용암 심막",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 10,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0012",
-          "display_name": "용암 분출",
+          "skill_id": "a0012",
+          "skill_name": "용암 분출",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 15,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 15
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 15
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0012"
+                  "type": "SKILL",
+                  "skill_id": "a0012"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 2
                 },
                 "priority": 0,
@@ -1428,7 +1086,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -1436,154 +1094,142 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0011"
+                  "type": "SKILL",
+                  "skill_id": "a0011"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "lava_heart.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "anvil_guardian",
-      "display_name": "모루의 수호자",
-      "grade_id": "named",
-      "difficulty_tier": {
-        "min": 3,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 130
-      },
-      "abilities": [
+      "monster_id": "anvil_guardian",
+      "monster_name": "모루의 수호자",
+      "description": "",
+      "grade": "ELITE",
+      "hp": 130,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 3,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0013",
-          "display_name": "가시 방패 제작",
+          "skill_id": "a0013",
+          "skill_name": "가시 방패 제작",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "bleed",
-                "stacks": 5
+                "id": "BLEEDING",
+                "duration": 0,
+                "intensify": 5
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 20,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 20
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0014",
-          "display_name": "강철 메이스 제작",
+          "skill_id": "a0014",
+          "skill_name": "강철 메이스 제작",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "self",
+              "value": 1,
+              "type": "BUFF",
               "parameters": {
-                "target": "self",
-                "status_id": "doubleAttack",
-                "stacks": 1
+                "id": "HIT_COUNT",
+                "duration": 0,
+                "intensify": 1
               }
             }
-          ],
-          "intent": {
-            "type": "buff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0013"
+                  "type": "SKILL",
+                  "skill_id": "a0013"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0014"
+                  "type": "SKILL",
+                  "skill_id": "a0014"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -1593,7 +1239,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -1601,206 +1247,210 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "molten_drake",
-      "display_name": "녹아내린 드레이크",
-      "grade_id": "boss",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 1
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 1
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 200
-      },
-      "abilities": [
+      "monster_id": "molten_drake",
+      "monster_name": "녹아내린 드레이크",
+      "description": "",
+      "grade": "BOSS",
+      "hp": 200,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 1
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0015",
-          "display_name": "끈적한 피부",
+          "skill_id": "a0015",
+          "skill_name": "끈적한 피부",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 10,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 2,
+              "effect_id": "apply_status_03",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 1,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "weak",
-                "stacks": 1
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 1
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0016",
-          "display_name": "용혈의 안개",
+          "skill_id": "a0016",
+          "skill_name": "용혈의 안개",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 15,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 15
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 15
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 1,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injury",
-                "stacks": 1
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 1
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0017",
-          "display_name": "용의 포효",
+          "skill_id": "a0017",
+          "skill_name": "용의 포효",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 3,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injury",
-                "stacks": 3
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 3
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 2,
+              "effect_id": "apply_status_03",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 3,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "weak",
-                "stacks": 3
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 3
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0017"
+                  "type": "SKILL",
+                  "skill_id": "a0017"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 3
                 },
                 "priority": 0,
@@ -1810,7 +1460,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -1818,436 +1468,411 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0015",
+                      "skill_id": "a0015",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0016",
+                      "skill_id": "a0016",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "seething_furnace_knight",
-      "display_name": "끓어오르는 용광로 기사",
-      "grade_id": "boss",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 2
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 1
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 2
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 200
-      },
-      "abilities": [
+      "monster_id": "seething_furnace_knight",
+      "monster_name": "끓어오르는 용광로 기사",
+      "description": "",
+      "grade": "BOSS",
+      "hp": 200,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 2
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0018",
-          "display_name": "쇳물의 비",
+          "skill_id": "a0018",
+          "skill_name": "쇳물의 비",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 20,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 20
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 20
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 3,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injury",
-                "stacks": 3
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 3
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0019",
-          "display_name": "불타는 창",
+          "skill_id": "a0019",
+          "skill_name": "불타는 창",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             }
-          ],
-          "intent": {
-            "type": "attack_debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0020",
-          "display_name": "화염 방패",
+          "skill_id": "a0020",
+          "skill_name": "화염 방패",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 10
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 10
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 10,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0018"
+                  "type": "SKILL",
+                  "skill_id": "a0018"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0019",
+                      "skill_id": "a0019",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0020",
+                      "skill_id": "a0020",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0019",
+                      "skill_id": "a0019",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0020",
+                      "skill_id": "a0020",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0019",
+                      "skill_id": "a0019",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0020",
+                      "skill_id": "a0020",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "a0019",
+                      "skill_id": "a0019",
                       "weight": 50
                     },
                     {
-                      "ability_id": "a0020",
+                      "skill_id": "a0020",
                       "weight": 50
                     }
                   ]
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "seething_furnace_knight.png",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "ashen_fire_dragon_of_oblivion",
-      "display_name": "잿빛 사멸의 화룡",
-      "grade_id": "boss",
-      "difficulty_tier": {
-        "min": 2,
-        "max": 3
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "gte",
-            "value": 2
-          },
-          {
-            "condition_id": "floor",
-            "operator": "lte",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 220
-      },
-      "abilities": [
+      "monster_id": "ashen_fire_dragon_of_oblivion",
+      "monster_name": "잿빛 사멸의 화룡",
+      "description": "",
+      "grade": "BOSS",
+      "hp": 220,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0021",
-          "display_name": "화염 낙인",
+          "skill_id": "a0021",
+          "skill_name": "화염 낙인",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 20,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 20
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 20
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injury",
-                "stacks": 5
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 5
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0022",
-          "display_name": "용의 비상",
+          "skill_id": "a0022",
+          "skill_name": "용의 비상",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "self",
+              "value": 1,
+              "type": "BUFF",
               "parameters": {
-                "target": "self",
-                "status_id": "doubleAttack",
-                "stacks": 1
+                "id": "HIT_COUNT",
+                "duration": 0,
+                "intensify": 1
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 30,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 30
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0023",
-          "display_name": "용암 브레스",
+          "skill_id": "a0023",
+          "skill_name": "용암 브레스",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 30,
+              "type": "STATUS_DAMAGE",
               "parameters": {
-                "target": "player",
-                "status_id": "burn",
-                "stacks": 30
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 30
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0021"
+                  "type": "SKILL",
+                  "skill_id": "a0021"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0022"
+                  "type": "SKILL",
+                  "skill_id": "a0022"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0023"
+                  "type": "SKILL",
+                  "skill_id": "a0023"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 5
                 },
                 "priority": 0,
@@ -2257,7 +1882,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -2265,21 +1890,21 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "random_choice",
+                  "type": "RANDOM_CHOICE",
                   "choices": [
                     {
-                      "ability_id": "basic_attack",
+                      "skill_id": "basic_attack",
                       "weight": 80
                     },
                     {
-                      "ability_id": "a0023",
+                      "skill_id": "a0023",
                       "weight": 20
                     }
                   ]
@@ -2289,190 +1914,185 @@
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     },
     {
-      "id": "god_of_the_eternal_forge",
-      "display_name": "영원의 주조신",
-      "grade_id": "normal",
-      "difficulty_tier": {
-        "min": 1,
-        "max": 1
-      },
-      "spawn_condition": {
-        "all": [
-          {
-            "condition_id": "floor",
-            "operator": "eq",
-            "value": 3
-          }
-        ]
-      },
-      "stats": {
-        "max_hp": 50
-      },
-      "abilities": [
+      "monster_id": "god_of_the_eternal_forge",
+      "monster_name": "영원의 주조신",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 50,
+      "appearance_condition": [
         {
-          "id": "basic_attack",
-          "display_name": "기본 공격",
+          "dungeon_id": "all",
+          "floor_min": 3,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "attack"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0024",
-          "display_name": "신의 권능",
+          "skill_id": "a0024",
+          "skill_name": "신의 권능",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "self",
+              "value": 1,
+              "type": "BUFF",
               "parameters": {
-                "target": "self",
-                "status_id": "doubleAttack",
-                "stacks": 1
+                "id": "HIT_COUNT",
+                "duration": 0,
+                "intensify": 1
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 1,
+              "effect_id": "apply_status_02",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 2,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "weak",
-                "stacks": 2
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 2
               }
             },
             {
-              "effect_id": "apply_status",
-              "order": 2,
+              "effect_id": "apply_status_03",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 2,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "injury",
-                "stacks": 2
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 0,
+                "intensify": 2
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0025",
-          "display_name": "무한 단조",
+          "skill_id": "a0025",
+          "skill_name": "무한 단조",
           "description": "",
           "effects": [
             {
-              "effect_id": "deal_damage",
-              "order": 0,
+              "effect_id": "deal_damage_01",
+              "effect_name": "피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
               "parameters": {
-                "target": "player",
-                "amount": 5
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
-              "effect_id": "gain_block",
-              "order": 1,
+              "effect_id": "gain_block_02",
+              "effect_name": "방어도 획득",
+              "description": "",
+              "target": "self",
+              "value": 10,
+              "type": "BLOCK",
               "parameters": {
-                "target": "self",
-                "amount": 10
+                "id": "CURRENT_ACTION",
+                "duration": 0,
+                "intensify": 0
               }
             }
-          ],
-          "intent": {
-            "type": "special"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         },
         {
-          "id": "a0026",
-          "display_name": "영겁의 거푸집",
+          "skill_id": "a0026",
+          "skill_name": "영겁의 거푸집",
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status",
-              "order": 0,
+              "effect_id": "apply_status_01",
+              "effect_name": "상태 효과 적용",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "DEBUFF",
               "parameters": {
-                "target": "player",
-                "status_id": "weak",
-                "stacks": 5
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 5
               }
             }
-          ],
-          "intent": {
-            "type": "debuff"
-          },
-          "tags": [],
-          "availability_condition": null,
-          "cooldown_turns": 0
+          ]
         }
       ],
       "behavior": {
         "initial_phase_id": "main_phase",
         "phases": [
           {
-            "id": "main_phase",
-            "display_name": "기본 페이즈",
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0024"
+                  "type": "SKILL",
+                  "skill_id": "a0024"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0025"
+                  "type": "SKILL",
+                  "skill_id": "a0025"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "a0026"
+                  "type": "SKILL",
+                  "skill_id": "a0026"
                 },
                 {
-                  "type": "ability",
-                  "ability_id": "basic_attack"
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
                 }
               ]
             },
             "triggers": [
               {
-                "id": "repeat",
-                "event_id": "turn_started",
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
                 "condition": {
-                  "condition_id": "turn",
-                  "operator": "eq",
+                  "condition_id": "TURN",
+                  "operator": "EQ",
                   "value": 7
                 },
                 "priority": 0,
@@ -2482,7 +2102,7 @@
                 "max_triggers_per_battle": 0,
                 "allow_chained_triggers": false,
                 "response": {
-                  "type": "transition_phase",
+                  "type": "TRANSITION_PHASE",
                   "cancel_current_intent": false,
                   "target_phase_id": "repeat_phase"
                 }
@@ -2490,27 +2110,22 @@
             ]
           },
           {
-            "id": "repeat_phase",
-            "display_name": "반복 페이즈",
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
             "loop": {
-              "mode": "strict_sequence",
-              "fallback_ability_id": "basic_attack",
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
               "steps": [
                 {
-                  "type": "ability",
-                  "ability_id": "a0025"
+                  "type": "SKILL",
+                  "skill_id": "a0025"
                 }
               ]
             },
             "triggers": []
           }
         ]
-      },
-      "tags": [],
-      "description": "",
-      "image_resource_id": "",
-      "developer_notes": "",
-      "invalid": false
+      }
     }
   ]
 }
