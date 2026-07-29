@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import {
   canTravelToNode,
@@ -7,6 +8,11 @@ import {
   getMapNodePosition,
   getMapNodes,
 } from '../../game/systems/mapGenerationSystem.js'
+import mapArrowCurveUp from './assets/pictures/map_arrow_01.png'
+import mapArrowLong from './assets/pictures/map_arrow_02.png'
+import mapArrowCurveDown from './assets/pictures/map_arrow_03.png'
+import mapArrowShort from './assets/pictures/map_arrow_short_01.png'
+import mapArrowShortCurve from './assets/pictures/map_arrow_short_02.png'
 import mapBase from './assets/pictures/map_base_alpha.png'
 
 const symbols = {
@@ -31,6 +37,36 @@ const labels = {
   boss: '보스',
 }
 
+const getCorridorArrow = ({ corridor, start, end }) => {
+  const startX = start.x * 10
+  const startY = start.y * 6
+  const endX = end.x * 10
+  const endY = end.y * 6
+  const deltaX = endX - startX
+  const deltaY = endY - startY
+  const distance = Math.hypot(deltaX, deltaY)
+  const isShort = distance < 255
+  const image = isShort
+    ? Math.abs(deltaY) > 45 ? mapArrowShortCurve : mapArrowShort
+    : corridor.pathRole === 'risk'
+      ? mapArrowCurveDown
+      : Math.abs(deltaY) > 80 ? mapArrowCurveUp : mapArrowLong
+  const renderedDistance = distance * 0.72
+  const height = isShort ? 50 : 61
+  const centerX = (startX + endX) / 2
+  const centerY = (startY + endY) / 2
+  return {
+    image,
+    x: centerX - renderedDistance / 2,
+    y: centerY - height / 2,
+    width: renderedDistance,
+    height,
+    angle: Math.atan2(deltaY, deltaX) * 180 / Math.PI,
+    centerX,
+    centerY,
+  }
+}
+
 export function MapScreen({
   map,
   floor,
@@ -50,7 +86,7 @@ export function MapScreen({
   const corridors = getMapEdges(map, floor)
 
   return (
-    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · 난이도 ${map.difficulty}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
+    <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · 난이도 ${map.difficulty}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
       <div className="map-toolbar">
         <div className="map-legend">
           <span><i className="dot available" /> 이동 가능</span>
@@ -71,7 +107,7 @@ export function MapScreen({
       <div className="dungeon-map-viewport">
         <div
           className="dungeon-map dungeon-map--rooms"
-          style={{ backgroundImage: `linear-gradient(#090807c7,#110d0bc7), url(${mapBase})` }}
+          style={{ backgroundImage: `url(${mapBase})` }}
           aria-label={`${map.dungeonName} ${floor}층 방 지도`}
         >
           <svg className="room-corridors" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
@@ -81,12 +117,21 @@ export function MapScreen({
               if (!start || !end) return null
               const traveled = [corridor.from, corridor.to].every((id) =>
                 nodes.find((node) => node.id === id)?.status === 'complete')
+              const arrow = getCorridorArrow({ corridor, start, end })
               return (
                 <g
                   key={corridor.id}
                   className={`${corridor.pathRole}${traveled ? ' traveled' : ''}`}
                 >
-                  <line x1={start.x * 10} y1={start.y * 6} x2={end.x * 10} y2={end.y * 6} />
+                  <image
+                    href={arrow.image}
+                    x={arrow.x}
+                    y={arrow.y}
+                    width={arrow.width}
+                    height={arrow.height}
+                    preserveAspectRatio="none"
+                    transform={`rotate(${arrow.angle} ${arrow.centerX} ${arrow.centerY})`}
+                  />
                 </g>
               )
             })}

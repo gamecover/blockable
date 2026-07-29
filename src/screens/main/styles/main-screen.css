@@ -125,6 +125,18 @@
   cursor: not-allowed;
 }
 
+.main-screen__version {
+  position: absolute;
+  right: clamp(1rem, 2vw, 2rem);
+  bottom: clamp(0.65rem, 1.5vh, 1rem);
+  z-index: 2;
+  color: rgba(215, 202, 180, 0.68);
+  font-family: 'DNF Forged Blade Medium', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 3px #000;
+}
+
 @media (max-width: 80rem) {
   .main-screen { background-position: 48% center; }
   .main-menu {

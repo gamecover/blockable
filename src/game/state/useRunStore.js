@@ -43,6 +43,7 @@ const initialRun = (developerMode = false) => ({
   uniqueBlockChoiceIds: [],
   discoveredBlueprintIds: [],
   developerMode,
+  developerDifficulty: 1,
   battlePiles: { drawPile: [], hand: [], discardPile: [], remainingCount: 0, remainingBlocks: [] },
   combat: {
     player: createCombatantState(),
@@ -91,10 +92,13 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   }),
   enterDungeon: (dungeon) => set((state) => {
     state.activeDungeonId = dungeon.id
+    const difficulty = state.developerMode
+      ? state.developerDifficulty
+      : dungeon.difficulty
     const generatedMap = generateMap({
       dungeonId: dungeon.id,
       dungeonName: dungeon.name,
-      difficulty: dungeon.difficulty,
+      difficulty,
     })
     const enteredFloor = enterFloorAtStart(generatedMap, 1)
     state.map = enteredFloor.map
@@ -104,6 +108,14 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   leaveDungeon: () => set((state) => {
     state.activeDungeonId = null
     state.currentNodeId = null
+  }),
+  setDeveloperDifficulty: (difficulty) => set((state) => {
+    if (!state.developerMode) return
+    const normalized = Math.min(10, Math.max(1, Math.trunc(Number(difficulty) || 1)))
+    state.developerDifficulty = normalized
+    state.worldMap.dungeons.forEach((dungeon) => {
+      dungeon.difficulty = normalized
+    })
   }),
   completeDungeon: () => set((state) => {
     if (!state.activeDungeonId) return
@@ -216,8 +228,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
-    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const hydratedDeck = persisted.deck.map(hydrateBlock)
@@ -241,6 +253,15 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
               : dungeon),
         }
       : current.worldMap
+    const developerDifficulty = developerMode
+      ? Math.min(10, Math.max(1, Math.trunc(Number(persisted.developerDifficulty) || 1)))
+      : 1
+    if (developerMode) {
+      worldMap.dungeons = worldMap.dungeons.map((dungeon) => ({
+        ...dungeon,
+        difficulty: developerDifficulty,
+      }))
+    }
     return {
       ...current,
       ...persisted,
@@ -248,6 +269,7 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
       worldMap,
       pendingBattle,
       developerMode,
+      developerDifficulty,
       uniqueBlockId,
       uniqueBlockChoiceIds: uniqueBlockId ? [] : (persisted.uniqueBlockChoiceIds?.length
         ? persisted.uniqueBlockChoiceIds

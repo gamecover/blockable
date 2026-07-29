@@ -4,7 +4,7 @@
   "metadata": {
     "project_name": "Blockable",
     "ruleset_name": "prototype",
-    "updated_at": "2026-07-29T18:06:31+09:00",
+    "updated_at": "2026-07-29T23:41:12+09:00",
     "validation_status": "valid",
     "validation_error_count": 0,
     "validation_warning_count": 32,
@@ -1291,7 +1291,7 @@
   "combinations": [
     {
       "combination_id": "base_33_01_steel",
-      "combination_name": "의자",
+      "combination_name": "사상 최강의 의자",
       "description": "의자 모양의 조합",
       "formula": {
         "instances": [
@@ -1333,6 +1333,58 @@
             "id": "NONE",
             "duration": 0,
             "intensify": 0
+          }
+        },
+        {
+          "effect_id": "출혈",
+          "effect_name": "테스트 출혈",
+          "description": "",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "STATUS_DAMAGE",
+          "parameters": {
+            "id": "BLEEDING",
+            "duration": 2,
+            "intensify": 2
+          }
+        },
+        {
+          "effect_id": "화상",
+          "effect_name": "테스트 화상",
+          "description": "",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "STATUS_DAMAGE",
+          "parameters": {
+            "id": "BURN",
+            "duration": 2,
+            "intensify": 2
+          }
+        },
+        {
+          "effect_id": "기절",
+          "effect_name": "테스트 기절",
+          "description": "",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "CROWD_CONTROL",
+          "parameters": {
+            "id": "STUN",
+            "duration": 1,
+            "intensify": 1
+          }
+        },
+        {
+          "effect_id": "약화",
+          "effect_name": "테스트 약화",
+          "description": "",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "ATTACK_REDUCTION",
+            "duration": 2,
+            "intensify": 2
           }
         }
       ]

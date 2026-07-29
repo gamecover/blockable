@@ -11,6 +11,7 @@ import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem
 import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
 import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
 import { SoundManager } from '../managers/SoundManager.js'
+import { BGM_ASSETS, getScreenBgmKey } from '../assets/manifests/bgmManifest.js'
 import { SplashScreen } from '../screens/main/SplashScreen.jsx'
 import { MainScreen } from '../screens/main/MainScreen.jsx'
 import { PrologueScreen } from '../screens/prologue/PrologueScreen.jsx'
@@ -20,6 +21,7 @@ import { BattleScreen } from '../screens/battle/BattleScreen.jsx'
 import { RewardScreen } from '../screens/reward/RewardScreen.jsx'
 import { EventScreen } from '../screens/event/EventScreen.jsx'
 import { ResultScreen } from '../screens/result/ResultScreen.jsx'
+import { DungeonConquestScreen } from '../screens/result/DungeonConquestScreen.jsx'
 import { CommonGameMenu } from '../components/game/CommonGameMenu.jsx'
 import { StartBlockChoiceScreen } from '../screens/map/StartBlockChoiceScreen.jsx'
 import { createUniqueBlockChoices } from '../objects/blocks/blockData.js'
@@ -30,6 +32,7 @@ export function App() {
   const [rewards, setRewards] = useState([])
   const [earnedGold, setEarnedGold] = useState(0)
   const [runMode, setRunMode] = useState('normal')
+  const [conqueredDungeonName, setConqueredDungeonName] = useState('')
   const normalRun = useStore(normalRunStore)
   const developerRun = useStore(developerRunStore)
   const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
@@ -39,8 +42,28 @@ export function App() {
     () => createUniqueBlockChoices(run.uniqueBlockChoiceIds),
     [run.uniqueBlockChoiceIds],
   )
+  const current = appState.value
+  const encounterMusicMonsterId = encounter?.monsters
+    ?.find(({ slotId }) => slotId === 5)?.id
+    ?? encounter?.monsters?.[0]?.id
+    ?? encounter?.monster?.id
 
-  useEffect(() => () => SoundManager.dispose(), [])
+  useEffect(() => {
+    Object.entries(BGM_ASSETS).forEach(([key, source]) => {
+      SoundManager.registerMusic(key, source)
+    })
+    return () => SoundManager.dispose()
+  }, [])
+
+  useEffect(() => {
+    const bgmKey = getScreenBgmKey({
+      screen: current,
+      activeDungeonId: run.activeDungeonId,
+      monsterId: encounterMusicMonsterId,
+    })
+    if (bgmKey) SoundManager.playMusic(bgmKey)
+    else SoundManager.stopMusic()
+  }, [current, encounterMusicMonsterId, run.activeDungeonId])
 
   const startNewRun = (mode = 'normal') => {
     SoundManager.unlock()
@@ -119,6 +142,7 @@ export function App() {
     if (encounter?.type === 'boss') {
       run.completeNode()
       const activeDungeon = run.worldMap.dungeons.find(({ id }) => id === run.activeDungeonId)
+      setConqueredDungeonName(activeDungeon?.name ?? run.map.dungeonName)
       run.completeDungeon()
       send({ type: activeDungeon?.kind === 'final' ? 'BOSS_WIN' : 'DUNGEON_WIN' })
       return
@@ -162,7 +186,6 @@ export function App() {
     send({ type: 'MENU' })
   }
 
-  const current = appState.value
   const monster = useMemo(() => encounter?.monster, [encounter])
   if (current === 'splash') return <SplashScreen onReady={() => send({ type: 'READY' })} />
   if (current === 'menu') return <MainScreen
@@ -177,12 +200,13 @@ export function App() {
 
   let screen = null
   if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onSelect={enterDungeon} />
+  if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onDeveloperDifficultyChange={(difficulty) => { if (developerMode) run.setDeveloperDifficulty(difficulty) }} onSelect={enterDungeon} />
   if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
   if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
   if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { run.clearPendingBattle(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
-  if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} />
+  if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} onDefer={() => send({ type: 'DONE' })} />
+  if (current === 'dungeonConquest') screen = <DungeonConquestScreen dungeonName={conqueredDungeonName} onContinue={() => send({ type: 'CONTINUE' })} />
   if (current === 'gameover') screen = <ResultScreen floor={run.floor} onMenu={backToMenu} />
   if (current === 'ending') screen = <ResultScreen victory floor={run.floor} onMenu={backToMenu} />
 

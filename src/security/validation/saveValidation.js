@@ -6,7 +6,7 @@ export const isValidSave = (value) => {
     && Number.isFinite(state.gold) && Array.isArray(state.deck)
     && map && typeof map === 'object' && Array.isArray(map.floors)
     && map.schemaVersion === 2
-    && map.difficulty === 1
+    && Number.isInteger(map.difficulty) && map.difficulty >= 1 && map.difficulty <= 10
     && map.floors.every((floor) => Number.isInteger(floor.number)
       && Array.isArray(floor.nodes)
       && Array.isArray(floor.corridors)
