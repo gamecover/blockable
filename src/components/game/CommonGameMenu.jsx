@@ -1,4 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import blueprintClosedIcon from '../../assets/pictures/ui/icons/icon_blueprints_alpha.png'
+import blueprintOpenIcon from '../../assets/pictures/ui/icons/icon_blueprints_click_alpha.png'
 import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
@@ -22,10 +24,12 @@ const mapSymbols = {
   hidden: '·',
 }
 
-function IconButton({ label, icon, onClick }) {
+function IconButton({ label, icon, imageSrc, onClick }) {
   return (
     <button className="common-game-menu__button" type="button" onClick={onClick} aria-label={label} data-tooltip={label}>
-      <span aria-hidden="true">{icon}</span>
+      {imageSrc
+        ? <img className="common-game-menu__button-image" src={imageSrc} alt="" />
+        : <span aria-hidden="true">{icon}</span>}
     </button>
   )
 }
@@ -183,11 +187,15 @@ export function CommonGameMenu({
         {!['map', 'worldMap'].includes(currentScreen) && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
         {activeDungeonId && <IconButton label="전체 지도 확인" icon="◎" onClick={() => setModal('worldMap')} />}
         {currentScreen !== 'battle' && <IconButton label="현재 덱 확인" icon="▦" onClick={() => setModal('deck')} />}
-        <IconButton label="청사진 확인" icon="▧" onClick={() => setModal('blueprints')} />
+        <IconButton
+          label="청사진 확인"
+          imageSrc={modal === 'blueprints' ? blueprintOpenIcon : blueprintClosedIcon}
+          onClick={() => setModal(modal === 'blueprints' ? null : 'blueprints')}
+        />
         <IconButton label="설정 열기" icon="⚙" onClick={() => setModal('settings')} />
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </aside>
-      {modal && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
+      {modal && <div className={`common-modal${modal === 'settings' ? ' common-modal--settings' : ''}`} onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
         {modal === 'map' && <RunMapModal map={map} floor={floor} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
         {modal === 'worldMap' && <WorldMapModal worldMap={worldMap} activeDungeonId={activeDungeonId} onClose={() => setModal(null)} />}
         {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}

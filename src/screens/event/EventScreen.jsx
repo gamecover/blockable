@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
+import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { rollGoldChest } from '../../game/systems/eventSystem.js'
 import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
 import {
@@ -13,7 +14,7 @@ import {
 const colorLabels = { nature: '자연', water: '물', fire: '불', steel: '강철' }
 const shapeLabels = { '001': 'I형', '002': 'L형', '003': 'O형' }
 
-export function EventScreen({ event, gold, health, maxHealth, deck, onResolve }) {
+export function EventScreen({ event, gold, health, maxHealth, deck, onResolve, onDefer }) {
   const [chestResult, setChestResult] = useState(null)
   const [restAction, setRestAction] = useState(null)
   const [restBlockId, setRestBlockId] = useState(null)
@@ -27,6 +28,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
           <button className="primary-button" onClick={() => setRestAction('color')}>속성 주입</button>
           <button className="primary-button" onClick={() => onResolve({ heal: 20 })}>체력 +20</button>
           <button className="primary-button" onClick={() => setRestAction('shape')}>모양 변환</button>
+          <button className="secondary-button" onClick={onDefer}>지금은 사용하지 않는다</button>
         </div>}
         {restAction && !restBlock && <>
           <div className="choice-preview">{restAction === 'color' ? '속성을 변경할 일반 블록을 선택하세요.' : '모양을 변경할 일반 블록을 선택하세요.'}</div>
@@ -34,6 +36,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
             {modifiableBlocks.map((block) => <button key={block.id} onClick={() => setRestBlockId(block.id)} aria-label={`${block.name} 선택`}><BlockPreview block={block} compact /></button>)}
           </div>
           <button className="text-button" onClick={() => setRestAction(null)}>이전 선택으로</button>
+          <button className="text-button" onClick={onDefer}>나중에 다시 온다</button>
         </>}
         {restAction === 'color' && restBlock && <>
           <div className="choice-preview rest-block-preview"><BlockPreview block={restBlock} compact /><span>주입할 속성을 선택하세요.</span></div>
@@ -44,6 +47,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
             })}
           </div>
           <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
+          <button className="text-button" onClick={onDefer}>나중에 다시 온다</button>
         </>}
         {restAction === 'shape' && restBlock && <>
           <div className="choice-preview rest-block-preview"><BlockPreview block={restBlock} compact /><span>바꿀 모양을 선택하세요.</span></div>
@@ -54,6 +58,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
             })}
           </div>
           <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
+          <button className="text-button" onClick={onDefer}>나중에 다시 온다</button>
         </>}
       </article></div>
     </ScreenFrame>
@@ -67,7 +72,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
 
   if (event === 'chest' && chestResult) return (
     <ScreenFrame title="보물 상자 결과" subtitle="ENCOUNTER RESULT">
-      <div className="event-card chest-result"><div className="event-illustration">◆</div><article><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result">◆ {chestResult.gold} 골드</div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></article></div>
+      <div className="event-card chest-result"><div className="event-illustration">◆</div><article><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result"><GoldAmount amount={chestResult.gold} suffix=" 골드" /></div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></article></div>
     </ScreenFrame>
   )
 
@@ -79,8 +84,8 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve })
 
   const cost = 50
   return (
-    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}>
-      <div className="event-card shop"><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요. 블록 삭제 비용은 ◆ {cost}입니다.</p><div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>{deck.map((block) => <button aria-label={`${block.name} 삭제 · ${cost} 골드`} disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><BlockPreview block={block} compact /></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
+    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
+      <div className="event-card shop"><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요. 블록 삭제 비용은 <GoldAmount amount={cost} />입니다.</p><div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>{deck.map((block) => <button aria-label={`${block.name} 삭제 · ${cost} 골드`} disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><BlockPreview block={block} compact /></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
     </ScreenFrame>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GameSettingsModal } from '../../components/game/GameSettingsModal.jsx'
+import { GAME_VERSION } from '../../game/constants/version.js'
 import { MainMenuButton } from './components/MainMenuButton.jsx'
 import configButton from './assets/buttons/button_config_01.png'
 import startButton from './assets/buttons/button_start_01.png'
@@ -40,8 +41,9 @@ export function MainScreen({
             <button type="button" onClick={onDeveloperContinue} disabled={!canDeveloperContinue}>개발자 이어하기</button>
           </aside>
         )}
+        <small className="main-screen__version">v{GAME_VERSION}</small>
       </main>
-      {settingsOpen && <div className="common-modal" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false) }}><GameSettingsModal onClose={() => setSettingsOpen(false)} /></div>}
+      {settingsOpen && <div className="common-modal common-modal--settings" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false) }}><GameSettingsModal onClose={() => setSettingsOpen(false)} /></div>}
     </>
   )
 }

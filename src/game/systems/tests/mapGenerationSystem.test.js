@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canTravelToNode,
   completeAndUnlockNext,
+  DIFFICULTY_CONFIGS,
   DIFFICULTY_ONE_CONFIG,
   enterFloorAtStart,
   findMapNode,
@@ -13,22 +14,47 @@ import {
 } from '../mapGenerationSystem.js'
 
 describe('Darkest Dungeon-style map generation', () => {
-  it('fixes the current dungeon at difficulty one with two floors', () => {
-    const map = generateMap({ seed: 42, difficulty: 9 })
-
-    expect(map.difficulty).toBe(1)
-    expect(map.floors).toHaveLength(2)
+  it('uses the documented floor and room ranges for every developer difficulty', () => {
+    for (let difficulty = 1; difficulty <= 10; difficulty += 1) {
+      const config = DIFFICULTY_CONFIGS[difficulty]
+      const map = generateMap({ seed: 42, difficulty })
+      expect(map.difficulty).toBe(difficulty)
+      expect(map.floors).toHaveLength(config.floorCount)
+      map.floors.forEach((floor) => {
+        expect(floor.nodes.length).toBeGreaterThanOrEqual(config.nodesPerFloor.min)
+        expect(floor.nodes.length).toBeLessThanOrEqual(config.nodesPerFloor.max)
+        expect(floor.mainPathLength).toBeGreaterThanOrEqual(config.mainPathLength.min)
+        expect(floor.mainPathLength).toBeLessThanOrEqual(config.mainPathLength.max)
+        expect(floor.branches.length).toBeGreaterThanOrEqual(config.branchCount.min)
+        expect(floor.branches.length).toBeLessThanOrEqual(config.branchCount.max)
+      })
+    }
     expect(DIFFICULTY_ONE_CONFIG.floorCount).toBe(2)
   })
 
-  it('creates 5 to 7 rooms and exactly one dead-end branch on every floor', () => {
+  it('creates 7 to 9 rooms and two to three dead-end branches on every floor', () => {
     for (let seed = 0; seed < 100; seed += 1) {
       generateMap({ seed }).floors.forEach((floor) => {
-        expect(floor.nodes.length).toBeGreaterThanOrEqual(5)
-        expect(floor.nodes.length).toBeLessThanOrEqual(7)
-        expect(floor.branches).toHaveLength(1)
-        const branchEndId = floor.branches[0].nodeIds.at(-1)
-        expect(getConnectedNodeIds({ floors: [floor] }, floor.number, branchEndId)).toHaveLength(1)
+        expect(floor.nodes.length).toBeGreaterThanOrEqual(7)
+        expect(floor.nodes.length).toBeLessThanOrEqual(9)
+        expect(floor.nodes).toHaveLength(floor.targetNodeCount)
+        expect(floor.branches.length).toBeGreaterThanOrEqual(2)
+        expect(floor.branches.length).toBeLessThanOrEqual(3)
+        floor.branches.forEach((branch) => {
+          const branchEndId = branch.nodeIds.at(-1)
+          expect(getConnectedNodeIds({ floors: [floor] }, floor.number, branchEndId)).toHaveLength(1)
+        })
+      })
+    }
+  })
+
+  it('bends every main path vertically instead of generating a fully horizontal route', () => {
+    for (let seed = 0; seed < 250; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        const mainNodes = floor.nodes.filter(({ pathRole }) => pathRole === 'main')
+        expect(new Set(mainNodes.map(({ position }) => position.y)).size).toBeGreaterThan(1)
+        expect(floor.mainPathLength).toBeGreaterThanOrEqual(3)
+        expect(floor.mainPathLength).toBeLessThanOrEqual(5)
       })
     }
   })
@@ -72,6 +98,21 @@ describe('Darkest Dungeon-style map generation', () => {
         expect(findMapNode(map, midpoint).type).toBe('rest')
       })
     }
+  })
+
+  it('limits optional rest rooms to one and keeps their appearance rate low', () => {
+    let floorCount = 0
+    let floorsWithOptionalRest = 0
+    for (let seed = 0; seed < 500; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        const restCount = floor.nodes.filter(({ type }) => type === 'rest').length
+        expect(restCount).toBeGreaterThanOrEqual(1)
+        expect(restCount).toBeLessThanOrEqual(2)
+        floorCount += 1
+        if (restCount === 2) floorsWithOptionalRest += 1
+      })
+    }
+    expect(floorsWithOptionalRest / floorCount).toBeLessThan(0.2)
   })
 
   it('generates an identical saved graph from the same seed', () => {

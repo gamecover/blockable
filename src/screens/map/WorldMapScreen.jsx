@@ -1,4 +1,5 @@
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
+import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { canEnterWorldDungeon } from '../../game/systems/worldMapSystem.js'
 import globalMap from './assets/pictures/global_map.png'
 
@@ -8,6 +9,8 @@ export function WorldMapScreen({
   maxHealth,
   gold,
   developerMode = false,
+  developerDifficulty = 1,
+  onDeveloperDifficultyChange,
   onSelect,
 }) {
   const cleared = worldMap.dungeons.filter(({ kind, status }) =>
@@ -17,8 +20,24 @@ export function WorldMapScreen({
     <ScreenFrame
       title="전체 지도"
       subtitle={`일반 던전 ${cleared}/${worldMap.requiredClearCount}`}
-      actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><span>◆ {gold}</span></div>}
+      actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}
     >
+      {developerMode && (
+        <div className="developer-global-tools">
+          <label htmlFor="developer-difficulty">DEV · 전역 던전 난이도</label>
+          <input
+            id="developer-difficulty"
+            type="range"
+            min="1"
+            max="10"
+            step="1"
+            value={developerDifficulty}
+            onChange={(event) => onDeveloperDifficultyChange(event.target.value)}
+          />
+          <output htmlFor="developer-difficulty">{developerDifficulty}</output>
+          <small>다음 던전 입장부터 적용</small>
+        </div>
+      )}
       <div className="world-map" style={{ backgroundImage: `url(${globalMap})` }}>
         {worldMap.dungeons.map((dungeon) => {
           const selectable = canEnterWorldDungeon(dungeon, developerMode)
@@ -34,7 +53,7 @@ export function WorldMapScreen({
             >
               <b>{dungeon.kind === 'final' ? '♜' : '◆'}</b>
               <span>{dungeon.name}</span>
-              <small>{dungeon.status === 'locked' ? '잠김' : dungeon.status === 'complete' ? '완료' : '입장'}</small>
+              <small>난이도 {dungeon.difficulty} · {dungeon.status === 'locked' ? '잠김' : dungeon.status === 'complete' ? '완료' : '입장'}</small>
             </button>
           )
         })}
