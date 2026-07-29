@@ -22,7 +22,14 @@ const SUPPORTED_EFFECT_TYPES = new Set([
 const SUPPORTED_PARAMETER_IDS = new Set([
   'NONE',
   'CURRENT_ACTION',
+  'ATTACK_REDUCTION',
   'DAMAGE_TAKEN_INCREASE',
+  'BLEEDING',
+  'BURN',
+  'STUN',
+  'RAGE',
+  'PLAYER_TURN',
+  'BLOCK_PLACEMENT',
   'MAIN_DECK',
 ])
 const SUPPORTED_SLOT_KINDS = new Set(['exact_block', 'any_block', 'type', 'color', 'tag'])
@@ -210,7 +217,7 @@ const validateEffect = (effect, location, errors) => {
   if (!SUPPORTED_EFFECT_TYPES.has(type)) {
     errors.push(`${location}.type: 지원하지 않는 공통 효과 타입 ${effect?.type ?? '없음'}`)
   }
-  if (!Number.isInteger(effect?.value)) errors.push(`${location}.value: 정수가 필요합니다.`)
+  if (!Number.isFinite(effect?.value)) errors.push(`${location}.value: 유한한 숫자가 필요합니다.`)
   if (!parseBlockEffectTarget(effect?.target)) {
     errors.push(`${location}.target: 지원하지 않는 대상 형식 ${effect?.target ?? '없음'}`)
   }

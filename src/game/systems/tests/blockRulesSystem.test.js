@@ -32,7 +32,7 @@ describe('official block rules', () => {
     }).toEqual({
       colors: 7,
       blockTypes: 7,
-      effects: 5,
+      effects: 6,
       blocks: 28,
       combinations: 45,
       synergies: 0,

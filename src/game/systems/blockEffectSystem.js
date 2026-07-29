@@ -8,15 +8,13 @@ import {
   BlockRulesRuntimeError,
   parseBlockEffectTarget,
 } from './blockRulesSystem.js'
+import { createStatusUpdateFromEffect } from './statusEffectSystem.js'
 
 const ADDITIVE_EFFECTS = {
   gain_block: { resultKey: 'armor', parameter: 'amount' },
   heal: { resultKey: 'healing', parameter: 'amount' },
   draw_block: { resultKey: 'drawCount', parameter: 'count' },
   gain_gold: { resultKey: 'gold', parameter: 'amount' },
-}
-const PARAMETER_STATUS_IDS = {
-  DAMAGE_TAKEN_INCREASE: 'wound',
 }
 const BLOCK_COLOR_LABELS = {
   steel: '강철',
@@ -246,12 +244,18 @@ export const resolveBlockEffects = (placedBlocks) => {
       return
     }
     if (effect.type === 'EXTRA_TURN') {
+      if (effect.parameters.id !== 'PLAYER_TURN') {
+        throw new BlockRulesRuntimeError(
+          'DISPATCH',
+          `EXTRA_TURN은 parameters.id=PLAYER_TURN이 필요합니다. (현재: ${effect.parameters.id})`,
+        )
+      }
       result.extraTurns += effect.value
       result.extraTurnChanges.push({
         turnId: effect.parameters.id,
         value: effect.value,
-        duration: effect.parameters.duration,
-        intensify: effect.parameters.intensify,
+        duration: 0,
+        intensify: 1,
       })
       return
     }
@@ -259,17 +263,23 @@ export const resolveBlockEffects = (placedBlocks) => {
       result.deckCapacityChanges.push({
         deckId: effect.parameters.id,
         value: effect.value,
-        duration: effect.parameters.duration,
-        intensify: effect.parameters.intensify,
+        duration: 0,
+        intensify: 1,
       })
       return
     }
     if (effect.type === 'PLACEMENT_COUNT') {
+      if (effect.parameters.id !== 'BLOCK_PLACEMENT') {
+        throw new BlockRulesRuntimeError(
+          'DISPATCH',
+          `PLACEMENT_COUNT는 parameters.id=BLOCK_PLACEMENT가 필요합니다. (현재: ${effect.parameters.id})`,
+        )
+      }
       result.placementCountChanges.push({
         placementId: effect.parameters.id,
         value: effect.value,
-        duration: effect.parameters.duration,
-        intensify: effect.parameters.intensify,
+        duration: 0,
+        intensify: 1,
       })
       return
     }
@@ -279,24 +289,41 @@ export const resolveBlockEffects = (placedBlocks) => {
       return
     }
     if (effect.type === 'STATUS_DAMAGE') {
-      result.statusDamageEffects.push({
-        id: effect.parameters.id,
-        target: effect.target,
-        value: effect.value,
-        duration: effect.parameters.duration,
-        intensify: effect.parameters.intensify,
-      })
+      const status = createStatusUpdateFromEffect(effect)
+      if (!status) {
+        throw new BlockRulesRuntimeError('DISPATCH', [
+          `effect_id=${effect.effect_id ?? '없음'}`,
+          `type=${effect.type}`,
+          `parameters.id=${effect.parameters.id ?? '없음'}`,
+          '이 상태 피해를 실행할 런타임 처리기가 없습니다.',
+        ])
+      }
+      if (effect.target === 'self') {
+        result.playerStatuses.push(status)
+      } else {
+        result.statusDamageEffects.push({
+          ...status,
+          target: effect.target,
+          range: effect.targetSpec?.range ?? 'single',
+          distance: effect.targetSpec?.distance ?? 0,
+        })
+      }
       return
     }
     if (effect.effect_id === 'apply_status' || ['DEBUFF', 'CROWD_CONTROL', 'BUFF'].includes(effect.type)) {
       const parameterId = effect.parameters.id ?? effect.parameters.status_id
+      const commonStatus = createStatusUpdateFromEffect(effect)
       const status = {
-        id: effect.reference_id ?? PARAMETER_STATUS_IDS[parameterId] ?? parameterId,
+        id: effect.reference_id ?? commonStatus?.id ?? parameterId,
+        sourceId: commonStatus?.sourceId ?? parameterId,
         name: effect.parameters.status_name,
         stacks: Number(effect.parameters.stacks ?? effect.parameters.intensify ?? effect.value ?? 1),
         value: effect.value,
         duration: effect.parameters.duration ?? null,
         intensify: effect.parameters.intensify ?? 0,
+        target: effect.target,
+        range: effect.targetSpec?.range ?? 'single',
+        distance: effect.targetSpec?.distance ?? 0,
       }
       if (effect.type === 'BUFF') result.buffs.push(status)
       if (effect.type === 'DEBUFF') result.debuffs.push(status)

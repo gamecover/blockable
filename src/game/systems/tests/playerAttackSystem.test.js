@@ -37,7 +37,7 @@ describe('player attack formula', () => {
     }).sort()).toEqual([1, 2, 4])
   })
 
-  it('applies P, H, D, and W to each base hit, then resolves A independently', () => {
+  it('applies P, H, and W to each base hit, then resolves A independently', () => {
     const result = resolvePlayerAction({
       combatants: [monster(1, 100, [{ id: 'wound', stacks: 1 }], 5)],
       selectedMonsterId: 'monster-1',
@@ -95,5 +95,40 @@ describe('player attack formula', () => {
     expect(result.bossDefeated).toBe(true)
     expect(result.combatants.map(({ currentHealth }) => currentHealth)).toEqual([100, 0])
     expect(result.damageBySlot.has(1)).toBe(false)
+  })
+
+  it('applies ranged debuffs and crowd control to every resolved target slot', () => {
+    const rangedEffects = effects()
+    rangedEffects.statuses = [{
+      id: 'weakness',
+      sourceId: 'ATTACK_REDUCTION',
+      value: 0.1,
+      duration: 0,
+      intensify: 2,
+      range: 'both',
+      distance: 1,
+    }, {
+      id: 'stun',
+      sourceId: 'STUN',
+      value: 0,
+      duration: 1,
+      intensify: 1,
+      range: 'all',
+      distance: 0,
+    }]
+
+    const result = resolvePlayerAction({
+      combatants: [monster(1), monster(2), monster(3)],
+      selectedMonsterId: 'monster-2',
+      battleType: 'normal',
+      effects: rangedEffects,
+    })
+
+    expect(result.combatants.map(({ statuses }) =>
+      statuses.map(({ id }) => id).sort())).toEqual([
+      ['stun', 'weakness'],
+      ['stun', 'weakness'],
+      ['stun', 'weakness'],
+    ])
   })
 })

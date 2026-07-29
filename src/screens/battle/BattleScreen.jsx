@@ -12,8 +12,9 @@ import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
 import { isCombatVictory } from '../../game/systems/combatSlotSystem.js'
 import {
-  addStatus,
+  addStatusUpdate,
   consumeStun,
+  getHitCountBonus,
   resolveTurnEndStatuses,
 } from '../../game/systems/statusEffectSystem.js'
 import {
@@ -73,6 +74,7 @@ export function BattleScreen({
   const [machineState, send] = useMachine(battleTurnMachine)
   const [board, setBoard] = useState({
     placedCount: 0,
+    placementLimit: 3,
     occupiedCells: 0,
     totalBoardCells: 15,
     placedBlocks: [],
@@ -88,6 +90,7 @@ export function BattleScreen({
   const [openPile, setOpenPile] = useState(null)
   const [turn, setTurn] = useState(1)
   const victoryHandled = useRef(false)
+  const extraTurnsRemaining = useRef(0)
   const runStore = useRunStoreApi()
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
     ?? combatants.find(({ currentHealth }) => currentHealth > 0)
@@ -111,10 +114,13 @@ export function BattleScreen({
     addGold,
     drawNextHand,
     applyCombatStatus,
+    consumeCombatStatus,
     resolvePlayerTurnEndStatuses,
     discoverBlueprints,
     discoveredBlueprintIds,
   } = useRunStore()
+  const playerStunned = combat.player.statuses.some(({ id, stacks }) =>
+    id === 'stun' && stacks > 0)
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
     setBoard(nextBoard)
@@ -139,10 +145,20 @@ export function BattleScreen({
   }, [addLog, developerMode, onWin, send])
 
   const endTurn = useCallback(() => {
-    if (!board.placedCount || !machineState.matches('playerInput') || !selectedMonster) return
+    const currentPlayerStatuses = runStore.getState().combat.player.statuses
+    const stunned = currentPlayerStatuses.some(({ id, stacks }) => id === 'stun' && stacks > 0)
+    if ((!board.placedCount && !stunned)
+      || !machineState.matches('playerInput')
+      || !selectedMonster) return
     send({ type: 'END_TURN' })
-    const playerStatuses = runStore.getState().combat.player.statuses
-    const rawResult = resolvePlayerTurn(board)
+    const playerStatuses = currentPlayerStatuses
+    const rawResult = stunned
+      ? resolvePlayerTurn({ placedBlocks: [], occupiedCells: 0, totalBoardCells: board.totalBoardCells })
+      : resolvePlayerTurn(board)
+    if (stunned) {
+      consumeCombatStatus('player', 'stun')
+      if (developerMode) addLog('플레이어 · 기절로 행동 취소')
+    }
     if (rawResult.combinations.length) {
       const previouslyDiscovered = new Set(discoveredBlueprintIds)
       const newlyDiscovered = rawResult.combinations
@@ -163,12 +179,15 @@ export function BattleScreen({
       effects: rawResult,
       playerStatuses,
     })
+    if (getHitCountBonus(playerStatuses) > 0) {
+      consumeCombatStatus('player', 'double_attack')
+    }
     let afterPlayerAction = playerAction.combatants
     if (rawResult.armor) gainArmor(rawResult.armor)
     if (rawResult.healing) heal(rawResult.healing)
     if (rawResult.gold) addGold(rawResult.gold)
     rawResult.playerStatuses.forEach((status) => {
-      applyCombatStatus('player', status.id, status.stacks, true)
+      applyCombatStatus('player', status, undefined, true)
       if (status.id === 'ironclad') gainArmor(status.stacks)
     })
     setCombatants(afterPlayerAction)
@@ -182,7 +201,9 @@ export function BattleScreen({
         finishVictory('battle')
         return
       }
-      const hasExtraTurn = rawResult.extraTurns > 0
+      extraTurnsRemaining.current += Math.max(0, rawResult.extraTurns)
+      const hasExtraTurn = extraTurnsRemaining.current > 0
+      if (hasExtraTurn) extraTurnsRemaining.current -= 1
       if (!hasExtraTurn) {
         const nextActingMonster = [...afterPlayerAction]
           .sort((left, right) => left.slotId - right.slotId)
@@ -241,37 +262,61 @@ export function BattleScreen({
                 ...triggered.immediateAbilities.flatMap(({ effects }) => effects),
               ],
             })
-            const doubleAttack = entry.statuses.some(({ id, stacks }) => id === 'double_attack' && stacks > 0)
+            const hitCountBonus = getHitCountBonus(entry.statuses)
+            const doubleAttack = hitCountBonus > 0
             const before = runStore.getState()
-            const monsterHitCount = doubleAttack ? 2 : 1
-            for (let hit = 0; hit < monsterHitCount; hit += 1) {
-              damagePlayer(action.playerDamage, entry.statuses)
+            const monsterHitCount = 1 + hitCountBonus
+            const monsterActionCount = 1 + action.extraTurns
+            for (let hit = 0; hit < monsterHitCount * monsterActionCount; hit += 1) {
+              damagePlayer(action.playerBaseDamage, entry.statuses)
             }
-            action.playerStatuses.forEach((status) => applyCombatStatus('player', status.id, status.stacks, true))
+            action.playerBaseHitAttacks.forEach((attack) => {
+              const hitCount = (attack.hitCount + hitCountBonus) * monsterActionCount
+              for (let hit = 0; hit < hitCount; hit += 1) {
+                damagePlayer(attack.value, entry.statuses)
+              }
+            })
+            if (action.playerIndependentDamage) {
+              for (let actionIndex = 0; actionIndex < monsterActionCount; actionIndex += 1) {
+                damagePlayer(action.playerIndependentDamage, entry.statuses)
+              }
+            }
+            for (let actionIndex = 0; actionIndex < monsterActionCount; actionIndex += 1) {
+              action.playerStatuses.forEach((status) =>
+                applyCombatStatus('player', status, undefined, true))
+            }
             const after = runStore.getState()
             if (developerMode) {
               addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
             }
             playerDefeated = after.health <= 0
-            const selfAbsorbed = Math.min(entry.armor, action.selfDamage)
+            const selfBaseDamage = action.selfBaseDamage * monsterHitCount * monsterActionCount
+              + action.selfBaseHitAttacks.reduce((sum, attack) =>
+                sum + attack.value * (attack.hitCount + hitCountBonus) * monsterActionCount, 0)
+            const resolvedSelfDamage = selfBaseDamage
+              + action.selfIndependentDamage * monsterActionCount
+            const selfAbsorbed = Math.min(entry.armor, resolvedSelfDamage)
             const existingStatuses = doubleAttack
-              ? entry.statuses.map((status) => status.id === 'double_attack'
-                  ? { ...status, stacks: status.stacks - 1 }
-                  : status).filter(({ stacks }) => stacks > 0)
+              ? entry.statuses.filter(({ id }) => id !== 'double_attack')
               : entry.statuses
-            const statuses = action.selfStatuses.reduce(
-              (current, status) => addStatus(current, status.id, status.stacks, true),
-              existingStatuses,
-            )
+            let statuses = existingStatuses
+            for (let actionIndex = 0; actionIndex < monsterActionCount; actionIndex += 1) {
+              statuses = action.selfStatuses.reduce(
+                (current, status) => addStatusUpdate(current, status, true),
+                statuses,
+              )
+            }
             const resolvedEntry = {
               ...entry,
               currentHealth: Math.min(entry.health, Math.max(0,
-                entry.currentHealth - (action.selfDamage - selfAbsorbed)) + action.selfHealing),
+                entry.currentHealth - (resolvedSelfDamage - selfAbsorbed))
+                + action.selfHealing * monsterActionCount),
               armor: Math.max(0, entry.armor - selfAbsorbed)
-                + action.selfArmor
+                + action.selfArmor * monsterActionCount
                 + action.selfStatuses
                   .filter(({ id }) => id === 'ironclad')
-                  .reduce((sum, status) => sum + status.stacks, 0),
+                  .reduce((sum, status) =>
+                    sum + status.stacks * monsterActionCount, 0),
               statuses,
               turnPlan: { ...entry.turnPlan, runtime: triggered.runtime },
             }
@@ -314,7 +359,7 @@ export function BattleScreen({
             health: entry.currentHealth,
             armor: entry.armor,
             statuses: entry.statuses,
-            placedCount: board.placedCount,
+            placedBlockCount: board.placedCount,
           })
           const nextEntry = {
             ...entry,
@@ -354,7 +399,7 @@ export function BattleScreen({
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn])
+  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn])
 
   const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
@@ -417,6 +462,7 @@ export function BattleScreen({
         turn={turn}
         monster={{ ...displayMonster, intent }}
         placedCount={board.placedCount}
+        placementLimit={board.placementLimit}
         playerStatuses={combat.player.statuses}
       />
       <div className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
@@ -511,7 +557,7 @@ export function BattleScreen({
         <div><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.remainingCount ?? battlePiles.drawPile.length + battlePiles.hand.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
         <div className="battle-action-buttons">
           {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
-          <button className="end-turn" disabled={!board.placedCount || !livingCombatants.length || !machineState.matches('playerInput')} onClick={endTurn}>{machineState.matches('playerInput') ? '턴 종료' : '처리 중…'} <span>→</span></button>
+          <button className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={endTurn}>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'} <span>→</span></button>
         </div>
       </div>
       {openPile && <BattlePileModal

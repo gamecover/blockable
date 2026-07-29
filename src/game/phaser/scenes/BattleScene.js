@@ -85,6 +85,23 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  getPlacementLimit() {
+    const placedBlocks = this.pieces
+      .filter(({ placed }) => placed)
+      .map((piece) => ({
+        block: piece.block,
+        cells: getPlacedCells(
+          piece.block.cells,
+          piece.rotation,
+          piece.boardX,
+          piece.boardY,
+        ).map(([x, y]) => ({ x, y })),
+      }))
+    const bonus = resolveBlockEffects(placedBlocks).placementCountChanges
+      .reduce((sum, effect) => sum + Math.max(0, effect.value), 0)
+    return PLACEMENTS_PER_TURN + bonus
+  }
+
   preload() {
     Object.values(BLOCK_TEXTURES).forEach(({ key, url }) => this.load.image(key, url))
     this.load.image('battle-anvil', anvilTexture)
@@ -297,7 +314,10 @@ export class BattleScene extends Phaser.Scene {
     const anchor = getBlockAnchorOffset(boardLayout)
     const { column, row } = worldToGrid(piece.container.x - anchor.x, piece.container.y - anchor.y, BOARD_METRICS)
     const cells = getPlacedCells(piece.block.cells, piece.rotation, column, row)
-    const canAdd = canPlaceAnotherBlock(this.pieces.filter((item) => item.placed).length, PLACEMENTS_PER_TURN)
+    const canAdd = canPlaceAnotherBlock(
+      this.pieces.filter((item) => item.placed).length,
+      this.getPlacementLimit(),
+    )
     const valid = canAdd && canPlaceBlock({ cells, activeCellKeys: this.activeCellKeys, occupiedCellKeys: new Set(this.occupied.keys()) })
     return { column, row, cells, valid }
   }
@@ -369,7 +389,7 @@ export class BattleScene extends Phaser.Scene {
       unplacedPieces.map(({ block }) => block),
     )
     const placedCount = this.pieces.filter(({ placed }) => placed).length
-    if (!plan || placedCount + plan.assignments.length > PLACEMENTS_PER_TURN) return
+    if (!plan || placedCount + plan.assignments.length > this.getPlacementLimit()) return
 
     const worldX = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
     const worldY = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
@@ -487,6 +507,7 @@ export class BattleScene extends Phaser.Scene {
     })
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
+      placementLimit: this.getPlacementLimit(),
       occupiedCells: this.occupied.size,
       totalBoardCells: this.activeCellCount,
       placedBlocks,

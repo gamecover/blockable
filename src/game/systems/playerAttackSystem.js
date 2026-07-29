@@ -1,9 +1,9 @@
 import { getTargetSlotIds } from './combatSlotSystem.js'
 import {
-  addStatus,
+  addStatusUpdate,
+  calculateGeneralDamage,
   getBuffDamageBonus,
-  getDamageMultiplier,
-  getStatusStacks,
+  getHitCountBonus,
 } from './statusEffectSystem.js'
 
 const groupDamageEffects = (effects) => [...effects.reduce((groups, effect) => {
@@ -16,9 +16,11 @@ const groupDamageEffects = (effects) => [...effects.reduce((groups, effect) => {
 }, new Map()).values()]
 
 const applyDamage = (combatant, rawDamage, attackerStatuses) => {
-  const damage = Math.max(0, Math.floor(rawDamage
-    * getDamageMultiplier(attackerStatuses, 'outgoing')
-    * getDamageMultiplier(combatant.statuses, 'incoming')))
+  const damage = calculateGeneralDamage({
+    amount: rawDamage,
+    attackerStatuses,
+    defenderStatuses: combatant.statuses,
+  })
   const absorbed = Math.min(combatant.armor, damage)
   return {
     combatant: {
@@ -69,6 +71,8 @@ export const getPlayerTargetSlotIds = ({
   const damageEffects = [
     ...(effects.baseDamageEffects ?? []),
     ...(effects.independentDamageEffects ?? []),
+    ...(effects.statusDamageEffects ?? []),
+    ...(effects.statuses ?? []),
   ]
   return [...new Set(damageEffects.flatMap((effect) =>
     effect.range === 'all'
@@ -99,7 +103,7 @@ export const resolvePlayerAction = ({
       : effect)
   const independentGroups = groupDamageEffects(effects.independentDamageEffects ?? [])
   const hitCount = Math.max(1, 1
-    + getStatusStacks(playerStatuses, 'double_attack')
+    + getHitCountBonus(playerStatuses)
     + Number(effects.hitCountModifier ?? 0))
 
   let baseAttackCancelled = !initialTarget || initialTarget.currentHealth <= 0
@@ -145,18 +149,70 @@ export const resolvePlayerAction = ({
 
   const statusTarget = nextCombatants.find(({ slotId }) => slotId === selectedSlotId)
   if (!bossDefeated && statusTarget?.currentHealth > 0) {
-    nextCombatants = nextCombatants.map((entry) => entry.slotId === selectedSlotId
-      ? {
-          ...entry,
-          armor: entry.armor + effects.statuses
-            .filter(({ id }) => id === 'ironclad')
-            .reduce((sum, status) => sum + status.stacks, 0),
-          statuses: effects.statuses.reduce(
-            (statuses, status) => addStatus(statuses, status.id, status.stacks, true),
-            entry.statuses,
-          ),
-        }
-      : entry)
+    const statusDamageEffects = effects.statusDamageEffects ?? []
+    const statusDamageBySlot = new Map()
+    statusDamageEffects.forEach((status) => {
+      const livingSlotIds = nextCombatants
+        .filter(({ currentHealth }) => currentHealth > 0)
+        .map(({ slotId }) => slotId)
+      const targetSlotIds = status.range === 'all'
+        ? livingSlotIds
+        : getTargetSlotIds({
+            centerSlotId: selectedSlotId,
+            range: status.range ?? 'single',
+            distance: status.distance ?? 0,
+            battleType,
+            occupiedSlotIds: livingSlotIds,
+          })
+      targetSlotIds.forEach((slotId) => {
+        const statuses = statusDamageBySlot.get(slotId) ?? []
+        statusDamageBySlot.set(slotId, [...statuses, status])
+      })
+    })
+    const commonStatusBySlot = new Map()
+    ;(effects.statuses ?? []).forEach((status) => {
+      const livingSlotIds = nextCombatants
+        .filter(({ currentHealth }) => currentHealth > 0)
+        .map(({ slotId }) => slotId)
+      const targetSlotIds = status.range === 'all'
+        ? livingSlotIds
+        : getTargetSlotIds({
+            centerSlotId: selectedSlotId,
+            range: status.range ?? 'single',
+            distance: status.distance ?? 0,
+            battleType,
+            occupiedSlotIds: livingSlotIds,
+          })
+      targetSlotIds.forEach((slotId) => {
+        const statuses = commonStatusBySlot.get(slotId) ?? []
+        commonStatusBySlot.set(slotId, [...statuses, status])
+      })
+    })
+    nextCombatants = nextCombatants.map((entry) => {
+      const commonStatuses = commonStatusBySlot.get(entry.slotId) ?? []
+      return commonStatuses.length
+        ? {
+            ...entry,
+            armor: entry.armor + commonStatuses
+              .filter(({ id }) => id === 'ironclad')
+              .reduce((sum, status) => sum + status.stacks, 0),
+            statuses: commonStatuses.reduce(
+              (statuses, status) => addStatusUpdate(statuses, status, true),
+              entry.statuses,
+            ),
+          }
+        : entry
+    }).map((entry) => {
+      const statusDamage = statusDamageBySlot.get(entry.slotId) ?? []
+      if (!statusDamage.length) return entry
+      return {
+        ...entry,
+        statuses: statusDamage.reduce(
+          (statuses, status) => addStatusUpdate(statuses, status, true),
+          entry.statuses,
+        ),
+      }
+    })
   }
 
   return {
