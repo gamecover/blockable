@@ -1,6 +1,7 @@
 import {
   BLOCK_RULE_INDEX,
   BLOCK_RULES,
+  blockMatchesRecipeTemplate,
   cellKey,
   normalizeCells,
   transformCells,
@@ -16,7 +17,7 @@ const sameCellShape = (left, right) => {
 const slotAcceptsBlock = (instance, block) => {
   const match = instance.match ?? { kind: 'exact_block' }
   switch (match.kind) {
-    case 'exact_block': return block.definitionId === instance.block_id
+    case 'exact_block': return blockMatchesRecipeTemplate(instance.block_id, block)
     case 'any_block': return true
     case 'type': return block.typeId === match.type_id
     case 'color': return block.color === match.color_id
@@ -104,4 +105,3 @@ export const getQuickCombinationPlan = (combinationId, blocks) => {
   }
   return assign(0, new Set(), [])
 }
-

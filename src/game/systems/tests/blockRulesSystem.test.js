@@ -9,14 +9,17 @@ import {
 import {
   BLOCK_RULES,
   BLOCK_RULE_VALIDATION,
+  BlockRulesRuntimeError,
   getRuleBlock,
+  parseBlockEffectTarget,
+  parseBlockRules,
   transformCells,
   validateBlockRules,
 } from '../blockRulesSystem.js'
 
 describe('official block rules', () => {
-  it('loads and validates schema 1.2.0 from the beta editor-managed JSON', () => {
-    expect(BLOCK_RULES.schema_version).toBe('1.2.0')
+  it('runtime-parses and validates the fixed Designer JSON path', () => {
+    expect(BLOCK_RULES.schema_version).toBe('1.1.0')
     expect(BLOCK_RULE_VALIDATION.valid).toBe(true)
     expect(validateBlockRules().errors).toEqual([])
     expect({
@@ -29,19 +32,41 @@ describe('official block rules', () => {
     }).toEqual({
       colors: 7,
       blockTypes: 7,
-      effects: 7,
+      effects: 5,
       blocks: 28,
       combinations: 45,
-      synergies: 4,
+      synergies: 0,
     })
-    expect(BLOCK_RULE_VALIDATION.warnings).toEqual(expect.arrayContaining([
-      expect.stringContaining('slow'),
-      expect.stringContaining('freeze'),
-      expect.stringContaining('entangle'),
-      expect.stringContaining('reversal'),
-      expect.stringContaining('posion'),
-    ]))
     expect(getRuleBlock('s001').display_name).toBe('강철_I')
+  })
+
+  it('reports the fixed source path and JSON parser cause for invalid runtime data', () => {
+    expect(() => parseBlockRules('{"blocks": [}')).toThrow(BlockRulesRuntimeError)
+    expect(() => parseBlockRules('{"blocks": [}')).toThrow(
+      expect.objectContaining({
+        stage: 'PARSE',
+        sourcePath: 'docs/references/designs/blockable_block_design.json',
+      }),
+    )
+  })
+
+  it('rejects a custom effect variable without a runtime handler and reports its location', () => {
+    const invalidRules = structuredClone(BLOCK_RULES)
+    invalidRules.blocks[0].effects[0].parameters.id = 'CUSTOM_DAMAGE_RULE'
+    const result = validateBlockRules(invalidRules)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContain(
+      'blocks.s001.effects[0].parameters.id: 런타임 처리기가 없는 사용자 정의 변수 CUSTOM_DAMAGE_RULE',
+    )
+  })
+
+  it('parses the documented self, directional, and all target arguments', () => {
+    expect(parseBlockEffectTarget('self')).toEqual({ target: 'self', range: 'single', distance: 0 })
+    expect(parseBlockEffectTarget('L1')).toEqual({ target: 'enemy', range: 'left', distance: 1 })
+    expect(parseBlockEffectTarget('R2')).toEqual({ target: 'enemy', range: 'right', distance: 2 })
+    expect(parseBlockEffectTarget('B1')).toEqual({ target: 'enemy', range: 'both', distance: 1 })
+    expect(parseBlockEffectTarget('all')).toEqual({ target: 'allEnemies', range: 'all', distance: 0 })
   })
 
   it('creates twelve fixed steel blocks and all JSON-defined special starting choices', () => {

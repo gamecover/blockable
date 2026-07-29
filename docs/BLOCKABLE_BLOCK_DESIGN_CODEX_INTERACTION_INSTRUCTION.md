@@ -510,6 +510,81 @@ type BlockableRules = {
 `parameters`에서 읽는다. 버프 효과는 버프 내부 ID를 로직에 사용하고 한글 버프명은
 표시에만 사용한다.
 
+### 17.1 공통 전투 효과 `type` 계약
+
+Designer와 본 게임이 공통 효과 구조를 직접 사용하는 경우 효과 데이터는 다음
+필드를 보존한다.
+
+```text
+effect_id
+effect_name
+description
+target
+value
+type
+parameters
+├─ id
+├─ duration
+└─ intensify
+```
+
+`type`은 처리 계열, `parameters.id`는 그 계열에서 적용할 구체적인 대상,
+`value`는 실제 계산값이다. `duration`은 지속 기간, `intensify`는 상태의 단계나
+추가 스택 수다. 사용하지 않는 매개변수는 `id: "NONE"`, `duration: 0`,
+`intensify: 0`으로 저장한다.
+
+전투 계산식과 직접 연결되는 `type`은 다음과 같다.
+
+| `type` 또는 상태 | 계산 연결 | 적용 규칙 |
+|---|---:|---|
+| `BASE_DAMAGE` | `B` | 참여 효과의 `value`를 기초 공격력에 합산 |
+| `BASE_HIT_COUNT` | `H` | 이번 행동의 `H`에 `value`를 즉시 합산 |
+| `INDEPENDENT_DAMAGE` | `A` | 기본 공격 완료 뒤 별도 공격으로 실행 |
+| `BUFF + DAMAGE_BONUS` | `S → P` | 자신 상태 반영 후 버프 데미지 추가 값 계산 |
+| `BUFF + HIT_COUNT` | `S → H` | 자신 상태 반영 후 이후 행동의 공격 횟수 계산 |
+| `BUFF + ATTACK_MULTIPLIER` | `S → M` | 자신 상태 반영 후 공격력 배율 계산 |
+| `DEBUFF + ATTACK_REDUCTION` | `C → D` | 상대 상태 반영 후 공격력 감쇄 계수 계산 |
+| `DEBUFF + DAMAGE_TAKEN_INCREASE` | `C → W` | 실제 피격 대상의 받는 피해 증가 계수 계산 |
+
+`BASE_HIT_COUNT`는 `BUFF + HIT_COUNT`와 의미와 적용 시점이 다르다.
+
+```text
+H = baseHitCount
+  + Σ(BASE_HIT_COUNT.value)
+  + Σ(이미 적용 중인 BUFF + HIT_COUNT 증감치)
+```
+
+- `BASE_HIT_COUNT`는 조합식이나 시너지가 현재 행동에 즉시 연타를 추가할 때
+  사용한다.
+- `BASE_HIT_COUNT`는 `S`에 등록하거나 런타임 상태로 저장하지 않는다.
+- `BUFF + HIT_COUNT`는 공격 후 `S`에 등록되므로 상태가 반영된 이후 행동부터
+  `H` 계산에 참여한다.
+- Designer는 두 효과를 하나로 합치거나 표시 이름을 근거로 서로 변환하지 않는다.
+- 본 게임은 `B`, `P`, `H`, `A`, `M`, `D`, `W` 계산을 끝낸 뒤 기본 공격을
+  `H`회 개별 실행하고, 이후 `S`와 `C`를 갱신한다.
+
+`BASE_HIT_COUNT`의 표준 입력값은 다음과 같다.
+
+```json
+{
+  "effect_id": "current_action_hit_count_up_01",
+  "effect_name": "이번 행동 연타 증가",
+  "description": "이번 행동의 기본 공격 횟수를 1회 증가시킨다.",
+  "target": "self",
+  "value": 1,
+  "type": "BASE_HIT_COUNT",
+  "parameters": {
+    "id": "CURRENT_ACTION",
+    "duration": 0,
+    "intensify": 0
+  }
+}
+```
+
+Designer 효과 편집기는 `BASE_HIT_COUNT`를 허용 `type` 목록에 포함하고,
+`value`를 정수로 입력받는다. `parameters.id`는 `CURRENT_ACTION`으로 고정하며
+`duration`과 `intensify`가 `0`이 아니면 저장 오류로 처리한다.
+
 ## 18. 최소 로더 검증
 
 게임 로더는 적어도 다음 항목을 검사한다.
@@ -519,6 +594,8 @@ type BlockableRules = {
 - 모든 `block.type_id`가 존재하는 Type을 참조하는가?
 - 모든 색상 참조가 존재하는가?
 - 모든 `effect_id`가 정의되어 있고 게임 handler가 지원하는가?
+- `BASE_HIT_COUNT`가 `parameters.id: "CURRENT_ACTION"`,
+  `duration: 0`, `intensify: 0`을 사용하는가?
 - 모든 `combination.instances[].block_id`가 존재하는가?
 - 조합식 인스턴스의 점유 셀이 겹치지 않는가?
 - 회전 값과 좌표 값이 지원 범위와 정수 조건을 만족하는가?

@@ -4,6 +4,11 @@ import {
   createMonsterBehavior,
   createMonsterEncounter,
   getSpawnableMonsters,
+  MONSTER_DESIGN_SOURCE_PATH,
+  MonsterDesignRuntimeError,
+  parseMonsterDesign,
+  validateMonsterDesign,
+  monsterDesign,
   monsterDesignDiagnostics,
   resolveMonsterAbility,
   describeMonsterAbility,
@@ -11,48 +16,63 @@ import {
 } from '../monsterDesignSystem.js'
 
 describe('monster design integration', () => {
-  it('난이도와 층 조건으로 출현 몬스터를 선택한다', () => {
-    const ids = getSpawnableMonsters({ floor: 1, difficultyTier: 1, gradeId: 'normal' })
+  it('고정 경로의 런타임 JSON을 새 스키마로 읽는다', () => {
+    expect(MONSTER_DESIGN_SOURCE_PATH)
+      .toBe('docs/references/designs/blockable_monster_design.json')
+    expect(monsterDesign.schema_version).toBe('1.0.0')
+    expect(monsterDesign.data_type).toBe('blockable_monster_design')
+    expect(monsterDesign.monsters).toHaveLength(13)
+    expect(monsterDesignDiagnostics.errors).toEqual([])
+  })
+
+  it('던전과 층 조건으로 출현 몬스터를 선택한다', () => {
+    const ids = getSpawnableMonsters({ floor: 1, dungeonId: 'all', gradeId: 'normal' })
       .map(({ id }) => id)
     expect(ids).toContain('ember_slime')
     expect(ids).not.toContain('explosive_soul')
   })
 
-  it('등록된 몬스터 이미지 resource ID를 실제 에셋 URL로 연결한다', () => {
-    const slime = getSpawnableMonsters({ floor: 1, difficultyTier: 1, gradeId: 'normal' })
+  it('monster_id를 실제 에셋 URL에 연결하고 미등록 에셋은 대체 표시로 남긴다', () => {
+    const slime = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
       .find(({ id }) => id === 'ember_slime')
-    expect(slime.image_resource_id).toBe('ember_slime_alpha.png')
     expect(createMonsterEncounter(slime).imageUrl).toContain('ember_slime_alpha.png')
-    const knight = getSpawnableMonsters({ floor: 1, difficultyTier: 1, gradeId: 'boss' })
+    const knight = getSpawnableMonsters({ floor: 1, gradeId: 'boss' })
       .find(({ id }) => id === 'seething_furnace_knight')
-    expect(knight.image_resource_id).toBe('seething_furnace_knight.png')
     expect(createMonsterEncounter(knight).imageUrl).toContain('seething_furnace_knight.png')
+    const missingAssetMonster = monsterDesign.monsters.find(({ id }) => id === 'hanging_ashes')
+    expect(createMonsterEncounter(missingAssetMonster).imageUrl).toBeNull()
   })
 
   it('strict_sequence의 JSON 순서대로 능력을 고른다', () => {
-    const monster = getSpawnableMonsters({ floor: 1, difficultyTier: 1, gradeId: 'normal' })
+    const monster = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
       .find(({ id }) => id === 'ember_slime')
     const first = selectMonsterAbility(monster, createMonsterBehavior(monster), { turn: 1, monster_hp_ratio: 1 })
     const second = selectMonsterAbility(monster, first.runtime, { turn: 2, monster_hp_ratio: 1 })
     expect(first.ability.id).toBe('basic_attack')
-    expect(resolveMonsterAbility(first.ability).playerDamage).toBe(10)
+    expect(resolveMonsterAbility(first.ability).playerDamage).toBe(5)
     expect(second.ability.id).toBe('a0001')
   })
 
-  it('JSON 효과를 기존 피해·방어·회복·상태 변수로 합산한다', () => {
+  it('공통 effect type과 parameters.id를 기존 전투 변수로 연결한다', () => {
     const result = resolveMonsterAbility({
       effects: [
-        { effect_id: 'deal_damage', order: 0, parameters: { target: 'player', amount: 5 } },
-        { effect_id: 'gain_block', order: 1, parameters: { target: 'self', amount: 10 } },
-        { effect_id: 'heal', order: 2, parameters: { target: 'self', amount: 7 } },
-        { effect_id: 'apply_status', order: 3, parameters: { target: 'player', status_id: 'bleed', stacks: 2 } },
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 5, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'BLOCK', target: 'self', value: 10, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'RECOVERY', target: 'self', value: 7, order: 2, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'STATUS_DAMAGE', target: 'SELECTED', value: 2, order: 3, parameters: { id: 'BLEEDING', duration: 2, intensify: 2 } },
       ],
     })
     expect(result).toMatchObject({
       playerDamage: 5,
       selfArmor: 10,
       selfHealing: 7,
-      playerStatuses: [{ id: 'bleeding', sourceId: 'bleed', stacks: 2 }],
+      playerStatuses: [{
+        id: 'bleeding',
+        sourceId: 'BLEEDING',
+        stacks: 2,
+        value: 2,
+        duration: 2,
+      }],
     })
   })
 
@@ -60,9 +80,9 @@ describe('monster design integration', () => {
     const description = describeMonsterAbility({
       display_name: '복합 행동',
       effects: [
-        { effect_id: 'deal_damage', order: 0, parameters: { target: 'player', amount: 9 } },
-        { effect_id: 'gain_block', order: 1, parameters: { target: 'self', amount: 6 } },
-        { effect_id: 'heal', order: 2, parameters: { target: 'self', amount: 4 } },
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 9, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'BLOCK', target: 'self', value: 6, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'RECOVERY', target: 'self', value: 4, order: 2, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
       ],
     })
 
@@ -73,14 +93,24 @@ describe('monster design integration', () => {
     ])
   })
 
-  it('오탈자 상태와 스키마 target 충돌을 숨기지 않는다', () => {
-    expect(monsterDesignDiagnostics.errors).toEqual([])
-    expect(monsterDesignDiagnostics.warnings.some((warning) => warning.includes('injry'))).toBe(true)
-    expect(monsterDesignDiagnostics.warnings.some((warning) => warning.includes('target 옵션에 없는 self'))).toBe(true)
+  it('에셋이 없는 monster_id를 정확한 경로 경고로 보고한다', () => {
+    expect(monsterDesignDiagnostics.warnings)
+      .toContain('monsters[4].monster_id: 연결된 이미지 에셋 없음 (hanging_ashes)')
+    expect(monsterDesignDiagnostics.warnings).toHaveLength(6)
   })
 
-  it('ability_used 즉시 트리거를 JSON 조건에 따라 반환한다', () => {
-    const monster = getSpawnableMonsters({ floor: 2, difficultyTier: 2, gradeId: 'normal' })
+  it('JSON 문법과 미지원 사용자 정의 변수를 원인과 함께 실패시킨다', () => {
+    expect(() => parseMonsterDesign('{')).toThrow(MonsterDesignRuntimeError)
+    const invalid = structuredClone(monsterDesign)
+    invalid.monsters[0].skills[0].effects[0].parameters.id = 'CUSTOM_DAMAGE'
+    const diagnostics = validateMonsterDesign(invalid)
+    expect(diagnostics.errors.some((error) =>
+      error.includes('monsters[0].skills[0].effects[0].parameters.id')
+      && error.includes('CUSTOM_DAMAGE'))).toBe(true)
+  })
+
+  it('기존 화면 이벤트 별칭을 새 SKILL_USED 트리거에 연결한다', () => {
+    const monster = getSpawnableMonsters({ floor: 2, gradeId: 'normal' })
       .find(({ id }) => id === 'explosive_soul')
     const result = applyMonsterEvent(
       monster,

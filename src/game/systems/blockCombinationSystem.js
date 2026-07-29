@@ -1,4 +1,12 @@
-import { BLOCK_RULE_INDEX, BLOCK_RULES, cellKey, normalizeCells, transformCells } from './blockRulesSystem.js'
+import {
+  BLOCK_RULE_INDEX,
+  BLOCK_RULES,
+  STANDARD_BLOCK_TYPE_IDS,
+  blockMatchesRecipeTemplate,
+  cellKey,
+  normalizeCells,
+  transformCells,
+} from './blockRulesSystem.js'
 
 const sameCells = (left, right) =>
   left.size === right.size && [...left].every((key) => right.has(key))
@@ -15,7 +23,7 @@ const combinationsOf = (items, size, start = 0, selected = []) => {
 const slotAcceptsBlock = (slot, placedBlock) => {
   const ruleBlock = placedBlock.block
   switch (slot.match?.kind ?? 'exact_block') {
-    case 'exact_block': return ruleBlock.definitionId === slot.block_id
+    case 'exact_block': return blockMatchesRecipeTemplate(slot.block_id, ruleBlock)
     case 'any_block': return true
     case 'type': return ruleBlock.typeId === slot.match.type_id
     case 'color': return ruleBlock.color === slot.match.color_id
@@ -70,7 +78,22 @@ const matchesVariant = (placedBlocks, slots) => {
   return assignSlot(0, new Set())
 }
 
-export const findMatchingCombinations = (placedBlocks) => BLOCK_RULES.combinations.flatMap((combination) => {
+const getRecipeFamilyId = (id) => id.replace(/_(steel|fire|water|nature)$/, '')
+
+const selectColorVariant = (matches) => {
+  const standardColors = matches[0].participatingBlocks
+    .map(({ block }) => block)
+    .filter(({ typeId }) => STANDARD_BLOCK_TYPE_IDS.includes(typeId))
+    .map(({ color }) => color)
+  const colorIds = new Set(standardColors)
+  const preferredColor = colorIds.size === 1 ? standardColors[0] : 'steel'
+  return matches.find(({ combination }) => combination.id.endsWith(`_${preferredColor}`))
+    ?? matches.find(({ combination }) => combination.id.endsWith('_steel'))
+    ?? matches[0]
+}
+
+export const findMatchingCombinations = (placedBlocks) => {
+  const matches = BLOCK_RULES.combinations.flatMap((combination) => {
   if (combination.instances.length > placedBlocks.length) return []
   const rotations = combination.match_options.allow_recipe_rotation ? [0, 90, 180, 270] : [0]
   const mirrors = combination.match_options.allow_recipe_mirroring ? [false, true] : [false]
@@ -85,7 +108,18 @@ export const findMatchingCombinations = (placedBlocks) => BLOCK_RULES.combinatio
     }
   }
   return []
-})
+  })
+  const grouped = new Map()
+  matches.forEach((match) => {
+    const participantKey = match.participatingBlocks
+      .map(({ block }) => block.id)
+      .sort()
+      .join('|')
+    const key = `${getRecipeFamilyId(match.combination.id)}:${participantKey}`
+    grouped.set(key, [...(grouped.get(key) ?? []), match])
+  })
+  return [...grouped.values()].map(selectColorVariant)
+}
 
 export const conditionMatches = (condition, blocks) => {
   const parameters = condition.parameters ?? {}

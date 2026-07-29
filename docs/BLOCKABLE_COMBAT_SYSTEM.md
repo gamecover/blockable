@@ -255,7 +255,9 @@ A 독립 공격 피해량 = A × M × D × W
 ```text
 P = Σ(currentBuffDamageBonuses)
 
-H = baseHitCount + Σ(hitCountModifiers)
+H = baseHitCount
+  + Σ(currentActionBaseHitCountValues)
+  + Σ(hitCountModifiers)
 
 M = Π(attackerAttackMultipliers)
 
@@ -266,6 +268,8 @@ W = 1 + Σ(actualTargetDamageTakenIncreaseRates)
 
 - 분노 1스택은 현재 버프로부터 계산되는 `P`에 데미지 추가 값 `1`을 제공한다.
 - `P`는 버프 ID나 스택 그 자체가 아니라, 현재 버프로부터 이미 계산된 데미지 추가 수치다.
+- `currentActionBaseHitCountValues`는 이번 행동에 포함된 `BASE_HIT_COUNT.value`의 합이다.
+- `BASE_HIT_COUNT`는 이번 행동의 `H`를 즉시 변경하며, 공격 후 `S`에 등록되어 이후 행동부터 적용되는 `BUFF + HIT_COUNT`와 구분한다.
 - 기본 공격은 1타 피해량을 `H`회 개별 실행한다. 각 타격마다 방어도, 체력, 반응, 사망과 연쇄 효과를 처리한다.
 - `A`는 `H`에 포함되는 추가 타격이나 추가 턴 피해가 아니다.
 - `A`는 기본 공격의 모든 타격과 그에 따른 처리가 끝난 뒤 실행하는 독립적인 공격이다.
@@ -535,12 +539,16 @@ statusDecayEligible
 
 ### 7.4 공통 효과 데이터 구조
 
-모든 전투 효과는 `effect_id`, `effect_name`, `target`, `value`, `type`의 공통 구조로 관리한다. `target`은 자신·좌·우·선택 대상·전체 등 적용 대상을, `value`는 피해·방어·회복·스택 또는 자원 증감 수치를 나타낸다. `type`은 효과의 실제 실행 방식을 결정한다.
+모든 전투 효과는 `effect_id`, `effect_name`, `description`, `target`, `value`,
+`type`, `parameters`의 공통 구조로 관리한다. `target`은 자신·좌·우·선택
+대상·전체 등 적용 대상을, `value`는 피해·방어·회복·스택 또는 자원 증감
+수치를 나타낸다. `type`은 효과의 실제 실행 방식을 결정한다.
 
 권장 `type`:
 
 ```text
 BASE_DAMAGE
+BASE_HIT_COUNT
 INDEPENDENT_DAMAGE
 BLOCK
 RECOVERY
@@ -555,10 +563,47 @@ PLACEMENT_COUNT
 ```
 
 - `BASE_DAMAGE`는 `B`와 `P`를 사용하는 기본 공격이다.
+- `BASE_HIT_COUNT`는 이번 행동의 기본 공격 횟수 `H`에 `value`를 즉시 합산한다.
+  이 효과는 상태로 저장하지 않으며 `parameters.id`는 `CURRENT_ACTION`,
+  `duration`과 `intensify`는 `0`을 사용한다.
 - `INDEPENDENT_DAMAGE`는 `A`를 사용하는 독립 공격이다.
 - `EXTRA_TURN`은 현재 행동 처리가 끝난 뒤 추가 턴을 예약한다.
 - `DECK_CAPACITY`, `DRAW`, `PLACEMENT_COUNT`는 각각 덱 한도, 드로우 수, 턴 배치 횟수를 증감한다.
-- 특정 블록을 덱에 추가하는 효과는 숫자 `value`와 별도로 선택 필드 `reference_id`에 블록 ID를 기록한다.
+- 특정 블록을 덱에 추가하는 효과는 숫자 `value`와 별도로
+  `parameters.id`에 해당 블록 ID를 기록한다. `reference_id`는 사용하지 않는다.
+
+`H`의 생성 규칙은 다음과 같다.
+
+```text
+H = baseHitCount
+  + Σ(BASE_HIT_COUNT.value)
+  + Σ(기존 BUFF + HIT_COUNT 상태의 공격 횟수 증감치)
+```
+
+`BASE_HIT_COUNT`와 `BUFF + HIT_COUNT`는 적용 시점이 다르다.
+
+- `BASE_HIT_COUNT`: 조합·시너지 등 이번 행동의 연타 횟수를 공격 실행 전에 즉시
+  변경한다.
+- `BUFF + HIT_COUNT`: `S` 자신 상태 갱신에 등록하며, 상태가 실제로 반영된 이후
+  행동부터 `H` 계산에 참여한다.
+
+예:
+
+```json
+{
+  "effect_id": "current_action_hit_count_up_01",
+  "effect_name": "이번 행동 연타 증가",
+  "description": "이번 행동의 기본 공격 횟수를 1회 증가시킨다.",
+  "target": "self",
+  "value": 1,
+  "type": "BASE_HIT_COUNT",
+  "parameters": {
+    "id": "CURRENT_ACTION",
+    "duration": 0,
+    "intensify": 0
+  }
+}
+```
 
 ---
 
@@ -1460,3 +1505,5 @@ React와 Phaser 양쪽에서 같은 피해 계산을 다시 수행하지 않는�
 8. 현재는 몬스터 이미지 한 장만 사용하되 `visuals`와 `animation_id` 확장 구조를 유지한다.
 9. 애니메이션 실패나 리소스 누락이 전투 로직을 중단시키지 않게 한다.
 10. React, Phaser, 전투 엔진 중 전투 결과의 단일 기준은 전투 엔진으로 유지한다.
+
+

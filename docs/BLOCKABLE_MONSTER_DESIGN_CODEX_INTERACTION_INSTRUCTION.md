@@ -1,927 +1,915 @@
-# Blockable 몬스터 JSON 게임 적용 지침 - Codex용
+# Blockable Monster Designer → 본 게임 Codex 상호작용 지침
 
-분석 원본: `examples/blockable_monster_design.json`
-게임 적용 대상: `docs/references/designs/blockable_monster_design.json`
-현재 스키마: `1.3.0`
-Designer 프로그램 버전: `v1.0.5`
-원본 확인일: `2026-07-27`
-원본 SHA-256: `bbc56e4955a2b9936dc9330f2eb7f071c9a7efaa2d461ec8c07a1105fb20d340`
+문서 버전: `1.0`  
+대상 데이터: `blockable_monster_design.json`  
+대상 프로그램: React + Phaser 기반 Blockable 본 게임
 
-이 문서는 다른 Codex가 Blockable 게임 프로젝트에서 Monster Designer의 JSON을
-파싱하고 몬스터 출현, 어빌리티, 패턴, 트리거와 페이즈 전환을 구현할 때 따라야 할
-최소 계약이다.
+이 문서는 Monster Designer가 출력한 JSON을 Blockable 본 게임의 Codex에 전달하고,
+몬스터 로더·등장 판정·스킬·행동 상태 머신을 구현할 때 따라야 할 데이터 계약이다.
 
-Designer 저장소와 Blockable 게임 저장소는 서로 다른 프로젝트일 수 있다. 경로는
-각 저장소 루트를 기준으로 해석하며, 게임 저장소의 `AGENTS.md`가 다른 위치나 절차를
-지정하면 해당 지침을 우선한다.
+---
 
-## 1. Codex가 가장 먼저 할 일
+## 1. 본 게임 Codex에 처음 전달할 명령문
 
-1. 게임 저장소의 `AGENTS.md`와 필수 문서를 모두 읽는다.
-2. 이 문서와 적용 대상 `blockable_monster_design.json`을 끝까지 읽는다.
-3. 대상 JSON의 실제 `schema_version`, `invalid`, 배열과 ID를 직접 확인한다.
-4. `schema_version`이 게임 로더가 지원하는 버전인지 검사한다.
-5. 최상위 `invalid === true`이면 게임 실행용 데이터로 거부한다.
-6. 사용할 몬스터의 `invalid === true`도 명확한 오류로 거부한다.
-7. 몬스터 수치와 패턴을 게임 코드에 중복 하드코딩하지 않는다.
-8. JSON을 한 번 로드하고 공통 정의와 몬스터를 ID 기반 Map으로 인덱싱한다.
-9. 표시 이름이나 설명을 실행 규칙으로 해석하지 않는다.
-10. 원본 JSON은 명시적인 데이터 수정 요청이 없으면 변경하지 않는다.
-
-게임 적용 작업을 시작하는 Codex에는 다음처럼 요청할 수 있다.
+아래 문장을 Monster Designer의 JSON과 이 문서와 함께 전달한다.
 
 ```text
-게임 저장소의 AGENTS.md와 필수 문서를 먼저 읽으세요.
-docs/references/designs/blockable_monster_design.json과
-BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md를 읽고 몬스터
-데이터 로더를 구현하세요.
+이 작업은 Blockable Monster Designer에서 출력한 몬스터 JSON을 Blockable 본
+게임에 적용하는 작업입니다.
 
-schema_version 1.3.0과 invalid 상태를 검사하고, 공통 정의와 monsters를 ID Map으로
-인덱싱하세요. 출현 조건, difficulty_tier, 층별 stats, 어빌리티 효과, Intent,
-strict/random 패턴, fallback, 트리거 우선순위와 페이즈 전환을 JSON 기준으로
-처리하세요. display_name이나 description을 실행 로직으로 해석하지 마세요.
-invalid 데이터와 알 수 없는 참조는 조용히 무시하지 말고 경로가 포함된 오류로
-보고하세요. 관련 단위 테스트를 작성하고 전체 테스트 결과를 보고하세요.
+먼저 본 게임 저장소 루트의 AGENTS.md와 필수 문서를 모두 읽으세요. 그 다음
+BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md와 전달된
+blockable_monster_design.json 전체를 읽으세요.
+
+문서에 적힌 예시 수치보다 전달된 JSON의 실제 schema_version, ID, 배열과 값을
+우선하세요. 단, JSON이 이 지침의 스키마와 다르면 임의로 추측하지 말고 차이를
+보고하세요.
+
+몬스터는 hp만 고정 능력치로 가집니다. 기본 공격을 포함한 모든 행동은 skills[]의
+일반 스킬이며 실제 결과는 공통 effects[]로 실행합니다. appearance_condition[]은
+OR 조건이고 각 항목 안의 던전과 층 조건은 AND입니다.
+
+behavior.initial_phase_id와 phases[]를 상태 머신으로 구현하세요. 현재 반복 모드는
+STRICT_SEQUENCE이며 step은 SKILL 또는 RANDOM_CHOICE입니다. 현재 페이즈의
+triggers[]만 이벤트별로 평가하고 priority, once, cooldown과 횟수 제한을
+보존하세요.
+
+표시 이름이나 description을 실행 키로 사용하지 마세요. 모든 참조는 ID로
+해결하고, 중복 ID·알 수 없는 참조·지원하지 않는 effect type·invalid 데이터를
+조용히 무시하지 말고 필드 경로가 포함된 오류로 보고하세요.
+
+몬스터 수치나 패턴을 게임 코드에 중복 하드코딩하지 마세요. 로더·검증기·등장
+판정·행동 상태 머신·효과 dispatch를 분리하고 관련 단위 테스트와 전체 테스트를
+실행한 뒤 결과를 보고하세요.
+
+Git 커밋과 푸시는 별도 허가 없이는 수행하지 마세요.
 ```
 
-## 2. 파일과 버전 계약
+---
 
-Designer의 기본 저장 파일명:
+## 2. 전달 세트
+
+Monster Designer에서 본 게임으로 전달할 파일은 다음 두 개다.
 
 ```text
 blockable_monster_design.json
+BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md
 ```
 
-게임 저장소의 권장 위치:
+권장 본 게임 저장 위치:
 
 ```text
 docs/references/designs/blockable_monster_design.json
+docs/references/designs/BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md
 ```
 
-현재 최상위 구조:
+대상 저장소의 `AGENTS.md`가 다른 경로를 지정하면 그 지침을 따른다.
+
+---
+
+## 3. 우선순위
+
+적용 시 우선순위는 다음과 같다.
+
+1. 본 게임 저장소의 `AGENTS.md`
+2. 전달된 `blockable_monster_design.json`
+3. 이 상호작용 지침
+4. Designer 기획안의 예시
+
+JSON과 이 문서의 실제 ID·수치·개수가 다르면 JSON을 기준으로 다시 집계한다.
+하지만 JSON 구조나 의미가 이 문서와 충돌하면 자동 보정하지 않고 사용자에게
+불일치를 보고한다.
+
+---
+
+## 4. 파일과 버전 계약
+
+최상위 구조:
 
 ```json
 {
-  "schema_version": "1.3.0",
-  "invalid": false,
-  "metadata": {},
-  "monster_grades": [],
-  "effect_definitions": [],
-  "condition_definitions": [],
-  "event_definitions": [],
-  "intent_definitions": [],
-  "trigger_response_definitions": [],
+  "schema_version": "1.0.0",
+  "data_type": "blockable_monster_design",
+  "metadata": {
+    "project_name": "Blockable",
+    "designer_name": "Blockable Monster Designer",
+    "updated_at": "2026-07-29T00:00:00+09:00",
+    "validation_status": "valid"
+  },
   "monsters": []
 }
 ```
 
-프로그램 버전, 기획 문서 버전과 JSON 스키마 버전은 서로 다른 체계다. 게임 로더는
-Designer 프로그램 버전이 아니라 JSON의 `schema_version`을 판정한다.
+본 게임 로더는 다음을 먼저 검사한다.
 
-구버전 데이터 마이그레이션을 게임 로더가 임의로 추측하지 않는다. Designer는 기존
-단일 `tier`를 `difficulty_tier.min/max`로 변환하지만, 게임은 적용 대상 파일의 실제
-필드를 기준으로 읽는다.
+1. JSON 파싱 성공
+2. `schema_version` 지원 여부
+3. `data_type === "blockable_monster_design"`
+4. `metadata.validation_status !== "invalid"`
+5. `monsters`가 배열인지 여부
 
-## 3. 현재 저장 파일 상태
+지원하지 않는 상위 스키마를 부분적으로 추측해 실행하지 않는다.
 
-이 절은 `examples/blockable_monster_design.json`을 직접 파싱해 작성했다. 원본의
-SHA-256이 문서 상단 값과 달라지면 개수, ID, 몬스터 목록과 데이터 주의사항을 다시
-집계해야 한다.
+---
 
-| 항목 | 개수 |
-|---|---:|
-| 몬스터 등급 | 3 |
-| 효과 정의 | 4 |
-| 조건 정의 | 5 |
-| 이벤트 정의 | 4 |
-| Intent 정의 | 8 |
-| 트리거 반응 정의 | 5 |
-| 몬스터 | 13 |
+## 5. 핵심 실행 원칙
 
-최상위 `invalid`와 13개 몬스터의 `invalid`는 모두 `false`다. 현재 Designer
-검증기로 불러왔을 때 오류와 경고가 없다. 다만 현재 Designer 검증기는 enum option과
-외부 상태 ID 레지스트리까지 검사하지 않으므로 이것이 게임 로더의 전체 검증을
-대체하지 않는다. 아래 효과 및 상태 ID 주의사항을 별도로 확인한다.
-
-현재 몬스터:
-
-| ID | 표시 이름 | 등급 | 출현 층 | 출현 난이도 | HP | 페이즈 |
-|---|---|---|---|---|---:|---:|
-| `ember_slime` | 잉걸불 슬라임 | `normal` | 1 | 1~1 | 80 | 2 |
-| `cinder_bat` | 잔불 박쥐 | `normal` | 1 | 1~1 | 50 | 2 |
-| `rusty_golem` | 녹슨 골렘 | `normal` | 1~2 | 1~2 | 90 | 1 |
-| `explosive_soul` | 폭발하는 영혼 | `normal` | 2~3 | 2~3 | 100 | 1 |
-| `hanging_ashes` | 매달리는 잿더미 | `normal` | 2~3 | 2~3 | 120 | 2 |
-| `smog_wraith` | 매연 망령 | `normal` | 3 | 3~3 | 130 | 1 |
-| `flame_ghoul` | 화염 구울 | `named` | 2 | 2~2 | 50 | 2 |
-| `lava_heart` | 용암 심장 | `normal` | 2~3 | 2~3 | 150 | 2 |
-| `anvil_guardian` | 모루의 수호자 | `named` | 3 | 3~3 | 130 | 2 |
-| `molten_drake` | 녹아내린 드레이크 | `boss` | 1 | 1~1 | 200 | 2 |
-| `seething_furnace_knight` | 끓어오르는 용광로 기사 | `boss` | 1~2 | 1~2 | 200 | 1 |
-| `ashen_fire_dragon_of_oblivion` | 잿빛 사멸의 화룡 | `boss` | 2~3 | 2~3 | 220 | 2 |
-| `god_of_the_eternal_forge` | 영원의 주조신 | `normal` | 3 | 1~1 | 50 | 2 |
-
-표시 이름을 보고 등급을 바꾸지 않는다. 예를 들어 `god_of_the_eternal_forge`의
-표시 이름은 영원의 주조신이지만 실제 `grade_id`는 `normal`이다. 출현 층과
-`difficulty_tier`가 다를 수도 있으므로 한쪽으로 다른 쪽을 덮어쓰지 않는다.
-
-이 개수와 목록은 현재 저장 파일 스냅샷을 설명하기 위한 것이다. 게임 코드나 타입에
-하드코딩하지 않고 적용 대상 JSON을 매번 직접 집계한다.
-
-현재 공통 정의 ID:
-
-| 배열 | ID |
-|---|---|
-| `monster_grades` | `normal`, `named`, `boss` |
-| `effect_definitions` | `deal_damage`, `heal`, `gain_block`, `apply_status` |
-| `condition_definitions` | `floor`, `dungeon_id`, `difficulty`, `monster_hp_ratio`, `turn` |
-| `event_definitions` | `battle_started`, `turn_started`, `monster_hp_changed`, `ability_used` |
-| `intent_definitions` | `attack`, `attack_debuff`, `defense`, `buff`, `debuff`, `special`, `self_destruct`, `unknown` |
-| `trigger_response_definitions` | `immediate`, `replace_intent`, `queue_next`, `append_action`, `transition_phase` |
-
-현재 파일에서 실제 사용된 항목은 정의 목록의 부분집합일 수 있다. 정의됐지만 현재
-몬스터가 사용하지 않는 항목도 삭제하거나 미지원으로 간주하지 않는다.
-
-## 4. ID와 표시 문자열
-
-판정과 참조에는 반드시 ID를 사용한다.
+### 5.1 몬스터의 고정 능력치는 HP만 존재
 
 ```text
-monster.id
-grade_id
+monster.hp
+→ 최대 HP
+
+runtime.currentHp
+→ 현재 HP
+```
+
+공격력, 방어력 또는 기타 `stats`를 생성하거나 기본값으로 보충하지 않는다.
+몬스터의 공격·방어·회복 수치는 스킬 효과에서 읽는다.
+
+### 5.2 기본 공격도 일반 스킬
+
+```text
+skills[]
+├─ basic_attack
+├─ 특수 공격
+├─ 회복
+└─ 버프·디버프 행동
+```
+
+`basic_attack`이라는 ID는 권장 기본값일 뿐 별도 런타임 클래스를 의미하지 않는다.
+패턴은 모든 행동을 동일하게 `skill_id`로 참조한다.
+
+### 5.3 공통 효과 사용
+
+스킬의 실제 결과는 모두 다음 공통 구조로 표현한다.
+
+```text
 effect_id
-condition_id
-event_id
-ability_id
+effect_name
+description
+target
+value
+type
+parameters
+├─ id
+├─ duration
+└─ intensify
+```
+
+본 게임은 `effect_name` 또는 `description`이 아니라 `type`과
+`parameters.id`를 dispatch 키로 사용한다.
+
+---
+
+## 6. ID와 표시 문자열
+
+실행과 참조에 사용하는 필드:
+
+```text
+monster_id
+skill_id
+effect_id
 phase_id
-trigger.id
-intent.type
+trigger_id
+dungeon_id
+type
+parameters.id
+event_id
+condition_id
 response.type
 ```
 
-`display_name`, `description`, `developer_notes`는 UI 표시와 제작자 설명이다. 한글
-이름이나 설명을 보고 효과, 수치, 대상 또는 전환 규칙을 추측하지 않는다.
+표시 전용 필드:
+
+```text
+monster_name
+skill_name
+effect_name
+phase_name
+description
+```
 
 ID 이름 공간:
 
-- 몬스터 ID: 프로젝트 전체에서 고유
-- grade/effect/condition/event/intent/response ID: 각 공통 정의 배열에서 고유
-- 어빌리티 ID: 해당 몬스터 안에서 고유
-- 페이즈 ID: 해당 몬스터의 behavior 안에서 고유
-- 트리거 ID: 해당 몬스터의 행동 범위에서 고유
+- `monster_id`: 프로젝트 전체에서 고유
+- `skill_id`: 해당 몬스터 안에서 고유
+- `effect_id`: 해당 스킬 안에서 고유
+- `phase_id`: 해당 몬스터 안에서 고유
+- `trigger_id`: 해당 몬스터의 행동 범위에서 고유
 
-이름 공간이 다르면 문자열이 같아도 같은 개념으로 합치지 않는다.
+중복 ID를 마지막 값으로 덮어쓰지 않는다.
 
-## 5. 권장 로더 구조
+---
 
-JSON을 파싱한 뒤 최소한 다음 인덱스를 만든다.
+## 7. 권장 로더 모듈
+
+```text
+monsterDesignLoader
+→ JSON 파싱, 버전과 data_type 검사
+
+monsterDesignValidator
+→ 자료형, 범위, 중복 ID와 참조 검사
+
+monsterAppearanceMatcher
+→ 던전·층 등장 조건 판정
+
+monsterRuntimeFactory
+→ 최대 HP와 행동 런타임 초기화
+
+monsterBehaviorRuntime
+→ 현재 페이즈, 단계 위치, 쿨다운과 실행 이력 관리
+
+monsterTriggerProcessor
+→ 이벤트별 트리거 후보 평가와 반응 실행
+
+monsterEffectDispatcher
+→ 공통 type과 parameters.id별 실제 효과 실행
+```
+
+React 컴포넌트와 Phaser 객체가 JSON 파서나 상태 머신 내부 규칙을 직접 소유하지
+않게 한다.
+
+---
+
+## 8. 최소 TypeScript 경계
+
+실제 프로젝트 타입 체계에 맞게 이름은 조정할 수 있지만 데이터 의미는 보존한다.
 
 ```ts
-type MonsterIndexes = {
-  gradeById: Map<string, MonsterGradeDefinition>;
-  effectById: Map<string, EffectDefinition>;
-  conditionById: Map<string, ConditionDefinition>;
-  eventById: Map<string, EventDefinition>;
-  intentById: Map<string, IntentDefinition>;
-  responseById: Map<string, TriggerResponseDefinition>;
+type MonsterGrade = "NORMAL" | "VETERAN" | "ELITE" | "BOSS";
+
+type ValidationStatus = "valid" | "warning" | "invalid";
+
+type AppearanceCondition = {
+  dungeon_id: string;
+  floor_min: number;
+  floor_max: number;
+};
+
+type EffectParameters = {
+  id: string;
+  duration: number;
+  intensify: number;
+};
+
+type EffectDefinition = {
+  effect_id: string;
+  effect_name: string;
+  description: string;
+  target: string;
+  value: number;
+  type: string;
+  parameters: EffectParameters;
+};
+
+type SkillDefinition = {
+  skill_id: string;
+  skill_name: string;
+  description: string;
+  effects: EffectDefinition[];
+};
+
+type SkillStep = {
+  type: "SKILL";
+  skill_id: string;
+};
+
+type RandomChoiceStep = {
+  type: "RANDOM_CHOICE";
+  choices: Array<{
+    skill_id: string;
+    weight: number;
+  }>;
+};
+
+type PatternStep = SkillStep | RandomChoiceStep;
+
+type PhaseLoop = {
+  mode: "STRICT_SEQUENCE";
+  fallback_skill_id: string;
+  steps: PatternStep[];
+};
+
+type TriggerCondition = {
+  condition_id: string;
+  operator: "EQ" | "NEQ" | "LT" | "LTE" | "GT" | "GTE";
+  value: unknown;
+};
+
+type ImmediateResponse = {
+  type: "IMMEDIATE";
+  cancel_current_intent: boolean;
+  skill_id: string;
+};
+
+type TransitionPhaseResponse = {
+  type: "TRANSITION_PHASE";
+  cancel_current_intent: boolean;
+  target_phase_id: string;
+};
+
+type TriggerResponse = ImmediateResponse | TransitionPhaseResponse;
+
+type TriggerDefinition = {
+  trigger_id: string;
+  event_id: "TURN_STARTED" | "MONSTER_HP_CHANGED" | "SKILL_USED";
+  condition: TriggerCondition | null;
+  priority: number;
+  once: boolean;
+  cooldown_turns: number;
+  max_triggers_per_turn: number;
+  max_triggers_per_battle: number;
+  allow_chained_triggers: boolean;
+  response: TriggerResponse;
+};
+
+type PhaseDefinition = {
+  phase_id: string;
+  phase_name: string;
+  loop: PhaseLoop;
+  triggers: TriggerDefinition[];
+};
+
+type MonsterBehavior = {
+  initial_phase_id: string;
+  phases: PhaseDefinition[];
+};
+
+type MonsterDefinition = {
+  monster_id: string;
+  monster_name: string;
+  description: string;
+  grade: MonsterGrade;
+  appearance_condition: AppearanceCondition[];
+  hp: number;
+  skills: SkillDefinition[];
+  behavior: MonsterBehavior;
+};
+```
+
+문서의 유니온 타입을 그대로 복사하는 것보다 실제 JSON을 검증하는 런타임 스키마를
+함께 두는 것을 권장한다.
+
+---
+
+## 9. 인덱싱
+
+최상위 로드 후:
+
+```ts
+type MonsterDesignIndexes = {
   monsterById: Map<string, MonsterDefinition>;
 };
 ```
 
-몬스터를 전투에 배치할 때 추가로 만든다.
+전투에 몬스터를 생성할 때:
 
 ```ts
 type MonsterRuntimeIndexes = {
-  abilityById: Map<string, AbilityDefinition>;
+  skillById: Map<string, SkillDefinition>;
   phaseById: Map<string, PhaseDefinition>;
   triggerById: Map<string, TriggerDefinition>;
 };
 ```
 
-중복 ID가 있으면 나중 항목으로 덮어쓰지 말고 로드 오류를 발생시킨다. 오류에는 파일명,
-몬스터 ID와 필드 경로를 포함한다.
+Map을 만들기 전에 중복을 검사한다. 알 수 없는 참조는 `undefined`로 흘려보내거나
+fallback으로 감추지 않는다.
 
-권장 모듈 경계:
-
-```text
-monsterDesignLoader       JSON 파싱, 버전과 invalid 검사
-monsterDesignValidator    ID, 참조, 자료형과 범위 검증
-spawnMatcher              출현 조건과 난이도 판정
-monsterStatResolver       층·난이도별 능력치 계산
-conditionEvaluator        구조화된 조건 트리 평가
-monsterBehaviorRuntime    phase, step, cooldown과 사용 이력 상태
-triggerProcessor          이벤트, 우선순위와 반응 처리
-monsterEffectDispatcher   effect_id별 실제 게임 handler
-monsterIntentPresenter    Intent 표시 전용 변환
-```
-
-UI, Phaser 객체나 React 컴포넌트가 파서와 상태 머신의 핵심 로직에 직접 의존하지 않게
-한다. 조건 평가와 행동 결정은 순수 함수 중심으로 작성한다.
-
-## 6. 최소 TypeScript 타입
-
-실제 JSON과 게임 규칙에 맞춰 확장하되 최소한 다음 경계를 둔다.
-
-```ts
-type Primitive = string | number | boolean | null;
-
-type Condition =
-  | {
-      condition_id: string;
-      operator: "eq" | "neq" | "lt" | "lte" | "gt" | "gte" | "contains" | "in";
-      value: unknown;
-    }
-  | { all: Condition[] }
-  | { any: Condition[] }
-  | { not: Condition };
-
-type Effect = {
-  effect_id: string;
-  order: number;
-  parameters: Record<string, unknown>;
-};
-
-type Intent = {
-  type: string;
-  expected_damage?: number;
-  hit_count?: number;
-  icon_id?: string;
-  reveal_description?: boolean;
-};
-
-type AbilityDefinition = {
-  id: string;
-  display_name: string;
-  description?: string;
-  effects: Effect[];
-  intent?: Intent;
-  tags?: string[];
-  availability_condition?: Condition | null;
-  cooldown_turns?: number;
-};
-
-type AbilityStep = {
-  type: "ability";
-  ability_id: string;
-};
-
-type RandomChoiceStep = {
-  type: "random_choice";
-  choices: Array<{
-    ability_id: string;
-    weight: number;
-  }>;
-};
-
-type WaitStep = {
-  type: "wait";
-};
-
-type PatternStep = AbilityStep | RandomChoiceStep | WaitStep;
-
-type TriggerResponse =
-  | {
-      type: "transition_phase";
-      target_phase_id: string;
-      cancel_current_intent?: boolean;
-      entry_timing?: "immediate" | "next_action";
-    }
-  | {
-      type: "immediate" | "replace_intent" | "queue_next" | "append_action" | string;
-      ability_id?: string;
-      cancel_current_intent?: boolean;
-    };
-
-type TriggerDefinition = {
-  id: string;
-  event_id: string;
-  condition?: Condition;
-  priority?: number;
-  once?: boolean;
-  cooldown_turns?: number;
-  max_triggers_per_turn?: number;
-  max_triggers_per_battle?: number;
-  allow_chained_triggers?: boolean;
-  response: TriggerResponse;
-};
-
-type PhaseDefinition = {
-  id: string;
-  display_name: string;
-  entry?: { ability_id: string };
-  loop: {
-    mode: "strict_sequence" | "random_loop" | string;
-    fallback_ability_id: string;
-    steps: PatternStep[];
-  };
-  triggers: TriggerDefinition[];
-};
-
-type MonsterDefinition = {
-  id: string;
-  display_name: string;
-  grade_id: string;
-  difficulty_tier: {
-    min: number;
-    max: number;
-  };
-  spawn_condition: Condition;
-  stats: {
-    max_hp: number;
-    max_hp_by_floor?: Record<string, number>;
-    [key: string]: unknown;
-  };
-  abilities: AbilityDefinition[];
-  behavior: {
-    initial_phase_id: string;
-    phases: PhaseDefinition[];
-  };
-  tags?: string[];
-  description?: string;
-  image_resource_id?: string;
-  invalid: boolean;
-};
-
-type BlockableMonsterDesign = {
-  schema_version: string;
-  invalid: boolean;
-  metadata: Record<string, unknown>;
-  monster_grades: Array<{ id: string; display_name: string }>;
-  effect_definitions: Array<Record<string, unknown>>;
-  condition_definitions: Array<Record<string, unknown>>;
-  event_definitions: Array<Record<string, unknown>>;
-  intent_definitions: Array<Record<string, unknown>>;
-  trigger_response_definitions: Array<{
-    id: string;
-    display_name: string;
-    target_kind: "ability" | "phase" | "none";
-  }>;
-  monsters: MonsterDefinition[];
-};
-```
-
-`Primitive`만으로 모든 parameter를 제한하지 않는다. 효과와 조건 parameter에는 배열과
-객체가 들어갈 수 있으므로 정의 schema에 따라 별도 검증한다.
-
-## 7. 출현 판정
-
-몬스터가 출현하려면 최소한 다음 두 조건을 모두 만족해야 한다.
-
-1. 현재 던전 난이도 티어가 `difficulty_tier.min` 이상 `max` 이하
-2. `spawn_condition` 트리가 현재 던전 컨텍스트에서 참
-
-권장 컨텍스트:
-
-```ts
-type SpawnContext = {
-  floor: number;
-  dungeon_id?: string;
-  node_type?: string;
-  difficulty?: string;
-  difficulty_tier: number;
-  flags?: Set<string>;
-};
-```
-
-`difficulty_tier`는 몬스터 등급이 아니다. `grade_id: normal/named/boss`와 혼합하거나
-한쪽 값으로 다른 값을 추론하지 않는다.
-
-조건 트리:
+오류 예:
 
 ```text
-{ all: [...] }  모든 하위 조건이 참
-{ any: [...] }  하나 이상의 하위 조건이 참
-{ not: {...} }  하위 조건 결과 반전
+blockable_monster_design.json
+monsters[2].behavior.phases[1].loop.steps[0].skill_id
+unknown skill_id: flame_breath
 ```
 
-알 수 없는 `condition_id`나 operator는 거짓으로 조용히 처리하지 말고 개발 환경에서
-명확한 오류를 발생시킨다.
+---
 
-## 8. 능력치 결정
+## 10. 등장 판정
 
-필수 능력치는 `stats.max_hp`다. 1 이상의 유한 정수인지 확인한다.
+`appearance_condition[]`은 OR 목록이다. 각 항목의 던전과 층 조건은 AND다.
 
-현재 저장 파일의 13개 몬스터는 모두 `stats.max_hp`만 사용한다. 이전 예제에서
-사용했던 `max_hp_by_floor`는 이 파일에 존재하지 않는다. 따라서 현재 파일을 적용할
-때 층별 체력을 별도로 추측하거나 생성하지 않는다.
+```ts
+function canAppear(
+  monster: MonsterDefinition,
+  dungeonId: string,
+  floor: number,
+): boolean {
+  return monster.appearance_condition.some((condition) => {
+    const dungeonMatches =
+      condition.dungeon_id === "all" ||
+      condition.dungeon_id === dungeonId;
 
-향후 `stats`에 새 필드가 추가될 수 있으므로 알 수 없는 능력치 필드를 파싱 단계에서
-삭제하지 않는다. 게임이 지원하지 않는 필드는 경고 또는 명시적인 미지원 오류로
-보고하고, 표시 이름이나 난이도 티어를 근거로 임의 보정하지 않는다.
+    const floorMatches =
+      floor >= condition.floor_min &&
+      floor <= condition.floor_max;
 
-## 9. 조건 평가
-
-단일 조건은 `condition_id`, `operator`, `value`를 사용한다.
-
-기본 operator:
-
-| operator | 의미 |
-|---|---|
-| `eq` | 같음 |
-| `neq` | 다름 |
-| `lt` | 미만 |
-| `lte` | 이하 |
-| `gt` | 초과 |
-| `gte` | 이상 |
-| `contains` | 왼쪽 컬렉션이 오른쪽 값을 포함 |
-| `in` | 왼쪽 값이 오른쪽 컬렉션에 포함 |
-
-현재 저장 파일의 조건 정의:
-
-| condition_id | 자료형 | 허용 operator | 현재 용도 |
-|---|---|---|---|
-| `floor` | integer, 최소 1 | `eq`, `lt`, `lte`, `gt`, `gte` | 모든 몬스터 출현 조건 |
-| `dungeon_id` | string | `eq`, `neq` | 현재 미사용 |
-| `difficulty` | string | `eq`, `neq`, `in` | 현재 미사용 |
-| `monster_hp_ratio` | number, 0~1 | `lt`, `lte`, `gt`, `gte`, `eq` | 화염 구울 사망 시 반응 |
-| `turn` | integer, 최소 1 | `eq`, `lt`, `lte`, `gt`, `gte` | 턴 기반 전환과 자폭 |
-
-현재 파일에는 `player_hp_ratio`, `player_placed_block_id`,
-`player_completed_combination_id` 정의가 없다. 다른 스키마 예시나 Designer의
-향후 기본값을 근거로 현재 게임 파일에 존재한다고 가정하지 않는다.
-
-HP 비율은 `0.0`부터 `1.0` 사이 값이다. `flame_ghoul`은
-`monster_hp_ratio <= 0.0`일 때 즉시 `a0010` 시체 폭발을 실행한다. 사망 확정 전에
-이 트리거를 평가할 수 있도록 `monster_hp_changed` 이벤트 순서를 설계해야 한다.
-
-`condition_definitions`에 처음 보는 ID가 있으면 게임에 evaluator를 명시적으로
-등록한다. 정의가 존재한다는 이유만으로 게임이 의미를 자동으로 이해할 수 있다고
-가정하지 않는다.
-
-## 10. 어빌리티와 Intent
-
-어빌리티는 실행 가능한 행동이며 하나 이상의 효과를 가진다.
-
-```json
-{
-  "id": "slime_fragment",
-  "display_name": "점액 파편",
-  "effects": [
-    {
-      "effect_id": "deal_damage",
-      "order": 0,
-      "parameters": {
-        "target": "player",
-        "target_mode": "single",
-        "amount": 5
-      }
-    }
-  ],
-  "intent": {
-    "type": "attack"
-  }
+    return dungeonMatches && floorMatches;
+  });
 }
 ```
 
-효과는 `order` 오름차순으로 안정 정렬해 실행한다. `order`가 같으면 JSON 배열 순서를
-유지한다. `order`는 수치가 아니며 실제 값은 `parameters`에서 읽는다.
+규칙:
 
-Intent는 플레이어에게 다음 행동을 예고하기 위한 표시 정보다. Intent type을 보고
-피해, 회복, 상태이상이나 자폭을 실행하지 않는다. 실제 동작은 항상 `effects`에서
-결정한다.
+- `"all"`은 모든 던전에 일치한다.
+- 던전 ID는 대소문자를 포함해 정확히 비교한다.
+- 층 범위는 양 끝을 포함한다.
+- `appearance_condition[]`이 비어 있으면 등장 불가가 아니라 데이터 오류다.
+- 등급으로 등장 조건을 자동 추가하지 않는다.
 
-어빌리티의 `availability_condition`이 거짓이면 패턴 후보에서 제외한다.
-`cooldown_turns`가 남아 있어도 제외한다.
+등장 가능 판정은 실제 인카운터 선택과 다르다. 후보 중 어떤 몬스터를 배치할지는
+본 게임의 맵·노드 규칙이 결정한다.
 
-## 11. 효과 dispatch
+---
 
-게임은 지원하는 `effect_id`마다 handler를 명시적으로 등록한다.
-
-현재 저장 파일의 효과 정의:
-
-```text
-deal_damage
-heal
-gain_block
-apply_status
-```
-
-필수 parameter:
-
-| effect_id | parameters |
-|---|---|
-| `deal_damage` | `target`, `amount >= 0` |
-| `heal` | `target`, `amount >= 0` |
-| `gain_block` | `target: self`, `amount >= 0` |
-| `apply_status` | `target`, `status_id`, `stacks >= 1` |
-
-대상 JSON의 `effect_definitions`를 읽고 게임 handler 지원 여부를 교차 검증한다.
-
-알 수 없는 `effect_id`는 조용히 무시하지 않는다. 파일명, 몬스터 ID, 어빌리티 ID,
-effect index와 ID를 포함한 오류를 발생시킨다.
-
-### 대상 계약
-
-대상 지정 효과는 `target`과 `target_mode`를 구분한다.
-
-| target_mode | 의미 |
-|---|---|
-| 누락 또는 `single` | 해당 target 종류에서 한 대상 |
-| `all` | 해당 target 종류의 모든 대상 |
-
-`target`은 대상 진영 또는 종류이고 `target_mode`는 범위다. `all`을 별도의 target
-종류로 해석하지 않는다. 단일 대상의 실제 선택 규칙은 게임 전투 시스템이 결정한다.
-
-현재 저장 파일의 효과 62개에는 `target_mode`가 모두 생략돼 있다. 따라서 모두
-`single`로 해석한다. 현재 파일만 보고 모든 효과가 항상 단일 대상이라고
-하드코딩하지는 않는다.
-
-### 자폭 계약
-
-현재 파일에는 `self_destruct` Intent 정의가 있지만 `self_destruct` effect 정의는
-없다. `explosive_soul.a0006` 자폭은 실제로 다음 두 효과로 표현돼 있다.
-
-```json
-[
-  {
-    "effect_id": "deal_damage",
-    "order": 0,
-    "parameters": {
-      "target": "self",
-      "amount": 100
-    }
-  },
-  {
-    "effect_id": "deal_damage",
-    "order": 1,
-    "parameters": {
-      "target": "player",
-      "amount": 50
-    }
-  }
-]
-```
-
-따라서 현재 파일의 자폭은 두 `deal_damage`를 order 순서대로 실행한다. Intent
-`self_destruct`를 근거로 별도의 숨은 자폭 handler를 추가하거나 사용자를 무조건
-사망시키지 않는다. 자기 피해 100의 결과로 HP가 0 이하가 되면 일반 피해·사망
-규칙으로 처리한다.
-
-주의: 현재 `deal_damage` 정의의 `target.options`는 `player`만 허용하지만 자폭의 첫
-효과는 `target: self`를 사용한다. 이는 저장 파일 내부의 정의와 사용 데이터가
-불일치하는 지점이다. 게임 로더가 schema를 엄격히 적용하면
-`explosive_soul.a0006.effects[0].parameters.target` 오류로 보고해야 한다. 임의로
-`self`를 허용하거나 `player`로 바꾸지 말고, 게임 계약 또는 Designer 데이터에서
-어느 쪽을 수정할지 사용자에게 확인한다.
-
-### 상태 ID 주의사항
-
-현재 `apply_status`에서 실제 사용한 상태 ID:
+## 11. 몬스터 런타임 초기화
 
 ```text
-burn
-bleed
-stun
-injury
-injry
-weak
-doubleAttack
+definition.hp
+→ maxHp
+→ currentHp
+
+definition.behavior.initial_phase_id
+→ currentPhaseId
+
+초기 stepIndex
+→ 0
 ```
 
-`injury`와 `injry`는 현재 JSON에서 서로 다른 문자열이며 `doubleAttack`은 camelCase다.
-파서가 오탈자 또는 명명 규칙 위반으로 추측해 자동 수정하지 않는다. 상태 정의는 이
-파일 최상위에 없으므로 게임의 상태 레지스트리와 교차 검증한다. `injry`가 게임에
-없다면 몬스터 ID와 어빌리티 ID를 포함한 명확한 데이터 오류로 보고하고 원본은
-임의로 바꾸지 않는다.
-
-## 12. 패턴 상태 머신
-
-몬스터 인스턴스마다 최소한 다음 런타임 상태를 분리해 관리한다.
+최소 런타임 상태:
 
 ```ts
 type MonsterBehaviorState = {
-  phase_id: string;
-  step_index_by_phase: Record<string, number>;
-  queued_ability_id?: string;
-  replacement_ability_id?: string;
-  ability_cooldowns: Record<string, number>;
-  ability_use_counts: Record<string, number>;
-  recent_abilities: string[];
-  trigger_counts: Record<string, number>;
-  trigger_last_turn: Record<string, number>;
-  fired_once_triggers: Set<string>;
+  current_phase_id: string;
+  step_index: number;
+  skill_cooldowns: Map<string, number>;
+  trigger_cooldowns: Map<string, number>;
+  trigger_counts_this_turn: Map<string, number>;
+  trigger_counts_this_battle: Map<string, number>;
+  fired_once: Set<string>;
 };
 ```
 
-행동 결정 순서:
+스킬 쿨다운은 현재 데이터에 정식 필드가 없으므로 기본 `0`으로만 유지하거나,
+실제 필드가 추가될 때까지 구현하지 않는다.
 
-1. 현재 이벤트와 일치하는 트리거를 수집한다.
-2. 조건과 발동 제한을 검사한다.
-3. priority 내림차순, JSON 배열 순서로 처리한다.
-4. 페이즈 전환, Intent 교체와 예약 행동을 반영한다.
-5. 행동 시점에 예약 또는 교체 행동이 있으면 먼저 사용한다.
-6. 없으면 현재 페이즈의 pattern step을 평가한다.
-7. availability, cooldown과 기타 제약으로 후보를 필터링한다.
-8. 남은 후보 weight로 어빌리티를 선택한다.
-9. 후보가 없으면 `fallback_ability_id`를 선택한다.
-10. 효과를 `order` 순서로 실행한다.
-11. cooldown, 사용 이력, 횟수와 step index를 갱신한다.
+---
 
-### Strict sequence
+## 12. 스킬 실행
 
-`steps`를 순서대로 실행하고 마지막 뒤에는 0번으로 돌아간다.
-
-### Random choice
-
-양수 weight 후보만 사용한다. weight 합은 100일 필요가 없다.
+스킬 실행 순서:
 
 ```text
-80 + 20
-8 + 2
+1. skill_id로 스킬 조회
+2. 실행 가능한 대상 기준점 결정
+3. effects[] 배열 순서를 보존해 읽기
+4. 공통 효과 파싱 계약에 따라 공격·상태·자원 효과 분류
+5. 공통 전투 공식으로 실제 효과 실행
+6. SKILL_USED 이벤트 발행
+7. 해당 이벤트의 현재 페이즈 트리거 검사
 ```
 
-두 경우 선택 확률은 같다. 사용할 수 없는 후보를 제거한 뒤 남은 weight로 다시
-정규화한다. 후보가 없으면 fallback을 사용한다.
+몬스터의 공격력을 별도로 더하지 않는다. 예:
 
-### Fallback
+```json
+{
+  "type": "BASE_DAMAGE",
+  "value": 5
+}
+```
 
-fallback은 패턴 후보를 선택하지 못했을 때 사용하는 예비 어빌리티다. 존재하는
-어빌리티를 참조해야 한다. fallback도 사용할 수 없는 상황에 대한 게임 정책이 없다면
-무한 재선택하지 말고 명시적인 오류 또는 대기 행동으로 처리한다.
+이 스킬의 기초 피해는 `5`에서 시작한다.
 
-현재 저장 파일의 행동 데이터 규모:
+---
 
-| 항목 | 개수 |
-|---|---:|
-| 어빌리티 | 39 |
-| 효과 인스턴스 | 62 |
-| 페이즈 | 22 |
-| 패턴 step | 53 |
-| 확정 어빌리티 step | 44 |
-| random choice step | 9 |
-| 트리거 | 11 |
+## 13. 공통 효과 계약
 
-현재 random choice weight 표는 `80/20`, `70/30`, `50/50`을 사용한다. 확률 합이
-현재는 모두 100이지만 파서는 합계 100을 전제로 하지 않고 weight를 정규화한다.
-
-## 13. 트리거 처리
-
-현재 저장 파일의 이벤트 정의:
+### 13.1 대상
 
 ```text
-battle_started
-turn_started
-monster_hp_changed
-ability_used
+SELECTED
+self
+L1, L2, L3 ...
+R1, R2, R3 ...
+B1, B2, B3 ...
+all
 ```
 
-JSON의 `event_definitions`는 이벤트 사전이고 실제 payload 발생 시점은 게임 이벤트
-시스템과 일치시켜야 한다.
+- `self`: 스킬을 사용하는 몬스터
+- `SELECTED`: 행동 선택기가 지정한 기준 상대
+- `Lx`, `Rx`, `Bx`: 기준 대상을 포함한 위치 범위
+- `all`: 해당 효과가 허용한 대상 전체
 
-트리거 발동 제한:
+다수 몬스터·다수 플레이어 전투에서 정확한 진영 규칙이 본 게임에 아직 없다면
+추측해서 넓히지 않는다. 현재 게임 구조와 사용자 확인을 기준으로 구현한다.
 
-- `once`
-- `cooldown_turns`
-- `max_triggers_per_turn`
-- `max_triggers_per_battle`
-- `allow_chained_triggers`
-
-여러 트리거가 동시에 만족되면 priority가 높은 것부터 처리한다. priority가 같으면
-원래 JSON 배열 순서를 유지한다.
-
-기본 response:
-
-| type | 처리 |
-|---|---|
-| `immediate` | 이벤트 처리 중 지정 어빌리티 실행 |
-| `replace_intent` | 현재 예정 행동을 지정 어빌리티로 교체 |
-| `queue_next` | 다음 행동으로 지정 어빌리티 예약 |
-| `append_action` | 현재 행동 뒤 지정 어빌리티 추가 |
-| `transition_phase` | `target_phase_id`로 전환 |
-
-`trigger_response_definitions[].target_kind`에 따라 `ability_id`, `target_phase_id` 또는
-대상 없음 중 필요한 필드를 판정한다. 사용자 정의 response ID가 있으면 게임 handler도
-명시적으로 등록해야 한다.
-
-즉시 반응 연쇄에는 깊이 또는 총 발동 횟수 제한을 둔다. 순환하는 즉시 트리거를
-재귀로 무제한 실행하지 않는다.
-
-현재 파일에는 트리거 11개가 있다.
-
-- `transition_phase`: 9개
-- `immediate`: 2개
-- `turn_started` 사용: 9개
-- `ability_used` 사용: 1개
-- `monster_hp_changed` 사용: 1개
-
-현재 모든 트리거의 `priority`는 0, `once`는 false, cooldown과 최대 발동 횟수는
-0이며 `allow_chained_triggers`는 false다. 여기서 최대값 0은 제한 없음으로
-해석한다.
-
-`explosive_soul.destruct`는 3턴의 `ability_used` 이벤트에 즉시 `a0006`을 실행한다.
-`a0006` 실행이 다시 `ability_used`를 발생시키더라도
-`allow_chained_triggers: false`이므로 같은 연쇄에서 `destruct`를 다시 발동하지
-않는다.
-
-`explosive_soul.main_phase.steps[2]`도 직접 `a0006`을 사용한다. 따라서 3턴에 이
-step이 실행되고 그 사용 이벤트가 `destruct` 조건을 만족하면 원래 행동 1회와 즉시
-반응 1회로 `a0006`이 두 번 실행될 수 있다. 이를 중복 데이터라고 추측해 한쪽을
-삭제하지 말고 JSON 순서와 트리거 계약대로 처리한다.
-
-`flame_ghoul.explode`는 HP 비율 0 이하의 `monster_hp_changed` 이벤트에서 즉시
-`a0010`을 실행한다. 게임은 몬스터 제거 전에 취소 가능한 HP 변경 반응을 처리할지,
-사망 후 마지막 행동으로 처리할지 이벤트 계약을 명확히 해야 한다. 현재 JSON
-자체에는 사망 취소 필드가 없다.
-
-## 14. 페이즈 전환
-
-초기 페이즈:
+### 13.2 허용 타입
 
 ```text
-monster.behavior.initial_phase_id
+BASE_DAMAGE
+BASE_HIT_COUNT
+INDEPENDENT_DAMAGE
+BLOCK
+RECOVERY
+STATUS_DAMAGE
+DEBUFF
+CROWD_CONTROL
+BUFF
+EXTRA_TURN
+DECK_CAPACITY
+DRAW
+PLACEMENT_COUNT
 ```
 
-전환 처리:
+알 수 없는 `type` 또는 `parameters.id`는 조용히 무시하지 않는다.
 
-1. 대상 페이즈가 존재하는지 확인한다.
-2. `cancel_current_intent`를 반영한다.
-3. 현재 phase ID를 변경한다.
-4. JSON의 reset/keep 옵션에 따라 step index와 카운터를 처리한다.
-5. 대상 페이즈의 `entry.ability_id`가 있으면 지정 timing에 실행한다.
-6. 새 페이즈의 loop와 trigger 집합을 활성화한다.
-
-전환 옵션이 JSON에 없는데 게임 계약도 확정되지 않았다면 임의로 모든 상태를
-초기화하거나 유지하지 않는다. 명시적인 기본값을 문서와 테스트로 정한다.
-
-서로 순환하는 즉시 전환과 무제한 trigger chain을 로더 또는 런타임 안전장치에서
-차단한다.
-
-## 15. 사용자 정의 항목
-
-Designer에서는 다음 정의를 사용자가 추가하거나 편집할 수 있다.
+### 13.3 전투 변수 연결
 
 ```text
-intent_definitions
-event_definitions
-trigger_response_definitions
+BASE_DAMAGE                     → B
+BASE_HIT_COUNT.value            → 연속 공격 1타의 B
+BASE_HIT_COUNT.intensify        → H
+INDEPENDENT_DAMAGE              → A
+BUFF + DAMAGE_BONUS             → S → 이후 P
+BUFF + HIT_COUNT                → S → 이후 H
+BUFF + ATTACK_MULTIPLIER        → S → 이후 M
+DEBUFF + ATTACK_REDUCTION       → C → 이후 D
+DEBUFF + DAMAGE_TAKEN_INCREASE  → C → 이후 W
+STATUS_DAMAGE / CROWD_CONTROL   → C → 전용 처리기
 ```
 
-따라서 게임은 알려진 표시 이름 목록을 하드코딩해서 파싱하지 않는다.
+`S`와 `C`는 숫자가 아니라 상태 갱신 목록이다.
 
-- 새로운 Intent: 표시 handler가 없으면 `unknown` 스타일 또는 개발 오류
-- 새로운 event: 게임 event emitter와 payload adapter 필요
-- 새로운 response: trigger response handler 필요
+### 13.4 `BASE_HIT_COUNT`
 
-사용자 정의 항목의 `display_name`은 게임 로직의 dispatch 키가 아니다. 항상 ID를
-사용한다.
+```text
+value                 = 1회당 기본 피해량
+parameters.intensify  = 이번 행동의 연속 공격 횟수
+parameters.id         = CURRENT_ACTION
+parameters.duration   = 0
+```
+
+```text
+최종 H
+= BASE_HIT_COUNT.parameters.intensify
+ + 이미 적용 중인 BUFF + HIT_COUNT 증감치
+```
+
+여러 `BASE_HIT_COUNT` 효과는 각자의 `target`, `value`, `intensify`를 가진
+별도 연속 공격으로 처리한다. 합쳐서 하나의 피해량 또는 횟수로 만들지 않는다.
+
+`BASE_HIT_COUNT`는 이번 행동의 공격이고 런타임 상태에 저장하지 않는다.
+`BUFF + HIT_COUNT`는 공격 후 `S`에 등록되어 이후 행동부터 적용된다.
+
+### 13.5 효과 파싱 순서
+
+```text
+1. BASE_DAMAGE를 모아 일반 기본 공격의 B 계산
+2. 공격자의 기존 BUFF에서 P, H 증감치와 M 계산
+3. 각 BASE_HIT_COUNT를 별도 연속 공격으로 등록
+4. 공격자의 기존 DEBUFF에서 D 계산
+5. 기본 공격을 실행하고 실제 대상마다 W 계산
+6. INDEPENDENT_DAMAGE를 각각 별도 실행하고 대상마다 W 계산
+7. BUFF를 S에 등록
+8. DEBUFF, STATUS_DAMAGE, CROWD_CONTROL을 C에 등록
+9. S와 C를 런타임 상태에 반영
+10. EXTRA_TURN과 자원 관련 효과 처리
+11. 턴 종료 시 STATUS_DAMAGE를 parameters.id별 규칙으로 실행
+```
+
+Monster Designer는 배열 순서를 보존하지만, 본 게임의 공통 전투 효과 표준이
+더 구체적인 단계 순서를 정의하면 그 표준을 따른다.
+
+---
+
+## 14. 행동 상태 머신
+
+### 14.1 시작
+
+```text
+currentPhaseId = behavior.initial_phase_id
+stepIndex = 0
+```
+
+### 14.2 `STRICT_SEQUENCE`
+
+```text
+현재 phase.loop.steps[stepIndex] 선택
+→ 단계에서 skill_id 결정
+→ 스킬 실행
+→ stepIndex 증가
+→ 끝에 도달하면 0으로 순환
+```
+
+### 14.3 `SKILL` 단계
+
+```json
+{
+  "type": "SKILL",
+  "skill_id": "basic_attack"
+}
+```
+
+참조가 존재하지 않으면 로드 오류다. fallback으로 숨기지 않는다.
+
+### 14.4 `RANDOM_CHOICE` 단계
+
+```json
+{
+  "type": "RANDOM_CHOICE",
+  "choices": [
+    {
+      "skill_id": "slime_fragment",
+      "weight": 80
+    },
+    {
+      "skill_id": "self_recovery",
+      "weight": 20
+    }
+  ]
+}
+```
+
+선택 절차:
+
+1. 실행 가능한 후보를 필터링한다.
+2. 남은 후보의 양수 `weight` 합을 구한다.
+3. 누적 가중치로 하나를 추첨한다.
+4. 후보가 없으면 `fallback_skill_id`를 실행한다.
+
+현재 스키마에는 스킬 사용 가능 조건이 없으므로 정상 데이터에서는 모든 참조
+스킬이 실행 가능하다. 향후 조건이 추가되기 전까지 임의 제약을 만들지 않는다.
+
+### 14.5 Fallback
+
+fallback은 유효한 데이터가 런타임 상태 때문에 선택 불가능할 때 사용한다.
+
+다음은 fallback 대상이 아니다.
+
+- 존재하지 않는 `skill_id`
+- 빈 `choices`
+- 0 이하 weight
+- 잘못된 step type
+
+이 항목들은 로더 오류다.
+
+---
+
+## 15. 트리거 처리
+
+### 15.1 기본 처리 순서
+
+```text
+1. 전투 이벤트 발생
+2. 현재 페이즈의 triggers[]만 조회
+3. event_id 일치 후보 선택
+4. condition 평가
+5. once, cooldown과 실행 횟수 제한 검사
+6. priority 내림차순 정렬
+7. 같은 priority는 JSON 배열 순서 유지
+8. response 실행
+9. 실행 이력과 cooldown 갱신
+```
+
+### 15.2 실행 제한
+
+```text
+once
+→ 전투 중 1회만 실행
+
+cooldown_turns
+→ 실행 후 다시 활성화되기까지의 턴 수
+
+max_triggers_per_turn
+→ 0이면 제한 없음, 1 이상이면 턴당 제한
+
+max_triggers_per_battle
+→ 0이면 제한 없음, 1 이상이면 전투당 제한
+```
+
+### 15.3 연쇄 트리거
+
+`allow_chained_triggers: false`인 트리거의 반응이 새 이벤트를 발생시켜도 같은
+이벤트 처리 체인에서 추가 트리거를 실행하지 않는다.
+
+연쇄를 허용할 때도 무한 루프를 막기 위한 전투 엔진의 최대 체인 깊이를 둔다.
+그 값은 Designer 데이터가 아니라 본 게임 안전장치다.
+
+### 15.4 즉시 실행
+
+```text
+response.type = IMMEDIATE
+→ response.skill_id 조회
+→ cancel_current_intent 처리
+→ 스킬을 즉시 행동 대기열에 등록
+```
+
+동일 이벤트 처리 중 정확히 어느 위치에 삽입하는지는 본 게임의 전투 이벤트
+큐 규칙과 일치시킨다.
+
+### 15.5 페이즈 전환
+
+```text
+response.type = TRANSITION_PHASE
+→ target_phase_id 검증
+→ currentPhaseId 변경
+→ stepIndex = 0
+→ 새 페이즈의 반복 패턴을 다음 행동부터 사용
+```
+
+페이즈 전환은 몬스터 HP를 회복하거나 상태를 초기화하지 않는다. 그런 결과가
+필요하면 별도 스킬 효과로 명시해야 한다.
+
+---
 
 ## 16. 최소 로더 검증
 
-게임 로더는 적어도 다음 항목을 검사한다.
+### 16.1 파일
 
-- 지원하는 `schema_version`인가?
-- 최상위 `invalid`가 `false`인가?
-- 사용할 몬스터의 `invalid`가 `false`인가?
-- 필수 최상위 배열과 `monsters`가 존재하는가?
-- 각 이름 공간의 ID가 비어 있지 않고 중복되지 않는가?
-- 모든 `grade_id`가 존재하는가?
-- `difficulty_tier.min >= 1`이고 `max >= min`인가?
-- `stats.max_hp >= 1`인가?
-- spawn condition의 condition ID와 operator를 지원하는가?
-- 모든 ability ID와 phase ID 참조가 존재하는가?
-- 모든 effect ID가 정의되고 게임 handler가 지원하는가?
-- 각 ability에 하나 이상의 effect가 있는가?
-- effect parameter가 정의 schema의 자료형과 필수 조건을 만족하는가?
-- 시작 페이즈가 존재하는가?
-- 각 phase loop에 step과 fallback ability가 존재하는가?
-- random choice에 후보와 양수 weight 합이 존재하는가?
-- trigger event, condition과 response ID가 정의되어 있는가?
-- trigger response 대상 ability 또는 phase가 존재하는가?
-- 무제한 즉시 전환 순환이 없는가?
+- 지원하는 `schema_version`
+- 올바른 `data_type`
+- `validation_status !== "invalid"`
+- `monsters` 배열 존재
 
-실패 시 다음 정보를 포함한다.
+### 16.2 기본 정보
+
+- 중복 없는 `monster_id`
+- 지원하는 네 등급
+- `hp`가 1 이상의 정수
+- 하나 이상의 등장 조건
+- `"all"`과 특정 던전 조건 미혼용
+- 유효한 층 범위
+
+### 16.3 스킬·효과
+
+- 몬스터 내부에서 고유한 `skill_id`
+- 비어 있지 않은 `effects[]`
+- 공통 효과 필수 필드
+- 지원하는 `target`, `type`, `parameters.id`
+- 정수 `value`, `duration`, `intensify`
+- `BASE_HIT_COUNT`의 `CURRENT_ACTION / 0 / intensify >= 1`
+
+### 16.4 행동
+
+- 존재하는 `initial_phase_id`
+- 중복 없는 `phase_id`
+- 지원하는 `loop.mode`
+- 비어 있지 않은 `steps[]`
+- 모든 step·choice·fallback의 유효한 스킬 참조
+- 양수 weight
+- 중복 없는 `trigger_id`
+- 지원하는 이벤트·조건·연산자·반응
+- 즉시 실행 스킬과 전환 페이즈 참조 유효성
+- 0 이상의 쿨다운과 실행 횟수 제한
+
+---
+
+## 17. 오류 처리
+
+다음 방식은 금지한다.
+
+- 알 수 없는 효과를 건너뛰기
+- 없는 스킬을 기본 공격으로 자동 치환
+- 없는 페이즈를 시작 페이즈로 자동 치환
+- 음수 weight를 0으로 보정
+- `named`를 자동으로 `VETERAN` 또는 `ELITE`로 변환
+- 설명 문자열에서 수치나 상태 ID 추출
+- 몬스터 등급으로 HP나 공격력 자동 보정
+
+개발 빌드에서는 경로가 포함된 명확한 오류를 발생시킨다. 배포 빌드에서 파일 전체를
+거부할지 해당 몬스터만 제외할지는 본 게임의 콘텐츠 로딩 정책으로 명시적으로
+결정하되, 조용히 정상 데이터처럼 취급하지 않는다.
+
+---
+
+## 18. 기존 JSON과 신규 스키마
+
+기존 첨부 JSON은 행동 패턴 개념의 참고 자료다. 신규 JSON과 자동 호환되는
+최종 계약이 아니다.
+
+주요 변환:
 
 ```text
-파일 경로
-monster ID
-ability/phase/trigger ID
-JSON 필드 경로
-문제가 된 참조 또는 값
+abilities[]         → skills[]
+ability_id          → skill_id
+stats.max_hp        → hp
+spawn_condition     → appearance_condition[]
+strict_sequence     → STRICT_SEQUENCE
+ability step        → SKILL step
+random_choice       → RANDOM_CHOICE
+ability_used        → SKILL_USED
+immediate           → IMMEDIATE
+transition_phase    → TRANSITION_PHASE
 ```
 
-경고와 로딩 실패를 구분한다. Designer 경고만 있고 `invalid: false`인 파일은 게임
-정책에 따라 허용할 수 있다.
+특히 다음은 자동 추측하지 않는다.
 
-## 17. 파서 구현 권장 순서
+- 기존 `named`가 `VETERAN`인지 `ELITE`인지
+- 기존 복합 `spawn_condition`을 어떤 던전별 층 범위로 바꿀지
+- 기존 `effect_id + parameters`를 어떤 공통 효과 `type`으로 바꿀지
 
-1. JSON 문법과 최상위 객체 확인
-2. schema 및 invalid 검사
-3. 공통 정의 배열 ID Map 생성
-4. 몬스터 ID Map 생성
-5. 몬스터별 ability/phase/trigger Map 생성
-6. 모든 참조와 parameter schema 검증
-7. spawn matcher 구현
-8. stat resolver와 `max_hp` 검증 구현
-9. condition evaluator 구현
-10. effect dispatcher 구현
-11. pattern selector와 fallback 구현
-12. trigger processor 구현
-13. phase transition 구현
-14. Intent presenter 연결
-15. 게임 전투 이벤트 시스템과 통합
+본 게임은 Designer에서 신규 스키마로 내보낸 파일을 받는 것을 기본으로 한다.
 
-각 단계는 UI나 Phaser 장면 없이 단위 테스트할 수 있게 작성한다.
+---
 
-## 18. 필수 테스트
+## 19. 권장 구현 순서
 
-### 로더
+1. 최상위 파일·버전 검사
+2. Monster 런타임 스키마 검증
+3. 몬스터·스킬·페이즈·트리거 ID 인덱싱
+4. 등장 조건 판정
+5. HP 런타임 생성
+6. 공통 효과 dispatch 연결
+7. 순차·확률 단계 선택기
+8. 트리거 처리
+9. 페이즈 전환
+10. React/Phaser 표시 계층 연결
+11. 통합 테스트
 
-- 정상 `1.3.0` JSON 로드
-- 잘못된 JSON과 미지원 schema 거부
-- 최상위 또는 몬스터 `invalid: true` 거부
-- 중복 ID와 끊어진 참조 거부
-- 알 수 없는 effect/condition/event/response ID 보고
+효과 dispatch가 준비되지 않은 상태에서 행동 상태 머신이 완성된 것처럼 처리하지
+않는다. 스킬 선택과 실제 스킬 결과 실행은 모두 연결되어야 한다.
 
-### 출현과 능력치
+---
 
-- floor 조건의 `all`, `any`, `not`
-- difficulty tier 최소·최대 경계
-- 현재 13개 몬스터의 `max_hp` 로드
-- 정의되지 않은 능력치 보정을 임의로 추가하지 않음
+## 20. 필수 테스트
 
-### 어빌리티와 효과
+### 20.1 로더
 
-- effect `order` 안정 정렬
-- `target_mode` 누락 시 single
-- single/all 대상 처리
-- 자폭 `a0006`의 자기 피해 100 후 플레이어 피해 50 순서
-- `deal_damage.target: self`와 정의 enum 불일치 보고
-- `injury`, `injry`, `doubleAttack` 상태 ID를 자동 교정하지 않음
-- 알 수 없는 effect handler 오류
+- 정상 JSON 로드
+- 지원하지 않는 버전 거부
+- 잘못된 `data_type` 거부
+- `invalid` 파일 거부
+- 중복 ID와 알 수 없는 참조 거부
 
-### 패턴
+### 20.2 등장
 
-- strict sequence 순환
-- 고정 seed random choice
-- availability와 cooldown 후보 제외
-- 후보 재정규화
-- fallback 실행
+- 특정 던전과 층 범위 일치
+- 다른 던전 불일치
+- `"all"` 일치
+- 여러 조건 중 하나 일치
+- 범위 양 끝 포함
 
-### 트리거와 페이즈
+### 20.3 스킬과 효과
 
-- 이벤트 불일치 시 미발동
-- 조건 만족과 priority 순서
-- once, cooldown, 턴당·전투당 제한
-- replace/queue/append 반응
-- phase transition과 entry ability
-- 즉시 연쇄 깊이 제한
+- 기본 공격을 일반 스킬로 실행
+- 여러 효과 순서 보존
+- 몬스터 공격력 능력치를 추가하지 않음
+- 연속 공격의 `value`와 `intensify` 보존
+- 여러 연속 공격을 합치지 않음
+- `S`, `C` 상태 갱신 시점
 
-## 19. 완료 조건
+### 20.4 패턴
 
-다음이 모두 되면 게임 연동이 완료된 것이다.
+- `STRICT_SEQUENCE` 순환
+- `SKILL` 단계
+- 가중치 기반 `RANDOM_CHOICE`
+- 후보 없음 시 fallback
+- 데이터 오류를 fallback으로 숨기지 않음
 
-1. `blockable_monster_design.json`을 게임 시작 또는 에셋 로드 단계에서 한 번 읽는다.
-2. schema와 invalid 상태를 검사한다.
-3. 공통 정의와 몬스터를 ID Map으로 조회할 수 있다.
-4. 던전 컨텍스트로 출현 가능한 몬스터를 찾을 수 있다.
-5. 현재 파일의 `stats.max_hp`를 올바르게 적용한다.
-6. 어빌리티 효과를 order 순서대로 dispatch한다.
-7. 누락된 target mode를 single로 처리하고 자폭의 두 피해 효과를 순서대로 처리한다.
-8. strict/random 패턴, cooldown과 fallback을 실행한다.
-9. 이벤트와 조건으로 트리거를 발동한다.
-10. Intent 교체, 행동 예약, 추가 행동과 페이즈 전환을 처리한다.
-11. Intent는 표시 전용으로 사용한다.
-12. 알 수 없는 ID와 참조를 명확히 보고한다.
-13. 수치와 패턴을 게임 코드에 중복 하드코딩하지 않는다.
-14. 파서와 상태 머신의 관련 단위 테스트가 통과한다.
+### 20.5 트리거와 페이즈
 
-## 20. Monster Designer 수정 작업 지침
+- 현재 페이즈 트리거만 평가
+- 이벤트·조건 필터
+- priority와 안정 정렬
+- once·쿨다운·횟수 제한
+- 즉시 스킬 실행
+- 페이즈 전환과 stepIndex 초기화
+- 연쇄 트리거 차단과 최대 깊이
 
-이 문서는 게임 파서 계약인 동시에 Designer를 수정하는 Codex의 필수 문서다.
+---
 
-Designer 수정 시:
+## 21. 완료 조건
 
-1. `AGENTS.md`를 먼저 읽는다.
-2. `docs/BLOCKABLE_MONSTER_DESIGNER_PLAN.md`와 이 문서를 읽는다.
-3. 현재 파일 구조와 `git status --short`를 확인한다.
-4. UI보다 domain, validation, persistence와 순수 서비스를 먼저 수정한다.
-5. raw JSON 입력을 일반 사용자의 기본 편집 UI로 추가하지 않는다.
-6. 알 수 없는 최신 필드와 기존 사용자 데이터를 조용히 삭제하지 않는다.
-7. 오류가 있어도 저장을 허용하고 `invalid` 상태를 다시 계산한다.
-8. 기능 변경 시 Semantic Versioning에 따라 프로그램 버전을 판단한다.
-9. 기능 변경 내역을 루트 `CHANGELOG.md`에 간단히 기록한다.
-10. 관련 테스트와 전체 `pytest`를 실행한다.
-11. `git diff --check`를 실행한다.
-12. 본 게임 저장소 수정, Git 커밋과 푸시는 별도 허가 없이 수행하지 않는다.
+본 게임 적용은 다음을 모두 만족해야 완료다.
 
-문서만 수정하고 기능 코드가 바뀌지 않았다면 사용자가 별도로 요청하지 않는 한
-프로그램 버전을 올리지 않는다.
+1. JSON이 단일 데이터 원본이다.
+2. 몬스터는 HP만 고정 능력치로 사용한다.
+3. 기본 공격을 포함한 모든 행동을 `skills[]`로 실행한다.
+4. 모든 스킬 결과를 공통 효과 구조로 dispatch한다.
+5. 여러 등장 조건과 `"all"`을 정확히 판정한다.
+6. 시작 페이즈와 현재 페이즈 상태를 관리한다.
+7. 순차 단계와 확률 선택을 처리한다.
+8. 트리거 우선순위·제한·반응을 처리한다.
+9. 페이즈 전환 시 단계 위치를 초기화한다.
+10. 알 수 없는 값이나 참조를 조용히 무시하지 않는다.
+11. 로더, 등장, 효과, 패턴과 트리거 테스트가 통과한다.
+12. 변경 파일과 테스트 결과를 사용자에게 보고한다.
+13. 별도 허가 없이 Git 커밋·푸시하지 않는다.
 
-## 21. 완료 전 Codex 확인 목록
+---
 
-- [ ] 게임 저장소의 `AGENTS.md`와 필수 문서를 읽었는가?
-- [ ] 적용 대상 JSON의 실제 schema, invalid와 ID를 확인했는가?
-- [ ] 배열 개수와 ID를 코드에 하드코딩하지 않았는가?
-- [ ] 표시 문자열이 아니라 ID와 parameters로 동작하는가?
-- [ ] 출현 조건과 difficulty tier를 구분했는가?
-- [ ] 층별 stats와 기본값 우선순위를 구현했는가?
-- [ ] effect order, target mode와 자폭 계약을 구현했는가?
-- [ ] strict/random 패턴과 fallback을 구현했는가?
-- [ ] trigger 우선순위, 제한과 phase transition을 구현했는가?
-- [ ] 즉시 반응 연쇄 제한이 있는가?
-- [ ] invalid 데이터를 게임 런타임에서 거부하는가?
-- [ ] 알 수 없는 사용자 정의 ID를 조용히 무시하지 않는가?
-- [ ] 관련 테스트와 전체 테스트가 통과했는가?
-- [ ] 원본 JSON과 다른 사용자 변경을 임의로 수정하지 않았는가?
-- [ ] Designer 기능 변경 시 버전과 CHANGELOG를 갱신했는가?
-- [ ] Git 커밋이나 푸시를 사용자 허가 없이 수행하지 않았는가?
+## 22. 새 JSON 재발행 시 갱신 절차
+
+Monster Designer 또는 본 게임의 실제 구현을 기준으로 JSON을 다시 발행할 때:
+
+1. 새 JSON 전체를 파싱한다.
+2. `schema_version`, 검증 상태와 최상위 구조를 확인한다.
+3. 몬스터·등급·스킬·효과·페이즈·트리거의 실제 ID와 개수를 다시 집계한다.
+4. 모든 참조와 공통 효과 매개변수를 검증한다.
+5. 본 문서의 구조·허용 값·파싱 순서가 새 JSON과 일치하는지 확인한다.
+6. 이전 스냅샷에만 있던 수치와 ID를 제거한다.
+7. 새 JSON과 갱신된 이 문서를 하나의 전달 세트로 본 게임 Codex에 넘긴다.
+
+새 JSON 발행 전에는 이 문서를 근거로 기존 JSON의 수치나 구조를 임의 변환하지
+않는다.
