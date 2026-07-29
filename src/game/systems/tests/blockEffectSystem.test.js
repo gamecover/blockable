@@ -153,6 +153,94 @@ describe('block effects and combinations', () => {
     expect(action.combatants[0].currentHealth).toBe(29)
   })
 
+  it('applies block STATUS_DAMAGE intensify through the shared status runtime', () => {
+    const block = createBlock('s001', 'status-damage')
+    block.effects = [{
+      effect_id: 'test_burn',
+      effect_name: '화상',
+      description: '',
+      target: 'SELECTED',
+      value: 5,
+      type: 'STATUS_DAMAGE',
+      parameters: { id: 'BURN', duration: 0, intensify: 3 },
+    }]
+    const effects = resolveBlockEffects([{
+      block,
+      cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
+    }])
+    const action = resolvePlayerAction({
+      combatants: [
+        { instanceId: 'enemy-1', slotId: 1, currentHealth: 50, armor: 0, statuses: [] },
+      ],
+      selectedMonsterId: 'enemy-1',
+      battleType: 'normal',
+      effects,
+    })
+
+    expect(effects.statusDamageEffects).toEqual([{
+      id: 'burn',
+      sourceId: 'BURN',
+      stacks: 3,
+      value: 5,
+      duration: 0,
+      intensify: 3,
+      target: 'enemy',
+      range: 'single',
+      distance: 0,
+    }])
+    expect(action.combatants[0].statuses).toEqual([{
+      id: 'burn',
+      stacks: 3,
+      layers: [{ value: 5, intensify: 3, remainingTurns: 1, newlyApplied: true }],
+    }])
+  })
+
+  it('uses value only for immediate turn and placement resource effects', () => {
+    const block = createBlock('s001', 'turn-resources')
+    block.effects = [
+      {
+        effect_id: 'test_extra_turn',
+        effect_name: '추가 턴',
+        description: '',
+        target: 'self',
+        value: 2,
+        type: 'EXTRA_TURN',
+        parameters: { id: 'PLAYER_TURN', duration: 99, intensify: 7 },
+      },
+      {
+        effect_id: 'test_draw',
+        effect_name: '드로우',
+        description: '',
+        target: 'self',
+        value: 3,
+        type: 'DRAW',
+        parameters: { id: 'MAIN_DECK', duration: 99, intensify: 7 },
+      },
+      {
+        effect_id: 'test_placement',
+        effect_name: '추가 배치',
+        description: '',
+        target: 'self',
+        value: 1,
+        type: 'PLACEMENT_COUNT',
+        parameters: { id: 'BLOCK_PLACEMENT', duration: 99, intensify: 7 },
+      },
+    ]
+    const result = resolveBlockEffects([{
+      block,
+      cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
+    }])
+
+    expect(result.extraTurns).toBe(2)
+    expect(result.drawCount).toBe(3)
+    expect(result.extraTurnChanges[0]).toMatchObject({ value: 2, duration: 0, intensify: 1 })
+    expect(result.placementCountChanges[0]).toMatchObject({
+      value: 1,
+      duration: 0,
+      intensify: 1,
+    })
+  })
+
   it('matches a normal-block recipe by shape even when its participating colors differ', () => {
     const result = resolveBlockEffects(placeRecipe('base_33_01_steel', {
       s001: 'f001',

@@ -4,7 +4,7 @@
   "metadata": {
     "project_name": "Blockable",
     "ruleset_name": "prototype",
-    "updated_at": "2026-07-29T06:47:40+09:00",
+    "updated_at": "2026-07-29T18:06:31+09:00",
     "validation_status": "valid",
     "validation_error_count": 0,
     "validation_warning_count": 32,
@@ -616,7 +616,7 @@
           "parameters": {
             "id": "MAIN_DECK",
             "duration": 0,
-            "intensify": 0
+            "intensify": 1
           }
         }
       ]
@@ -670,7 +670,7 @@
           "parameters": {
             "id": "MAIN_DECK",
             "duration": 0,
-            "intensify": 0
+            "intensify": 1
           }
         }
       ]
@@ -992,7 +992,7 @@
           "parameters": {
             "id": "MAIN_DECK",
             "duration": 0,
-            "intensify": 0
+            "intensify": 1
           }
         }
       ]
@@ -1042,7 +1042,7 @@
           "parameters": {
             "id": "MAIN_DECK",
             "duration": 0,
-            "intensify": 0
+            "intensify": 1
           }
         }
       ]
@@ -1539,6 +1539,19 @@
             "duration": 0,
             "intensify": 6
           }
+        },
+        {
+          "effect_id": "s001_base_damage_01_4",
+          "effect_name": "deal_damage",
+          "description": "단일 10 데미지",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
         }
       ]
     },
@@ -1620,6 +1633,19 @@
             "id": "DAMAGE_TAKEN_INCREASE",
             "duration": 0,
             "intensify": 5
+          }
+        },
+        {
+          "effect_id": "a1234",
+          "effect_name": "출혈 테스트",
+          "description": "",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "STATUS_DAMAGE",
+          "parameters": {
+            "id": "BLEEDING",
+            "duration": 2,
+            "intensify": 2
           }
         }
       ]
@@ -1715,7 +1741,7 @@
           "parameters": {
             "id": "MAIN_DECK",
             "duration": 0,
-            "intensify": 0
+            "intensify": 1
           }
         }
       ]

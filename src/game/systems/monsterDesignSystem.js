@@ -3,6 +3,7 @@ import {
   getMonsterImageAsset,
   hasMonsterImageAsset,
 } from '../../objects/monsters/monsterImageAssets.js'
+import { createStatusUpdateFromEffect } from './statusEffectSystem.js'
 
 export const MONSTER_DESIGN_SOURCE_PATH = 'docs/references/designs/blockable_monster_design.json'
 export const SUPPORTED_MONSTER_SCHEMA_VERSION = '1.0.0'
@@ -36,16 +37,10 @@ const SUPPORTED_PARAMETER_IDS = new Set([
   'BLEEDING',
   'BURN',
   'STUN',
+  // 구형 디자이너 파일의 삭제 효과를 진단한 뒤 실행에서 제외하기 위해 허용한다.
   'HIT_COUNT',
+  'RAGE',
 ])
-const STATUS_ADAPTER = Object.freeze({
-  ATTACK_REDUCTION: 'weakness',
-  DAMAGE_TAKEN_INCREASE: 'wound',
-  BLEEDING: 'bleeding',
-  BURN: 'burn',
-  STUN: 'stun',
-  HIT_COUNT: 'double_attack',
-})
 const SUPPORTED_TARGET = /^(SELECTED|self|all|[LRB]\d+)$/
 const SUPPORTED_STEP_TYPES = new Set(['SKILL', 'RANDOM_CHOICE'])
 const SUPPORTED_EVENTS = new Set(['TURN_STARTED', 'MONSTER_HP_CHANGED', 'SKILL_USED'])
@@ -92,7 +87,7 @@ const validateEffect = (effect, location, errors) => {
   if (!SUPPORTED_EFFECT_TYPES.has(type)) {
     errors.push(`${location}.type: 지원하지 않는 효과 타입 ${effect?.type ?? '없음'}`)
   }
-  if (!Number.isInteger(effect?.value)) errors.push(`${location}.value: 정수가 필요합니다.`)
+  if (!Number.isFinite(effect?.value)) errors.push(`${location}.value: 유한한 숫자가 필요합니다.`)
   const parameters = effect?.parameters
   if (!parameters || typeof parameters !== 'object') {
     errors.push(`${location}.parameters: 객체가 필요합니다.`)
@@ -176,6 +171,11 @@ export const validateMonsterDesign = (design) => {
           .forEach((id) => errors.push(`${skillLocation}.effects: 중복 effect_id ${id}`))
         skill.effects.forEach((effect, effectIndex) =>
           validateEffect(effect, `${skillLocation}.effects[${effectIndex}]`, errors))
+        skill.effects
+          .filter((effect) => effect.type === 'BUFF' && effect.parameters?.id === 'HIT_COUNT')
+          .forEach(() => warnings.push(
+            `${skillLocation}: 삭제된 BUFF + HIT_COUNT 효과를 실행에서 제외합니다.`,
+          ))
       }
     })
 
@@ -284,7 +284,9 @@ const normalizeSkill = (skill) => ({
   id: skill.skill_id,
   display_name: skill.skill_name,
   description: skill.description,
-  effects: skill.effects.map(normalizeEffect),
+  effects: skill.effects
+    .filter((effect) => !(effect.type === 'BUFF' && effect.parameters?.id === 'HIT_COUNT'))
+    .map(normalizeEffect),
   cooldown_turns: 0,
   availability_condition: null,
   intent: {
@@ -491,9 +493,17 @@ export const selectMonsterAbility = (monster, runtime, context, random = Math.ra
 export const resolveMonsterAbility = (ability) => {
   const result = {
     playerDamage: 0,
+    playerBaseDamage: 0,
+    playerIndependentDamage: 0,
+    playerBaseHitAttacks: [],
     selfDamage: 0,
+    selfBaseDamage: 0,
+    selfIndependentDamage: 0,
+    selfBaseHitAttacks: [],
     selfHealing: 0,
     selfArmor: 0,
+    extraTurns: 0,
+    ignoredBlockResourceEffects: [],
     playerStatuses: [],
     selfStatuses: [],
     unsupportedStatuses: [],
@@ -503,21 +513,33 @@ export const resolveMonsterAbility = (ability) => {
     const target = effect.target
     const value = Number(effect.value)
     const intensify = Number(effect.parameters?.intensify ?? 0)
-    if (['BASE_DAMAGE', 'INDEPENDENT_DAMAGE'].includes(type)) {
-      result[target === 'self' ? 'selfDamage' : 'playerDamage'] += value
+    const targetPrefix = target === 'self' ? 'self' : 'player'
+    if (type === 'BASE_DAMAGE') {
+      result[`${targetPrefix}BaseDamage`] += value
+      result[`${targetPrefix}Damage`] += value
+    }
+    if (type === 'INDEPENDENT_DAMAGE') {
+      result[`${targetPrefix}IndependentDamage`] += value
+      result[`${targetPrefix}Damage`] += value
     }
     if (type === 'BASE_HIT_COUNT') {
-      result[target === 'self' ? 'selfDamage' : 'playerDamage'] += value * intensify
+      result[`${targetPrefix}BaseHitAttacks`].push({
+        value,
+        hitCount: intensify,
+        target,
+      })
+      result[`${targetPrefix}Damage`] += value * intensify
     }
     if (type === 'RECOVERY' && target === 'self') result.selfHealing += value
     if (type === 'BLOCK' && target === 'self') result.selfArmor += value
+    if (type === 'EXTRA_TURN') result.extraTurns += Math.max(0, value)
+    if (['DECK_CAPACITY', 'DRAW', 'PLACEMENT_COUNT'].includes(type)) {
+      result.ignoredBlockResourceEffects.push(type)
+    }
     if (['STATUS_DAMAGE', 'DEBUFF', 'CROWD_CONTROL', 'BUFF'].includes(type)) {
-      const sourceId = effect.parameters.id
-      const mappedStatusId = STATUS_ADAPTER[sourceId]
-      const stacks = intensify || value
-      if (!mappedStatusId) result.unsupportedStatuses.push(sourceId)
-      else result[target === 'self' ? 'selfStatuses' : 'playerStatuses']
-        .push({ id: mappedStatusId, sourceId, stacks, value, duration: effect.parameters.duration })
+      const status = createStatusUpdateFromEffect(effect)
+      if (!status) result.unsupportedStatuses.push(effect.parameters.id)
+      else result[target === 'self' ? 'selfStatuses' : 'playerStatuses'].push(status)
     }
   }
   if (result.unsupportedStatuses.length) {

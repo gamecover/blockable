@@ -14,8 +14,10 @@ import {
 } from '../../objects/blocks/blockData.js'
 import {
   addStatus,
+  addStatusUpdate,
   createCombatantState,
-  getDamageMultiplier,
+  calculateGeneralDamage,
+  consumeOneShotStatus,
   resolveTurnEndStatuses,
 } from '../systems/statusEffectSystem.js'
 import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
@@ -124,11 +126,11 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     }
   }),
   damagePlayer: (amount, attackerStatuses = []) => set((state) => {
-    const adjustedAmount = Math.max(0, Math.floor(
-      amount
-      * getDamageMultiplier(attackerStatuses, 'outgoing')
-      * getDamageMultiplier(state.combat.player.statuses, 'incoming'),
-    ))
+    const adjustedAmount = calculateGeneralDamage({
+      amount,
+      attackerStatuses,
+      defenderStatuses: state.combat.player.statuses,
+    })
     const absorbed = Math.min(state.armor, adjustedAmount)
     state.armor -= absorbed
     state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
@@ -152,16 +154,25 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
   }),
   heal: (amount) => set((state) => { state.health = Math.min(state.maxHealth, state.health + amount) }),
   gainMaxHealth: (amount) => set((state) => { state.maxHealth += amount; state.health += amount }),
-  applyCombatStatus: (target, statusId, stacks, newlyApplied = false) => set((state) => {
+  applyCombatStatus: (target, statusOrId, stacks, newlyApplied = false) => set((state) => {
     if (!state.combat[target]) return
-    state.combat[target].statuses = addStatus(state.combat[target].statuses, statusId, stacks, newlyApplied)
+    state.combat[target].statuses = typeof statusOrId === 'string'
+      ? addStatus(state.combat[target].statuses, statusOrId, stacks, newlyApplied)
+      : addStatusUpdate(state.combat[target].statuses, statusOrId, newlyApplied)
+  }),
+  consumeCombatStatus: (target, statusId) => set((state) => {
+    if (!state.combat[target]) return
+    state.combat[target].statuses = consumeOneShotStatus(
+      state.combat[target].statuses,
+      statusId,
+    )
   }),
   resolvePlayerTurnEndStatuses: (placedCount) => set((state) => {
     const result = resolveTurnEndStatuses({
       health: state.health,
       armor: state.armor,
       statuses: state.combat.player.statuses,
-      placedCount,
+      playerPlacedBlockCount: placedCount,
     })
     state.health = result.health
     state.armor = result.armor

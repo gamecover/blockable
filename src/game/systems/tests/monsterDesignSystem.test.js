@@ -76,6 +76,39 @@ describe('monster design integration', () => {
     })
   })
 
+  it('BASE_DAMAGE와 INDEPENDENT_DAMAGE를 서로 다른 공격 단계로 보존한다', () => {
+    const result = resolveMonsterAbility({
+      effects: [
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 7, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'INDEPENDENT_DAMAGE', target: 'SELECTED', value: 4, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      playerBaseDamage: 7,
+      playerIndependentDamage: 4,
+      playerDamage: 11,
+    })
+  })
+
+  it('preserves monster extra turns and explicitly ignores block-only resources', () => {
+    const result = resolveMonsterAbility({
+      effects: [
+        { type: 'EXTRA_TURN', target: 'self', value: 2, order: 0, parameters: { id: 'PLAYER_TURN', duration: 0, intensify: 1 } },
+        { type: 'DRAW', target: 'self', value: 3, order: 1, parameters: { id: 'MAIN_DECK', duration: 0, intensify: 1 } },
+        { type: 'DECK_CAPACITY', target: 'self', value: 4, order: 2, parameters: { id: 'MAIN_DECK', duration: 0, intensify: 1 } },
+        { type: 'PLACEMENT_COUNT', target: 'self', value: 1, order: 3, parameters: { id: 'BLOCK_PLACEMENT', duration: 0, intensify: 1 } },
+      ],
+    })
+
+    expect(result.extraTurns).toBe(2)
+    expect(result.ignoredBlockResourceEffects).toEqual([
+      'DRAW',
+      'DECK_CAPACITY',
+      'PLACEMENT_COUNT',
+    ])
+  })
+
   it('공격·방어·회복 행동을 몬스터 머리 위 의도 목록으로 설명한다', () => {
     const description = describeMonsterAbility({
       display_name: '복합 행동',
@@ -96,7 +129,10 @@ describe('monster design integration', () => {
   it('에셋이 없는 monster_id를 정확한 경로 경고로 보고한다', () => {
     expect(monsterDesignDiagnostics.warnings)
       .toContain('monsters[4].monster_id: 연결된 이미지 에셋 없음 (hanging_ashes)')
-    expect(monsterDesignDiagnostics.warnings).toHaveLength(6)
+    expect(monsterDesignDiagnostics.warnings.filter((warning) =>
+      warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(6)
+    expect(monsterDesignDiagnostics.warnings.filter((warning) =>
+      warning.includes('삭제된 BUFF + HIT_COUNT'))).toHaveLength(3)
   })
 
   it('JSON 문법과 미지원 사용자 정의 변수를 원인과 함께 실패시킨다', () => {
