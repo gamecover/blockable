@@ -1,10 +1,11 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import {
   canTravelToNode,
-  getFloor,
   getMapEdges,
+  getMapNodeDistances,
   getMapNodePosition,
   getMapNodes,
 } from '../../game/systems/mapGenerationSystem.js'
@@ -14,6 +15,14 @@ import mapArrowCurveDown from './assets/pictures/map_arrow_03.png'
 import mapArrowShort from './assets/pictures/map_arrow_short_01.png'
 import mapArrowShortCurve from './assets/pictures/map_arrow_short_02.png'
 import mapBase from './assets/pictures/map_base_alpha.png'
+
+const MAP_CANVAS_WIDTH = 2600
+const MAP_CANVAS_HEIGHT = Math.round(MAP_CANVAS_WIDTH * 1066 / 3110)
+const DEFAULT_MAP_ZOOM = 0.72
+const MIN_MAP_ZOOM = 0.55
+const MAX_MAP_ZOOM = 1.25
+const MAP_ZOOM_STEP = 0.1
+const MAP_EDGE_PADDING = 48
 
 const symbols = {
   unique_block_selection: '◆',
@@ -80,10 +89,141 @@ export function MapScreen({
   onLeaveDungeon,
   onSelect,
 }) {
-  const selectedFloor = getFloor(map, floor)
+  const [developerMapRevealed, setDeveloperMapRevealed] = useState(false)
+  const [mapView, setMapView] = useState({
+    x: 0,
+    y: 0,
+    zoom: DEFAULT_MAP_ZOOM,
+  })
+  const viewportRef = useRef(null)
+  const dragRef = useRef(null)
   const nodes = getMapNodes(map, floor)
-  const positions = new Map(nodes.map((node) => [node.id, getMapNodePosition(map, node)]))
+  const nodeDistances = getMapNodeDistances(map, floor, currentNodeId)
+  const getVisibility = (node) => {
+    if (developerMode && developerMapRevealed) return 'known'
+    if (node.status === 'complete') return 'known'
+    const distance = nodeDistances.get(node.id)
+    if (distance <= 1) return 'known'
+    if (distance === 2) return 'mystery'
+    return 'hidden'
+  }
+  const visibleNodes = nodes.filter((node) => getVisibility(node) !== 'hidden')
+  const knownNodes = visibleNodes.filter((node) => getVisibility(node) === 'known')
+  const visibleNodeIds = new Set(visibleNodes.map(({ id }) => id))
+  const positions = useMemo(
+    () => new Map(nodes.map((node) => [node.id, getMapNodePosition(map, node)])),
+    [map, nodes],
+  )
   const corridors = getMapEdges(map, floor)
+  const clampMapView = useCallback((view) => {
+    const viewport = viewportRef.current
+    if (!viewport) return view
+    const scaledWidth = MAP_CANVAS_WIDTH * view.zoom
+    const scaledHeight = MAP_CANVAS_HEIGHT * view.zoom
+    const centerX = (viewport.clientWidth - scaledWidth) / 2
+    const centerY = (viewport.clientHeight - scaledHeight) / 2
+    const clampAxis = (value, viewportSize, scaledSize, centered) => {
+      if (scaledSize <= viewportSize) return centered
+      return Math.min(
+        MAP_EDGE_PADDING,
+        Math.max(viewportSize - scaledSize - MAP_EDGE_PADDING, value),
+      )
+    }
+    return {
+      ...view,
+      x: clampAxis(view.x, viewport.clientWidth, scaledWidth, centerX),
+      y: clampAxis(view.y, viewport.clientHeight, scaledHeight, centerY),
+    }
+  }, [])
+
+  const centerCurrentNode = useCallback((zoom = DEFAULT_MAP_ZOOM) => {
+    const viewport = viewportRef.current
+    const position = positions.get(currentNodeId)
+    if (!viewport || !position) return
+    setMapView(clampMapView({
+      zoom,
+      x: viewport.clientWidth / 2 - MAP_CANVAS_WIDTH * position.x / 100 * zoom,
+      y: viewport.clientHeight / 2 - MAP_CANVAS_HEIGHT * position.y / 100 * zoom,
+    }))
+  }, [clampMapView, currentNodeId, positions])
+
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => centerCurrentNode())
+    const handleResize = () => setMapView((current) => clampMapView(current))
+    window.addEventListener('resize', handleResize)
+    return () => {
+      cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [centerCurrentNode, clampMapView, floor])
+
+  const handleMapPointerDown = (event) => {
+    if (event.button !== 0 || event.target.closest('button')) return
+    viewportRef.current?.setPointerCapture(event.pointerId)
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      mapX: mapView.x,
+      mapY: mapView.y,
+    }
+    viewportRef.current?.classList.add('is-dragging')
+  }
+
+  const handleMapPointerMove = (event) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    setMapView((current) => clampMapView({
+      ...current,
+      x: drag.mapX + event.clientX - drag.startX,
+      y: drag.mapY + event.clientY - drag.startY,
+    }))
+  }
+
+  const finishMapDrag = (event) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return
+    dragRef.current = null
+    viewportRef.current?.classList.remove('is-dragging')
+    if (viewportRef.current?.hasPointerCapture(event.pointerId)) {
+      viewportRef.current.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const changeMapZoom = (amount) => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    setMapView((current) => {
+      const zoom = Math.min(
+        MAX_MAP_ZOOM,
+        Math.max(MIN_MAP_ZOOM, Number((current.zoom + amount).toFixed(2))),
+      )
+      const ratio = zoom / current.zoom
+      const centerX = viewport.clientWidth / 2
+      const centerY = viewport.clientHeight / 2
+      return clampMapView({
+        zoom,
+        x: centerX - (centerX - current.x) * ratio,
+        y: centerY - (centerY - current.y) * ratio,
+      })
+    })
+  }
+
+  const handleMapKeyDown = (event) => {
+    const movement = {
+      ArrowLeft: [60, 0],
+      ArrowRight: [-60, 0],
+      ArrowUp: [0, 60],
+      ArrowDown: [0, -60],
+    }[event.key]
+    if (movement) {
+      event.preventDefault()
+      setMapView((current) => clampMapView({
+        ...current,
+        x: current.x + movement[0],
+        y: current.y + movement[1],
+      }))
+    }
+  }
 
   return (
     <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · 난이도 ${map.difficulty}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
@@ -100,18 +240,44 @@ export function MapScreen({
             <div>
               <button type="button" onClick={onDebugAddGold}>골드 +1000</button>
               <button type="button" onClick={onDebugAddHealth}>현재/최대 체력 +25</button>
+              <button
+                type="button"
+                aria-pressed={developerMapRevealed}
+                onClick={() => setDeveloperMapRevealed((revealed) => !revealed)}
+              >
+                {developerMapRevealed ? '가시 범위 적용' : '던전 맵 전체 보기'}
+              </button>
             </div>
           </div>
         )}
       </div>
-      <div className="dungeon-map-viewport">
+      <div
+        ref={viewportRef}
+        className="dungeon-map-viewport"
+        role="region"
+        tabIndex="0"
+        aria-label={`${map.dungeonName} ${floor}층 지도. 배경을 드래그하거나 방향키로 이동할 수 있습니다.`}
+        onKeyDown={handleMapKeyDown}
+        onPointerDown={handleMapPointerDown}
+        onPointerMove={handleMapPointerMove}
+        onPointerUp={finishMapDrag}
+        onPointerCancel={finishMapDrag}
+      >
         <div
           className="dungeon-map dungeon-map--rooms"
-          style={{ backgroundImage: `url(${mapBase})` }}
+          style={{
+            backgroundImage: `url(${mapBase})`,
+            width: MAP_CANVAS_WIDTH,
+            height: MAP_CANVAS_HEIGHT,
+            transform: `translate3d(${mapView.x}px, ${mapView.y}px, 0) scale(${mapView.zoom})`,
+          }}
           aria-label={`${map.dungeonName} ${floor}층 방 지도`}
         >
           <svg className="room-corridors" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
             {corridors.map((corridor) => {
+              if (!visibleNodeIds.has(corridor.from) || !visibleNodeIds.has(corridor.to)) {
+                return null
+              }
               const start = positions.get(corridor.from)
               const end = positions.get(corridor.to)
               if (!start || !end) return null
@@ -136,30 +302,57 @@ export function MapScreen({
               )
             })}
           </svg>
-          {nodes.map((node) => {
+          {visibleNodes.map((node) => {
             const position = positions.get(node.id)
-            const selectable = canTravelToNode(map, currentNodeId, node.id, developerMode)
+            const visibility = getVisibility(node)
+            const mystery = visibility === 'mystery'
+            const selectable = !mystery
+              && canTravelToNode(map, currentNodeId, node.id, developerMode)
             return (
               <div className="room-node-position" style={{ left: `${position.x}%`, top: `${position.y}%` }} key={node.id}>
                 <motion.button
                   type="button"
                   whileHover={selectable ? { scale: 1.08 } : {}}
                   disabled={!selectable}
-                  className={`room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
+                  className={mystery
+                    ? 'room-node locked mystery'
+                    : `room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
                   onClick={() => onSelect(node)}
-                  aria-label={`${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
+                  aria-label={mystery
+                    ? `${floor}층 미확인 방`
+                    : `${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
                 >
-                  <b>{symbols[node.type]}</b>
-                  <small>{labels[node.type]}</small>
+                  <b>{mystery ? '?' : symbols[node.type]}</b>
+                  <small>{mystery ? '미확인' : labels[node.type]}</small>
                 </motion.button>
               </div>
             )
           })}
           <aside className="map-floor-summary">
             <b>{floor}F</b>
-            <span>방 {selectedFloor.actualNodeCount}</span>
-            <span>막다른 가지 {selectedFloor.branches.length}</span>
+            <span>발견한 방 {knownNodes.length}</span>
           </aside>
+        </div>
+        <div className="map-zoom-controls" aria-label="지도 확대 및 축소">
+          <button
+            type="button"
+            onClick={() => changeMapZoom(MAP_ZOOM_STEP)}
+            disabled={mapView.zoom >= MAX_MAP_ZOOM}
+            aria-label="지도 확대"
+          >
+            +
+          </button>
+          <output aria-label={`지도 확대율 ${Math.round(mapView.zoom * 100)}퍼센트`}>
+            {Math.round(mapView.zoom * 100)}%
+          </output>
+          <button
+            type="button"
+            onClick={() => changeMapZoom(-MAP_ZOOM_STEP)}
+            disabled={mapView.zoom <= MIN_MAP_ZOOM}
+            aria-label="지도 축소"
+          >
+            −
+          </button>
         </div>
       </div>
       <p className="map-hint">통로로 연결된 방을 탐험하고, 막다른 가지를 돌아 나온 뒤 계단 또는 보스로 향할 수 있습니다.</p>

@@ -4,8 +4,10 @@ import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import {
   describeDamageRange,
+  getDominantCombinationColor,
   resolveBlockEffects,
 } from '../../systems/blockEffectSystem.js'
+import { findMatchingCombinations } from '../../systems/blockCombinationSystem.js'
 import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
@@ -30,8 +32,9 @@ const FORMWORK_TEXTURE_SIZE = 700
 const FORMWORK_TEXTURE_CELL_PITCH = 110
 const FORMWORK_DISPLAY_SIZE = FORMWORK_TEXTURE_SIZE * BOARD_CELL_SIZE / FORMWORK_TEXTURE_CELL_PITCH
 const BOARD_CENTER = gridToWorld(1, 1, BOARD_METRICS)
-const EFFECT_SUMMARY_X = BOARD_CENTER.x + FORMWORK_DISPLAY_SIZE / 2 + 10
-const EFFECT_SUMMARY_Y = BOARD_CENTER.y + FORMWORK_DISPLAY_SIZE / 2 - 54
+const EFFECT_SUMMARY_X = BOARD_CENTER.x + FORMWORK_DISPLAY_SIZE / 2 + 4
+const EFFECT_SUMMARY_BOTTOM = BOARD_CENTER.y + FORMWORK_DISPLAY_SIZE / 2
+const EFFECT_SUMMARY_WIDTH = BATTLE_STAGE_WIDTH - EFFECT_SUMMARY_X - 8
 const ANVIL_TOP_Y = ANVIL_CENTER_Y - ANVIL_DISPLAY_HEIGHT / 2
 const HAND_SURFACE_Y = ANVIL_TOP_Y - 8
 const COLORS = { neutral: 0xb9b5ad, ghost: 0x6f5a42, valid: 0x91c99c, placed: 0xb94a42, invalid: 0x8c8177 }
@@ -55,6 +58,61 @@ const COMBINATION_NAME_COLORS = {
   fire: '#ef6a4a',
   nature: '#69bd72',
   water: '#69aef5',
+}
+const COMBINATION_GLOW_COLORS = [
+  { core: 0xff8a32, glow: 0xd83b16 },
+  { core: 0x72d9ff, glow: 0x176fc9 },
+]
+const FORMWORK_AURA_COLORS = {
+  legendary: 0xf2b84f,
+  special: 0x2de2d1,
+  fire: 0xe34e2d,
+  nature: 0x68ae58,
+  water: 0x4c9ee8,
+  steel: 0xb9b7ae,
+}
+
+const boundaryPointKey = ({ x, y }) => `${x},${y}`
+
+const getClockwiseBoundaryLoops = (cells) => {
+  const cellKeys = new Set(cells.map(({ x, y }) => `${x},${y}`))
+  const segments = cells.flatMap(({ x, y }) => [
+    !cellKeys.has(`${x},${y - 1}`) && { start: { x: x - 0.5, y: y - 0.5 }, end: { x: x + 0.5, y: y - 0.5 } },
+    !cellKeys.has(`${x + 1},${y}`) && { start: { x: x + 0.5, y: y - 0.5 }, end: { x: x + 0.5, y: y + 0.5 } },
+    !cellKeys.has(`${x},${y + 1}`) && { start: { x: x + 0.5, y: y + 0.5 }, end: { x: x - 0.5, y: y + 0.5 } },
+    !cellKeys.has(`${x - 1},${y}`) && { start: { x: x - 0.5, y: y + 0.5 }, end: { x: x - 0.5, y: y - 0.5 } },
+  ].filter(Boolean))
+  const remaining = new Set(segments)
+  const loops = []
+  while (remaining.size) {
+    const first = remaining.values().next().value
+    const loop = [first]
+    remaining.delete(first)
+    let endKey = boundaryPointKey(first.end)
+    const startKey = boundaryPointKey(first.start)
+    while (endKey !== startKey) {
+      const next = [...remaining].find(({ start }) => boundaryPointKey(start) === endKey)
+      if (!next) break
+      loop.push(next)
+      remaining.delete(next)
+      endKey = boundaryPointKey(next.end)
+    }
+    loops.push(loop)
+  }
+  return loops
+}
+
+const getBoundaryWorldPoint = (loop, progress) => {
+  const normalized = ((progress % 1) + 1) % 1
+  const scaled = normalized * loop.length
+  const segment = loop[Math.min(loop.length - 1, Math.floor(scaled))]
+  const amount = scaled - Math.floor(scaled)
+  return {
+    x: BOARD_METRICS.originX
+      + Phaser.Math.Linear(segment.start.x, segment.end.x, amount) * BOARD_METRICS.cellSize,
+    y: BOARD_METRICS.originY
+      + Phaser.Math.Linear(segment.start.y, segment.end.y, amount) * BOARD_METRICS.cellSize,
+  }
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -171,32 +229,265 @@ export class BattleScene extends Phaser.Scene {
         .setStrokeStyle(2, 0xc9a976, 0.4)
         .setDepth(-1)
     })
+    this.drawMinimumFormworkBoundary()
+    this.combinationGlowContainer = this.add.container(0, 0).setDepth(8)
+    this.createFormworkAura()
     this.drawDisabledFormworkCells()
   }
 
+  drawMinimumFormworkBoundary() {
+    const topLeft = gridToWorld(0, 0, BOARD_METRICS)
+    const size = BOARD_METRICS.cellSize * 3
+    const x = topLeft.x - BOARD_METRICS.cellSize / 2
+    const y = topLeft.y - BOARD_METRICS.cellSize / 2
+    const border = this.add.graphics().setDepth(2)
+    border.lineStyle(7, 0x24140e, 0.72)
+    border.strokeRect(x, y, size, size)
+    border.lineStyle(3, 0x875034, 0.82)
+    border.strokeRect(x, y, size, size)
+    border.lineStyle(2, 0xc07843, 0.65)
+    const rustMarks = [
+      [0.04, 0, 0.18, 0], [0.54, 0, 0.69, 0], [0.86, 0, 0.95, 0],
+      [0.11, 1, 0.27, 1], [0.46, 1, 0.58, 1], [0.78, 1, 0.91, 1],
+    ]
+    rustMarks.forEach(([start, edge, end]) => {
+      const lineY = edge ? y + size : y
+      border.lineBetween(x + size * start, lineY, x + size * end, lineY)
+    })
+    border.lineBetween(x, y + size * 0.18, x, y + size * 0.38)
+    border.lineBetween(x, y + size * 0.72, x, y + size * 0.87)
+    border.lineBetween(x + size, y + size * 0.08, x + size, y + size * 0.24)
+    border.lineBetween(x + size, y + size * 0.57, x + size, y + size * 0.78)
+  }
+
+  drawCombinationGlows(matches) {
+    this.combinationFlowTweens?.forEach((tween) => tween.remove())
+    this.combinationFlowTweens = []
+    this.combinationGlowContainer?.each((child) => this.tweens.killTweensOf(child))
+    this.combinationGlowContainer?.removeAll(true)
+    matches.forEach(({ participatingBlocks }, index) => {
+      const palette = COMBINATION_GLOW_COLORS[index % COMBINATION_GLOW_COLORS.length]
+      const cells = participatingBlocks.flatMap(({ cells }) => cells)
+      const cellKeys = new Set(cells.map(({ x, y }) => `${x},${y}`))
+      const glow = this.add.graphics()
+      const drawEdges = () => {
+        cells.forEach(({ x, y }) => {
+          const world = gridToWorld(y, x, BOARD_METRICS)
+          const half = BOARD_METRICS.cellSize / 2
+          if (!cellKeys.has(`${x},${y - 1}`)) glow.lineBetween(world.x - half, world.y - half, world.x + half, world.y - half)
+          if (!cellKeys.has(`${x + 1},${y}`)) glow.lineBetween(world.x + half, world.y - half, world.x + half, world.y + half)
+          if (!cellKeys.has(`${x},${y + 1}`)) glow.lineBetween(world.x + half, world.y + half, world.x - half, world.y + half)
+          if (!cellKeys.has(`${x - 1},${y}`)) glow.lineBetween(world.x - half, world.y + half, world.x - half, world.y - half)
+        })
+      }
+      glow.lineStyle(10, palette.glow, 0.26)
+      drawEdges()
+      glow.lineStyle(5, palette.glow, 0.72)
+      drawEdges()
+      glow.lineStyle(2, palette.core, 1)
+      drawEdges()
+      this.combinationGlowContainer.add(glow)
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.72, to: 1 },
+        duration: 520 + index * 90,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      })
+      getClockwiseBoundaryLoops(cells).forEach((loop) => {
+        const trail = [0, 1, 2].map((trailIndex) => {
+          const particle = this.add.image(0, 0, 'combination-flow-particle')
+            .setTint(palette.core)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setScale(1 - trailIndex * 0.2)
+            .setAlpha(1 - trailIndex * 0.3)
+          this.combinationGlowContainer.add(particle)
+          return particle
+        })
+        const state = { progress: 0 }
+        const updateTrail = () => {
+          trail.forEach((particle, trailIndex) => {
+            const point = getBoundaryWorldPoint(loop, state.progress - trailIndex * 0.018)
+            particle.setPosition(point.x, point.y)
+          })
+        }
+        updateTrail()
+        const tween = this.tweens.add({
+          targets: state,
+          progress: 1,
+          duration: Math.max(1100, loop.length * 150),
+          repeat: -1,
+          onUpdate: updateTrail,
+        })
+        this.combinationFlowTweens.push(tween)
+      })
+    })
+  }
+
+  createFormworkAura() {
+    if (!this.textures.exists('combination-flow-particle')) {
+      const flowSource = this.make.graphics({ x: 0, y: 0, add: false })
+      flowSource.fillStyle(0xffffff, 0.12)
+      flowSource.fillCircle(9, 9, 8)
+      flowSource.fillStyle(0xffffff, 0.45)
+      flowSource.fillCircle(9, 9, 4)
+      flowSource.fillStyle(0xffffff, 1)
+      flowSource.fillCircle(9, 9, 1.6)
+      flowSource.generateTexture('combination-flow-particle', 18, 18)
+      flowSource.destroy()
+    }
+    Object.entries(FORMWORK_AURA_COLORS).forEach(([auraName, auraColor]) => {
+      const textureKey = `formwork-aura-${auraName}`
+      if (this.textures.exists(textureKey)) return
+      const source = this.make.graphics({ x: 0, y: 0, add: false })
+      source.fillStyle(auraColor, 0.1)
+      source.fillEllipse(48, 32, 92, 54)
+      source.fillStyle(auraColor, 0.16)
+      source.fillEllipse(31, 34, 50, 42)
+      source.fillEllipse(65, 27, 48, 38)
+      source.fillStyle(auraColor, 0.27)
+      source.fillEllipse(48, 32, 38, 27)
+      source.generateTexture(textureKey, 96, 64)
+      source.destroy()
+    })
+    const half = FORMWORK_DISPLAY_SIZE / 2
+    const particles = [
+      [-0.38, -1, -12, -22], [0, -1, 5, -25], [0.38, -1, 13, -20],
+      [-0.38, 1, -10, 22], [0, 1, 4, 26], [0.38, 1, 14, 20],
+      [-1, -0.38, -22, -10], [-1, 0, -26, 5], [-1, 0.38, -20, 13],
+      [1, -0.38, 22, -12], [1, 0, 26, 4], [1, 0.38, 20, 14],
+    ]
+    this.formworkAuraParticles = particles.map(([edgeX, edgeY, driftX, driftY], index) => {
+      const baseX = BOARD_CENTER.x + edgeX * (half + 12)
+      const baseY = BOARD_CENTER.y + edgeY * (half + 12)
+      const image = this.add.image(baseX, baseY, 'formwork-aura-steel')
+        .setDepth(3)
+        .setBlendMode(Phaser.BlendModes.NORMAL)
+        .setScale(0.68 + (index % 4) * 0.12)
+        .setAlpha(0)
+        .setVisible(false)
+      this.tweens.add({
+        targets: image,
+        x: baseX + driftX,
+        y: baseY + driftY,
+        alpha: { from: 0.12, to: 0.62 },
+        scale: image.scale * 1.35,
+        duration: 1500 + (index % 3) * 240,
+        delay: index * 95,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      })
+      return image
+    })
+  }
+
+  updateFormworkAura(placedBlocks) {
+    const colors = placedBlocks
+      .map(({ block }) => block.color)
+      .filter((color) => color !== 'curse')
+    let auraName = null
+    if (colors.includes('legendary')) auraName = 'legendary'
+    else if (colors.includes('special')) auraName = 'special'
+    else {
+      const normalBlocks = placedBlocks.filter(({ block }) =>
+        ['steel', 'water', 'nature', 'fire'].includes(block.color))
+      if (normalBlocks.length) {
+        auraName = getDominantCombinationColor(normalBlocks) ?? 'steel'
+      }
+    }
+    this.formworkAuraParticles?.forEach((particle) => {
+      particle.setVisible(auraName !== null)
+      if (auraName !== null) particle.setTexture(`formwork-aura-${auraName}`)
+    })
+  }
+
   createEffectSummary() {
-    this.add.rectangle(EFFECT_SUMMARY_X, EFFECT_SUMMARY_Y, 270, 96, 0x0d0a08, 0.98)
-      .setOrigin(0, 0.5)
+    this.formworkSummaryContainer = this.add.container(
+      EFFECT_SUMMARY_X,
+      EFFECT_SUMMARY_BOTTOM,
+    ).setDepth(28)
+  }
+
+  renderEffectSummary(effectValues, combinationDetails) {
+    const container = this.formworkSummaryContainer
+    if (!container) return
+    container.removeAll(true)
+    const padding = 8
+    const contentWidth = EFFECT_SUMMARY_WIDTH - padding * 2
+    const labelStyle = {
+      fontFamily: 'DNF Forged Blade Medium',
+      fontSize: '9px',
+      color: '#b98754',
+      letterSpacing: 1,
+    }
+    const textStyle = {
+      fontFamily: 'DNF Forged Blade Medium',
+      fontSize: '12px',
+      lineSpacing: 3,
+      color: '#f1dfc2',
+      stroke: '#080604',
+      strokeThickness: 2,
+      wordWrap: { width: contentWidth },
+    }
+    let cursorY = padding
+    const finalLabel = this.add.text(padding, cursorY, '최종 적용', labelStyle)
+    container.add(finalLabel)
+    cursorY += finalLabel.height + 3
+    const finalText = this.add.text(
+      padding,
+      cursorY,
+      effectValues || '적용 효과 없음',
+      textStyle,
+    )
+    container.add(finalText)
+    cursorY += finalText.height + 7
+
+    const divider = this.add.graphics()
+    divider.lineStyle(1, 0x8f5b32, 0.9)
+    divider.lineBetween(padding, cursorY, EFFECT_SUMMARY_WIDTH - padding, cursorY)
+    divider.lineStyle(3, 0xd25a2d, 0.18)
+    divider.lineBetween(padding, cursorY, EFFECT_SUMMARY_WIDTH - padding, cursorY)
+    container.add(divider)
+    cursorY += 6
+
+    const combinationLabel = this.add.text(padding, cursorY, '발동 조합', labelStyle)
+    container.add(combinationLabel)
+    cursorY += combinationLabel.height + 3
+    combinationDetails.forEach(({ name, color, effects: appliedEffects }) => {
+      const nameText = this.add.text(padding, cursorY, name, {
+        ...textStyle,
+        color: COMBINATION_NAME_COLORS[color] ?? '#f1dfc2',
+      })
+      container.add(nameText)
+      const effectValue = appliedEffects.length ? `· ${appliedEffects.join(', ')}` : ''
+      if (!effectValue) {
+        cursorY += nameText.height + 3
+        return
+      }
+      const effectText = this.add.text(
+        padding + nameText.width + 4,
+        cursorY,
+        effectValue,
+        { ...textStyle, wordWrap: { width: Math.max(1, contentWidth - nameText.width - 4) } },
+      )
+      if (nameText.width + effectText.width + 4 > contentWidth
+        || contentWidth - nameText.width - 4 < 70) {
+        effectText.setPosition(padding, cursorY + nameText.height)
+        effectText.setWordWrapWidth(contentWidth)
+        cursorY += nameText.height + effectText.height + 3
+      } else {
+        cursorY += Math.max(nameText.height, effectText.height) + 3
+      }
+      container.add(effectText)
+    })
+    const height = cursorY + padding - 3
+    const panel = this.add.rectangle(0, 0, EFFECT_SUMMARY_WIDTH, height, 0x0d0a08, 0.98)
+      .setOrigin(0, 0)
       .setStrokeStyle(2, 0xb47a43, 1)
-      .setDepth(28)
-    this.formworkEffectText = this.add.text(
-      EFFECT_SUMMARY_X + 8,
-      EFFECT_SUMMARY_Y - 17,
-      '예상 효과 없음',
-      {
-        fontFamily: 'DNF Forged Blade Medium',
-        fontSize: '12px',
-        lineSpacing: 4,
-        color: '#f1dfc2',
-        stroke: '#080604',
-        strokeThickness: 2,
-        wordWrap: { width: 250 },
-      },
-    ).setOrigin(0, 0.5).setDepth(29)
-    this.formworkCombinationContainer = this.add.container(
-      EFFECT_SUMMARY_X + 8,
-      EFFECT_SUMMARY_Y + 8,
-    ).setDepth(29)
+    container.addAt(panel, 0)
+    container.setY(EFFECT_SUMMARY_BOTTOM - height)
   }
 
   drawDisabledFormworkCells() {
@@ -458,6 +749,8 @@ export class BattleScene extends Phaser.Scene {
       ).map(([x, y]) => ({ x, y })),
     }))
     const effects = resolveBlockEffects(placedBlocks)
+    this.drawCombinationGlows(findMatchingCombinations(placedBlocks))
+    this.updateFormworkAura(placedBlocks)
     const effectValues = [
       [
         '공격력',
@@ -478,33 +771,10 @@ export class BattleScene extends Phaser.Scene {
         return `${label} ${value}${ranges.length ? ` · 범위 ${ranges.join('/')}` : ''}`
       })
       .join('  ')
-    this.formworkEffectText?.setText(effectValues || '예상 효과 없음')
-    this.formworkCombinationContainer?.removeAll(true)
     const combinationDetails = effects.combinationDetails.length
       ? effects.combinationDetails
       : [{ name: '조합 없음', color: null, effects: [] }]
-    combinationDetails.forEach(({ name, color, effects: appliedEffects }, index) => {
-      const nameText = this.add.text(0, index * 18, name, {
-        fontFamily: 'DNF Forged Blade Medium',
-        fontSize: '12px',
-        color: COMBINATION_NAME_COLORS[color] ?? '#f1dfc2',
-        stroke: '#080604',
-        strokeThickness: 2,
-      })
-      const effectText = this.add.text(
-        nameText.width + 4,
-        index * 18,
-        appliedEffects.length ? `· ${appliedEffects.join(', ')}` : '',
-        {
-          fontFamily: 'DNF Forged Blade Medium',
-          fontSize: '12px',
-          color: '#f1dfc2',
-          stroke: '#080604',
-          strokeThickness: 2,
-        },
-      )
-      this.formworkCombinationContainer.add([nameText, effectText])
-    })
+    this.renderEffectSummary(effectValues, combinationDetails)
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
       placementLimit: this.getPlacementLimit(),

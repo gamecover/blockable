@@ -36,7 +36,7 @@ describe('block effects and combinations', () => {
   })
 
   it('describes placed colors and prefixes a combination with the dominant non-steel color', () => {
-    const combination = BLOCK_RULE_INDEX.combinations.get('base_33_05_steel')
+    const combination = BLOCK_RULE_INDEX.combinations.get('base_33_05')
     const fire = { block: createBlock('f001', 'color-fire') }
     const steel = { block: createBlock('s002', 'color-steel') }
     const nature = { block: createBlock('n003', 'color-nature') }
@@ -61,9 +61,9 @@ describe('block effects and combinations', () => {
     ]
     const result = resolveBlockEffects(placedBlocks)
 
-    expect(result.combinations).toContain('base_33_01_steel')
+    expect(result.combinations).toContain('base_33_01')
     expect(result.combinationDetails).toContainEqual({
-      id: 'base_33_01_steel',
+      id: 'base_33_01',
       name: '의자',
       color: null,
       effects: ['회복 5'],
@@ -99,17 +99,17 @@ describe('block effects and combinations', () => {
   })
 
   it('uses target all as the runtime all-enemy range', () => {
-    const placedBlocks = placeRecipe('base_33_03_steel')
+    const placedBlocks = placeRecipe('base_33_03')
     const result = resolveBlockEffects(placedBlocks)
 
-    expect(result.combinations).toContain('base_33_03_steel')
-    expect(result.baseDamageEffects).toContainEqual({
+    expect(result.combinations).toContain('base_33_03')
+    expect(result.independentDamageEffects).toContainEqual({
       target: 'allEnemies',
       range: 'all',
       distance: 0,
-      amount: 40,
+      amount: 15,
     })
-    expect(result.damageByTarget).toEqual({ enemy: 0, allEnemies: 40 })
+    expect(result.damageByTarget).toEqual({ enemy: 0, allEnemies: 15 })
     const action = resolvePlayerAction({
       combatants: [
         { instanceId: 'enemy-1', slotId: 1, currentHealth: 50, armor: 0, statuses: [] },
@@ -119,7 +119,7 @@ describe('block effects and combinations', () => {
       battleType: 'normal',
       effects: result,
     })
-    expect(action.combatants.map(({ currentHealth }) => currentHealth)).toEqual([10, 10])
+    expect(action.combatants.map(({ currentHealth }) => currentHealth)).toEqual([35, 35])
   })
 
   it('uses BASE_HIT_COUNT value as per-hit damage and intensify as the total hit count', () => {
@@ -241,30 +241,53 @@ describe('block effects and combinations', () => {
     })
   })
 
+  it('accepts the current Designer EXTRA_TURN parameter ID', () => {
+    const block = createBlock('s001', 'current-action-extra-turn')
+    block.effects = [{
+      effect_id: 'test_current_action_extra_turn',
+      effect_name: '추가 턴',
+      description: '',
+      type: 'EXTRA_TURN',
+      value: 1,
+      target: 'self',
+      parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 1 },
+    }]
+    const result = resolveBlockEffects([{
+      block,
+      cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
+    }])
+
+    expect(result.extraTurns).toBe(1)
+    expect(result.extraTurnChanges).toContainEqual({
+      turnId: 'CURRENT_ACTION',
+      value: 1,
+      duration: 0,
+      intensify: 1,
+    })
+  })
+
   it('matches a normal-block recipe by shape even when its participating colors differ', () => {
-    const result = resolveBlockEffects(placeRecipe('base_33_01_steel', {
+    const result = resolveBlockEffects(placeRecipe('base_33_01', {
       s001: 'f001',
       s002: 'w002',
     }))
 
-    expect(result.combinations).toContain('base_33_01_steel')
+    expect(result.combinations).toContain('base_33_01')
     expect(result.combinationDetails).toContainEqual({
-      id: 'base_33_01_steel',
+      id: 'base_33_01',
       name: '화염의 의자',
       color: 'fire',
       effects: ['회복 5'],
     })
   })
 
-  it('selects one matching color variant after geometry succeeds', () => {
-    const result = resolveBlockEffects(placeRecipe('special_44_02_steel', {
+  it('uses one color-independent recipe after geometry succeeds', () => {
+    const result = resolveBlockEffects(placeRecipe('base_33_01', {
       s001: 'f001',
-      s002: 'f002',
+      s002: 'w002',
     }))
 
-    expect(result.combinations).toContain('special_44_02_fire')
-    expect(result.combinations).not.toContain('special_44_02_steel')
-    expect(result.combinations).not.toContain('special_44_02_water')
-    expect(result.combinationDetails[0].name).toBe('화염의 채찍')
+    expect(result.combinations).toEqual(['base_33_01'])
+    expect(result.combinationDetails[0].name).toBe('화염의 의자')
   })
 })

@@ -244,10 +244,10 @@ export const resolveBlockEffects = (placedBlocks) => {
       return
     }
     if (effect.type === 'EXTRA_TURN') {
-      if (effect.parameters.id !== 'PLAYER_TURN') {
+      if (!['CURRENT_ACTION', 'PLAYER_TURN'].includes(effect.parameters.id)) {
         throw new BlockRulesRuntimeError(
           'DISPATCH',
-          `EXTRA_TURN은 parameters.id=PLAYER_TURN이 필요합니다. (현재: ${effect.parameters.id})`,
+          `EXTRA_TURN은 parameters.id=CURRENT_ACTION 또는 PLAYER_TURN이 필요합니다. (현재: ${effect.parameters.id})`,
         )
       }
       result.extraTurns += effect.value
