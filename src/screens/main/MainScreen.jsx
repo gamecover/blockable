@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GameSettingsModal } from '../../components/game/GameSettingsModal.jsx'
 import { GAME_VERSION } from '../../game/constants/version.js'
-import { MainMenuButton } from './components/MainMenuButton.jsx'
-import configButton from './assets/buttons/button_config_01.png'
-import startButton from './assets/buttons/button_start_01.png'
-import continueButton from './assets/buttons/continue_01.png'
 import './styles/main-screen.css'
 
 export function MainScreen({
@@ -30,9 +26,15 @@ export function MainScreen({
       <main className="main-screen" aria-label="BLOCK-ABLE 메인 메뉴">
         <div className="main-screen__shade" aria-hidden="true" />
         <nav className="main-menu" aria-label="게임 메뉴">
-          <MainMenuButton imageSrc={startButton} onClick={onStart} delay={0}>새 게임 시작</MainMenuButton>
-          <MainMenuButton imageSrc={continueButton} onClick={onContinue} disabled={!canContinue} delay={0.08}>이어하기</MainMenuButton>
-          <MainMenuButton imageSrc={configButton} onClick={() => setSettingsOpen(true)} delay={0.16}>환경 설정</MainMenuButton>
+          <button className="main-menu-button" type="button" onClick={onContinue} disabled={!canContinue}>
+            <span>이어하기</span>
+          </button>
+          <button className="main-menu-button" type="button" onClick={onStart}>
+            <span>새 게임</span>
+          </button>
+          <button className="main-menu-button" type="button" onClick={() => setSettingsOpen(true)}>
+            <span>설정</span>
+          </button>
         </nav>
         {developerToolsEnabled && (
           <aside className="developer-main-menu" aria-label="개발자 모드 메뉴">

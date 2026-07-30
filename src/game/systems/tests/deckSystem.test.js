@@ -33,22 +33,23 @@ describe('deck system', () => {
     const blocks = Array.from({ length: 10 }, (_, id) => ({ id }))
     expect(drawHand({ drawPile: blocks, hand: [], discardPile: [] }, 7, () => 0).hand).toHaveLength(7)
   })
-  it('reports the draw cycle as thirteen, eight, then three including the current hand', () => {
+  it('reports the actual draw and discard piles through a reshuffle', () => {
     const blocks = Array.from({ length: 13 }, (_, id) => ({ id }))
     const first = drawHand({ drawPile: blocks, hand: [], discardPile: [] }, 5, () => 0)
     const second = drawHand(discardHand(first), 5, () => 0)
     const third = drawHand(discardHand(second), 5, () => 0)
 
-    expect([first.remainingCount, second.remainingCount, third.remainingCount]).toEqual([
-      13,
+    expect([first.drawPile.length, second.drawPile.length, third.drawPile.length]).toEqual([
       8,
       3,
+      8,
     ])
-    expect([first.remainingBlocks.length, second.remainingBlocks.length, third.remainingBlocks.length]).toEqual([
-      13,
-      8,
-      3,
+    expect([first.discardPile.length, second.discardPile.length, third.discardPile.length]).toEqual([
+      0,
+      5,
+      0,
     ])
     expect(third.hand).toHaveLength(5)
+    expect(third.hand.length + third.drawPile.length + third.discardPile.length).toBe(13)
   })
 })

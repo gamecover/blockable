@@ -2,13 +2,15 @@ import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import { createGameConfig } from '../../../game/phaser/config/createGameConfig.js'
 
-export const usePhaserGame = (sceneData) => {
+export const usePhaserGame = (sceneData, restartKey = sceneData) => {
   const mountRef = useRef(null)
   const gameRef = useRef(null)
+  const sceneDataRef = useRef(sceneData)
+  sceneDataRef.current = sceneData
 
   useEffect(() => {
     if (!mountRef.current || gameRef.current) return undefined
-    gameRef.current = new Phaser.Game(createGameConfig(mountRef.current, sceneData))
+    gameRef.current = new Phaser.Game(createGameConfig(mountRef.current, sceneDataRef.current))
 
     const destroyGame = () => {
       gameRef.current?.destroy(true)
@@ -20,7 +22,7 @@ export const usePhaserGame = (sceneData) => {
     return () => {
       destroyGame()
     }
-  }, [sceneData])
+  }, [restartKey])
 
   return mountRef
 }
