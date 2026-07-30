@@ -1,7 +1,21 @@
 import { DEFAULT_DUNGEON } from '../constants/gameConfig.js'
 
 export const MAP_SCHEMA_VERSION = 2
-export const MAP_GENERATOR_VERSION = '0.6.3'
+export const MAP_GENERATOR_VERSION = '0.6.6'
+
+const MAP_LAYOUT_VERSION = 2
+const MAP_GRID_BOUNDS = Object.freeze({
+  minX: -5,
+  maxX: 5,
+  minY: -2,
+  maxY: 2,
+})
+const MAP_GRID_DIRECTIONS = Object.freeze([
+  Object.freeze({ x: 1, y: 0 }),
+  Object.freeze({ x: -1, y: 0 }),
+  Object.freeze({ x: 0, y: 1 }),
+  Object.freeze({ x: 0, y: -1 }),
+])
 
 const createDifficultyConfig = (difficulty, floorCount, nodes, mainPath, branches, branchLength, riskBranches) => Object.freeze({
   difficulty,
@@ -14,6 +28,7 @@ const createDifficultyConfig = (difficulty, floorCount, nodes, mainPath, branche
   riskBranchCount: { min: riskBranches[0], max: riskBranches[1] },
   additionalRestChance: { standard: 0.02, branchEnd: 0.05 },
   maxAdditionalRestRooms: 1,
+  nearbyConnectionChance: 0.15,
 })
 
 export const DIFFICULTY_CONFIGS = Object.freeze({
@@ -78,6 +93,80 @@ const createCorridor = (floor, index, from, to, pathRole, branchId = null) => ({
   branchId,
 })
 
+const getCorridorKey = (from, to) => [from, to].sort().join(':')
+
+const findShortestPathFromCorridors = (corridors, startNodeId, destinationNodeId) => {
+  const visited = new Set([startNodeId])
+  const queue = [[startNodeId]]
+  while (queue.length) {
+    const path = queue.shift()
+    const currentId = path.at(-1)
+    if (currentId === destinationNodeId) return path
+    corridors.forEach(({ from, to }) => {
+      const nextId = from === currentId ? to : to === currentId ? from : null
+      if (!nextId || visited.has(nextId)) return
+      visited.add(nextId)
+      queue.push([...path, nextId])
+    })
+  }
+  return []
+}
+
+const addNearbyConnections = ({
+  floor,
+  nodes,
+  corridors,
+  startNodeId,
+  destinationNodeId,
+  random,
+  chance,
+}) => {
+  const requiredPath = findShortestPathFromCorridors(
+    corridors,
+    startNodeId,
+    destinationNodeId,
+  )
+  const corridorKeys = new Set(corridors.map(({ from, to }) => getCorridorKey(from, to)))
+  const candidates = []
+
+  for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < nodes.length; rightIndex += 1) {
+      const left = nodes[leftIndex]
+      const right = nodes[rightIndex]
+      const key = getCorridorKey(left.id, right.id)
+      const deltaX = Math.abs(left.position.x - right.position.x)
+      const deltaY = Math.abs(left.position.y - right.position.y)
+      if (corridorKeys.has(key) || Math.max(deltaX, deltaY) !== 1) continue
+      if ([left.id, right.id].some((id) => id === startNodeId || id === destinationNodeId)) {
+        continue
+      }
+      candidates.push({ left, right, order: random() })
+    }
+  }
+
+  candidates
+    .sort((left, right) => left.order - right.order)
+    .forEach(({ left, right }) => {
+      if (random() >= chance) return
+      const candidate = createCorridor(
+        floor,
+        corridors.length + 1,
+        left.id,
+        right.id,
+        'link',
+      )
+      const nextCorridors = [...corridors, candidate]
+      const nextRequiredPath = findShortestPathFromCorridors(
+        nextCorridors,
+        startNodeId,
+        destinationNodeId,
+      )
+      if (nextRequiredPath.join(':') !== requiredPath.join(':')) return
+      corridors.push(candidate)
+      corridorKeys.add(getCorridorKey(left.id, right.id))
+    })
+}
+
 const pickRoomType = (random, config, { branchEnd = false, allowRest = true } = {}) => {
   if (branchEnd) {
     return allowRest && random() < config.additionalRestChance.branchEnd
@@ -90,23 +179,120 @@ const pickRoomType = (random, config, { branchEnd = false, allowRest = true } = 
   return allowRest ? 'rest' : 'battle'
 }
 
-const createMainPathPositions = (nodeCount, random) => {
-  const edgeIndexes = Array.from({ length: nodeCount - 1 }, (_, index) => index + 1)
-  const bendCount = nodeCount >= 5 && random() < 0.5 ? 2 : 1
-  const bends = new Set()
-  while (bends.size < bendCount) {
-    bends.add(pick(edgeIndexes, random))
-  }
-  const sortedBends = [...bends].sort((a, b) => a - b)
-  const firstDirection = random() < 0.5 ? -1 : 1
-  let y = 0
-  return Array.from({ length: nodeCount }, (_, index) => {
-    const bendOrder = sortedBends.indexOf(index)
-    if (bendOrder >= 0) {
-      y += bendOrder === 0 || random() < 0.65 ? firstDirection : -firstDirection
+const positionKey = ({ x, y }) => `${x},${y}`
+
+const isWithinMapGrid = ({ x, y }) =>
+  x >= MAP_GRID_BOUNDS.minX
+  && x <= MAP_GRID_BOUNDS.maxX
+  && y >= MAP_GRID_BOUNDS.minY
+  && y <= MAP_GRID_BOUNDS.maxY
+
+const shuffledDirections = (random) =>
+  MAP_GRID_DIRECTIONS
+    .map((direction) => ({ direction, order: random() }))
+    .sort((left, right) => left.order - right.order)
+    .map(({ direction }) => direction)
+
+const isOppositeDirection = (left, right) =>
+  left && right && left.x === -right.x && left.y === -right.y
+
+const buildPath = ({
+  start,
+  length,
+  occupied,
+  random,
+  requireTurn = false,
+}) => {
+  const positions = []
+  const directions = []
+
+  const visit = (current, depth) => {
+    if (depth === length) {
+      if (!requireTurn) return true
+      const usesHorizontal = directions.some(({ x }) => x !== 0)
+      const usesVertical = directions.some(({ y }) => y !== 0)
+      return usesHorizontal && usesVertical
     }
-    return { x: index, y }
-  })
+
+    const previousDirection = directions.at(-1)
+    const candidates = shuffledDirections(random)
+      .filter((direction) => !isOppositeDirection(direction, previousDirection))
+
+    for (const direction of candidates) {
+      const next = {
+        x: current.x + direction.x,
+        y: current.y + direction.y,
+      }
+      const key = positionKey(next)
+      if (!isWithinMapGrid(next) || occupied.has(key)) continue
+
+      occupied.add(key)
+      positions.push(next)
+      directions.push(direction)
+      if (visit(next, depth + 1)) return true
+      directions.pop()
+      positions.pop()
+      occupied.delete(key)
+    }
+    return false
+  }
+
+  return visit(start, 0) ? positions : null
+}
+
+const getDestinationDirection = ({ x, y }) => {
+  const horizontal = x > 0 ? 'east' : x < 0 ? 'west' : ''
+  const vertical = y > 0 ? 'south' : y < 0 ? 'north' : ''
+  return vertical && horizontal ? `${vertical}-${horizontal}` : vertical || horizontal
+}
+
+const createSpatialLayout = ({
+  mainNodeCount,
+  branchAnchorIndexes,
+  branchLengths,
+  random,
+}) => {
+  for (let attempt = 0; attempt < 250; attempt += 1) {
+    const occupied = new Set([positionKey({ x: 0, y: 0 })])
+    const mainTail = buildPath({
+      start: { x: 0, y: 0 },
+      length: mainNodeCount - 1,
+      occupied,
+      random,
+      requireTurn: true,
+    })
+    if (!mainTail) continue
+
+    const mainPositions = [{ x: 0, y: 0 }, ...mainTail]
+    const destination = mainPositions.at(-1)
+    if (Math.abs(destination.x) + Math.abs(destination.y) < 2) continue
+    const branchPositions = []
+    let valid = true
+    for (let branchIndex = 0; branchIndex < branchLengths.length; branchIndex += 1) {
+      const branchLength = branchLengths[branchIndex]
+      const branchPath = buildPath({
+        start: mainPositions[branchAnchorIndexes[branchIndex]],
+        length: branchLength,
+        occupied,
+        random,
+        requireTurn: branchLength > 1,
+      })
+      if (!branchPath) {
+        valid = false
+        break
+      }
+      branchPositions.push(branchPath)
+    }
+    if (!valid) continue
+
+    return {
+      mainPositions,
+      branchPositions,
+      destinationDirection: getDestinationDirection(destination),
+    }
+  }
+
+  throw new Error('겹치지 않고 꺾이는 던전 경로 좌표를 생성하지 못했습니다.')
 }
 
 const distributeBranchLengths = (branchCount, nodeBudget, random, config) => {
@@ -155,7 +341,6 @@ const createFloor = (floor, floorCount, random, config) => {
     random,
     config,
   )
-  const mainPositions = createMainPathPositions(mainNodeCount, random)
   const isFinalFloor = floor === floorCount
   const availableAnchorIndexes = Array.from(
     { length: mainNodeCount - 2 },
@@ -166,7 +351,16 @@ const createFloor = (floor, floorCount, random, config) => {
     availableAnchorIndexes.splice(availableAnchorIndexes.indexOf(anchorIndex), 1)
     return anchorIndex
   }).sort((a, b) => a - b)
-  const firstBranchDirection = random() < 0.5 ? -1 : 1
+  const {
+    mainPositions,
+    branchPositions,
+    destinationDirection,
+  } = createSpatialLayout({
+    mainNodeCount,
+    branchAnchorIndexes,
+    branchLengths,
+    random,
+  })
   const riskBranchCount = randomInteger(
     random,
     Math.min(config.riskBranchCount.min, desiredBranchCount),
@@ -219,9 +413,6 @@ const createFloor = (floor, floorCount, random, config) => {
   const branches = branchLengths.map((branchLength, branchIndex) => {
     const branchId = `f${floor}_b${branchIndex + 1}`
     const branchAnchorIndex = branchAnchorIndexes[branchIndex]
-    const branchDirection = branchIndex % 2 === 0
-      ? firstBranchDirection
-      : -firstBranchDirection
     const isRiskBranch = riskBranchIndexes.has(branchIndex)
     const branchNodeIds = []
     let previousId = `f${floor}_n${branchAnchorIndex + 1}`
@@ -242,10 +433,7 @@ const createFloor = (floor, floorCount, random, config) => {
         pathRole: isRiskBranch ? 'risk' : 'branch',
         branchId,
         branchDepth: depth,
-        position: {
-          x: branchAnchorIndex,
-          y: mainPositions[branchAnchorIndex].y + branchDirection * depth,
-        },
+        position: branchPositions[branchIndex][depth - 1],
       }))
       corridors.push(createCorridor(
         floor,
@@ -269,9 +457,21 @@ const createFloor = (floor, floorCount, random, config) => {
     }
   })
 
+  addNearbyConnections({
+    floor,
+    nodes,
+    corridors,
+    startNodeId: `f${floor}_n1`,
+    destinationNodeId: `f${floor}_n${mainNodeCount}`,
+    random,
+    chance: config.nearbyConnectionChance,
+  })
+
   return {
     id: `f${floor}`,
     number: floor,
+    layoutVersion: MAP_LAYOUT_VERSION,
+    destinationDirection,
     targetNodeCount,
     actualNodeCount: nodes.length,
     mainPathLength,
@@ -322,6 +522,22 @@ export const getConnectedNodeIds = (map, floor, nodeId) =>
     return []
   })
 
+export const getMapNodeDistances = (map, floor, startNodeId) => {
+  if (!startNodeId) return new Map()
+  const distances = new Map([[startNodeId, 0]])
+  const queue = [startNodeId]
+  while (queue.length) {
+    const nodeId = queue.shift()
+    const nextDistance = distances.get(nodeId) + 1
+    getConnectedNodeIds(map, floor, nodeId).forEach((neighborId) => {
+      if (distances.has(neighborId)) return
+      distances.set(neighborId, nextDistance)
+      queue.push(neighborId)
+    })
+  }
+  return distances
+}
+
 export const getShortestPathNodeIds = (map, floor, startNodeId, destinationNodeId) => {
   const visited = new Set([startNodeId])
   const queue = [[startNodeId]]
@@ -339,6 +555,14 @@ export const getShortestPathNodeIds = (map, floor, startNodeId, destinationNodeI
 }
 
 export const getMapNodePosition = (map, node) => {
+  const floor = getFloor(map, node.floor)
+  if (floor?.layoutVersion === MAP_LAYOUT_VERSION) {
+    return {
+      x: 50 + node.position.x * 8,
+      y: 50 + node.position.y * 18,
+    }
+  }
+
   const nodes = getMapNodes(map, node.floor)
   const xs = nodes.map(({ position }) => position.x)
   const ys = nodes.map(({ position }) => position.y)
@@ -466,11 +690,23 @@ export const validateFloorMap = (floor) => {
     })
   }
   if (reached.size !== floor.nodes.length) errors.push('시작 방에서 도달할 수 없는 방이 있습니다.')
-  if (floor.corridors.length !== floor.nodes.length - 1) errors.push('초기 지도는 순환 없는 트리여야 합니다.')
-  floor.branches.forEach((branch) => {
-    const endId = branch.nodeIds.at(-1)
-    const degree = floor.corridors.filter(({ from, to }) => from === endId || to === endId).length
-    if (degree !== 1) errors.push('브랜치 끝은 막다른 방이어야 합니다.')
+  floor.corridors
+    .filter(({ pathRole }) => pathRole === 'link')
+    .forEach(({ from, to }) => {
+      const fromNode = floor.nodes.find(({ id }) => id === from)
+      const toNode = floor.nodes.find(({ id }) => id === to)
+      const deltaX = Math.abs(fromNode.position.x - toNode.position.x)
+      const deltaY = Math.abs(fromNode.position.y - toNode.position.y)
+      if (Math.max(deltaX, deltaY) !== 1) {
+        errors.push('추가 통로는 서로 가까운 방끼리만 연결해야 합니다.')
+      }
+    })
+  const requiredMainNodes = floor.nodes.filter(({ pathRole }) => pathRole === 'main')
+  requiredMainNodes.slice(1).forEach((node, index) => {
+    const previousNode = requiredMainNodes[index]
+    if (!corridorKeys.has(getCorridorKey(previousNode.id, node.id))) {
+      errors.push('시작에서 목적지로 이어지는 필수 주 경로가 끊어졌습니다.')
+    }
   })
   return { valid: errors.length === 0, errors }
 }

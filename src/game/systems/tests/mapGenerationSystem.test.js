@@ -8,6 +8,8 @@ import {
   findMapNode,
   generateMap,
   getConnectedNodeIds,
+  getMapNodeDistances,
+  getMapNodePosition,
   getShortestPathNodeIds,
   getMapNodes,
   validateFloorMap,
@@ -32,7 +34,7 @@ describe('Darkest Dungeon-style map generation', () => {
     expect(DIFFICULTY_ONE_CONFIG.floorCount).toBe(2)
   })
 
-  it('creates 7 to 9 rooms and two to three dead-end branches on every floor', () => {
+  it('creates 7 to 9 rooms and two to three base branches on every floor', () => {
     for (let seed = 0; seed < 100; seed += 1) {
       generateMap({ seed }).floors.forEach((floor) => {
         expect(floor.nodes.length).toBeGreaterThanOrEqual(7)
@@ -41,8 +43,8 @@ describe('Darkest Dungeon-style map generation', () => {
         expect(floor.branches.length).toBeGreaterThanOrEqual(2)
         expect(floor.branches.length).toBeLessThanOrEqual(3)
         floor.branches.forEach((branch) => {
-          const branchEndId = branch.nodeIds.at(-1)
-          expect(getConnectedNodeIds({ floors: [floor] }, floor.number, branchEndId)).toHaveLength(1)
+          expect(branch.nodeIds.length).toBeGreaterThanOrEqual(1)
+          expect(branch.nodeIds.length).toBeLessThanOrEqual(2)
         })
       })
     }
@@ -55,6 +57,59 @@ describe('Darkest Dungeon-style map generation', () => {
         expect(new Set(mainNodes.map(({ position }) => position.y)).size).toBeGreaterThan(1)
         expect(floor.mainPathLength).toBeGreaterThanOrEqual(3)
         expect(floor.mainPathLength).toBeLessThanOrEqual(5)
+      })
+    }
+  })
+
+  it('starts at the center, spaces rooms on unique grid cells, and sends destinations in varied directions', () => {
+    const destinationDirections = new Set()
+    for (let seed = 0; seed < 250; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        const start = floor.nodes.find(({ id }) => id === floor.startNodeId)
+        const coordinateKeys = floor.nodes.map(({ position }) => `${position.x},${position.y}`)
+        const renderedPositions = floor.nodes.map((node) => getMapNodePosition({
+          floors: [floor],
+        }, node))
+
+        expect(start.position).toEqual({ x: 0, y: 0 })
+        expect(getMapNodePosition({ floors: [floor] }, start)).toEqual({ x: 50, y: 50 })
+        expect(new Set(coordinateKeys)).toHaveLength(floor.nodes.length)
+        expect(renderedPositions.every(({ x, y }) =>
+          x >= 10 && x <= 90 && y >= 14 && y <= 86)).toBe(true)
+        expect(Math.abs(
+          floor.nodes.find(({ id }) => id === floor.destinationNodeId).position.x,
+        ) + Math.abs(
+          floor.nodes.find(({ id }) => id === floor.destinationNodeId).position.y,
+        )).toBeGreaterThanOrEqual(2)
+        destinationDirections.add(floor.destinationDirection)
+      })
+    }
+    expect(destinationDirections).toEqual(new Set([
+      'east',
+      'north',
+      'north-east',
+      'north-west',
+      'south',
+      'south-east',
+      'south-west',
+      'west',
+    ]))
+  })
+
+  it('turns every two-room branch instead of stacking its rooms in one line', () => {
+    for (let seed = 0; seed < 250; seed += 1) {
+      const map = generateMap({ seed })
+      map.floors.forEach((floor) => {
+        floor.branches
+          .filter(({ nodeIds }) => nodeIds.length > 1)
+          .forEach((branch) => {
+            const anchor = findMapNode(map, branch.anchorNodeId).position
+            const first = findMapNode(map, branch.nodeIds[0]).position
+            const second = findMapNode(map, branch.nodeIds[1]).position
+            const firstStep = { x: first.x - anchor.x, y: first.y - anchor.y }
+            const secondStep = { x: second.x - first.x, y: second.y - first.y }
+            expect(firstStep).not.toEqual(secondStep)
+          })
       })
     }
   })
@@ -119,13 +174,49 @@ describe('Darkest Dungeon-style map generation', () => {
     expect(generateMap({ seed: 2026 })).toEqual(generateMap({ seed: 2026 }))
   })
 
-  it('generates a connected acyclic room graph with a valid dead end', () => {
+  it('generates a connected graph while allowing probabilistic nearby cycles', () => {
     for (let seed = 0; seed < 250; seed += 1) {
       generateMap({ seed }).floors.forEach((floor) => {
         expect(validateFloorMap(floor)).toEqual({ valid: true, errors: [] })
-        expect(floor.corridors).toHaveLength(floor.nodes.length - 1)
+        expect(floor.corridors.length).toBeGreaterThanOrEqual(floor.nodes.length - 1)
       })
     }
+  })
+
+  it('probabilistically links nearby rooms without a per-room branch limit', () => {
+    let floorsWithLinks = 0
+    let floorsWithoutLinks = 0
+    let maximumDegree = 0
+
+    for (let seed = 0; seed < 500; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        const links = floor.corridors.filter(({ pathRole }) => pathRole === 'link')
+        if (links.length) floorsWithLinks += 1
+        else floorsWithoutLinks += 1
+
+        links.forEach(({ from, to }) => {
+          const fromNode = floor.nodes.find(({ id }) => id === from)
+          const toNode = floor.nodes.find(({ id }) => id === to)
+          expect(Math.max(
+            Math.abs(fromNode.position.x - toNode.position.x),
+            Math.abs(fromNode.position.y - toNode.position.y),
+          )).toBe(1)
+          expect([from, to]).not.toContain(floor.startNodeId)
+          expect([from, to]).not.toContain(floor.destinationNodeId)
+        })
+
+        floor.nodes.forEach(({ id }) => {
+          maximumDegree = Math.max(
+            maximumDegree,
+            floor.corridors.filter(({ from, to }) => from === id || to === id).length,
+          )
+        })
+      })
+    }
+
+    expect(floorsWithLinks).toBeGreaterThan(0)
+    expect(floorsWithoutLinks).toBeGreaterThan(0)
+    expect(maximumDegree).toBeGreaterThan(3)
   })
 
   it('unlocks every room directly connected to a completed room without deleting branches', () => {
@@ -137,6 +228,18 @@ describe('Darkest Dungeon-style map generation', () => {
     expect(findMapNode(next, startId).status).toBe('complete')
     expect(connected.every((id) => findMapNode(next, id).status === 'available')).toBe(true)
     expect(getMapNodes(next, 1)).toHaveLength(getMapNodes(map, 1).length)
+  })
+
+  it('calculates one-step information and two-step mystery visibility from the current room', () => {
+    const map = generateMap({ seed: 42 })
+    const floor = 1
+    const startId = map.floors[0].startNodeId
+    const distances = getMapNodeDistances(map, floor, startId)
+    const firstStep = getConnectedNodeIds(map, floor, startId)
+
+    expect(distances.get(startId)).toBe(0)
+    expect(firstStep.every((nodeId) => distances.get(nodeId) === 1)).toBe(true)
+    expect([...distances.values()].some((distance) => distance === 2)).toBe(true)
   })
 
   it('allows adjacent exploration and automatic travel only through completed rooms', () => {
