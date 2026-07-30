@@ -241,8 +241,9 @@ const validateEffect = (effect, location, errors) => {
   if (type === 'BASE_HIT_COUNT' && parameterId !== 'CURRENT_ACTION') {
     errors.push(`${location}.parameters.id: BASE_HIT_COUNT는 CURRENT_ACTION이 필요합니다.`)
   }
-  if (parameterId === 'CURRENT_ACTION' && type !== 'BASE_HIT_COUNT') {
-    errors.push(`${location}.parameters.id: CURRENT_ACTION은 BASE_HIT_COUNT에서만 사용할 수 있습니다.`)
+  if (parameterId === 'CURRENT_ACTION'
+    && !['BASE_HIT_COUNT', 'EXTRA_TURN'].includes(type)) {
+    errors.push(`${location}.parameters.id: CURRENT_ACTION은 BASE_HIT_COUNT 또는 EXTRA_TURN에서만 사용할 수 있습니다.`)
   }
 }
 
