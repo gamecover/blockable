@@ -6,9 +6,11 @@ import {
   completeAndUnlockNext,
   enterFloorAtStart,
   findMapNode,
+  revealMapAroundNode,
 } from '../systems/mapGenerationSystem.js'
 import {
   createStarterDeck,
+  createTutorialDeck,
   createUniqueBlockChoiceIds,
   hydrateBlock,
 } from '../../objects/blocks/blockData.js'
@@ -36,8 +38,11 @@ const initialRun = (developerMode = false) => ({
   worldMap: createWorldMapState(),
   activeDungeonId: null,
   currentNodeId: null,
+  previousNodeId: null,
   floor: 1,
   prologueSeen: false,
+  tutorialCompleted: false,
+  tutorialMode: false,
   runStarted: false,
   uniqueBlockId: null,
   uniqueBlockChoiceIds: [],
@@ -65,15 +70,40 @@ const keepFirstUniqueBlock = (blocks) => {
   })
 }
 
-const createRunStore = ({ storageName, developerMode }) => createStore(persist(immer((set) => ({
+const hasSavedBattlePiles = (piles) => piles
+  && Array.isArray(piles.drawPile)
+  && Array.isArray(piles.hand)
+  && Array.isArray(piles.discardPile)
+  && piles.drawPile.length + piles.hand.length + piles.discardPile.length > 0
+
+const hydrateBattlePiles = (piles) => ({
+  drawPile: piles.drawPile.map(hydrateBlock),
+  hand: piles.hand.map(hydrateBlock),
+  discardPile: piles.discardPile.map(hydrateBlock),
+})
+
+const createRunStore = ({ storageName, developerMode, persistent = true }) => {
+  const stateCreator = immer((set) => ({
   ...initialRun(developerMode),
   startRun: () => set((state) => {
     const prologueSeen = state.prologueSeen
+    const tutorialCompleted = state.tutorialCompleted
     Object.assign(state, initialRun(developerMode))
     state.deck = createStarterDeck()
     state.uniqueBlockChoiceIds = createUniqueBlockChoiceIds()
     state.runStarted = true
     state.prologueSeen = prologueSeen
+    state.tutorialCompleted = tutorialCompleted
+  }),
+  startTutorialRun: () => set((state) => {
+    Object.assign(state, initialRun(false))
+    state.deck = createTutorialDeck()
+    state.discoveredBlueprintIds = ['base_33_01']
+    state.runStarted = true
+    state.tutorialMode = true
+  }),
+  deleteRun: () => set((state) => {
+    Object.assign(state, initialRun(developerMode))
   }),
   chooseUniqueBlock: (block) => set((state) => {
     if (state.uniqueBlockId || !state.uniqueBlockChoiceIds.includes(block.definitionId)) return
@@ -87,6 +117,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.discoveredBlueprintIds = [...discovered]
   }),
   selectNode: (node) => set((state) => {
+    state.map = revealMapAroundNode(state.map, node.id)
+    state.previousNodeId = state.currentNodeId
     state.currentNodeId = node.id
     state.floor = node.floor
   }),
@@ -103,11 +135,13 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     const enteredFloor = enterFloorAtStart(generatedMap, 1)
     state.map = enteredFloor.map
     state.currentNodeId = enteredFloor.currentNodeId
+    state.previousNodeId = null
     state.floor = 1
   }),
   leaveDungeon: () => set((state) => {
     state.activeDungeonId = null
     state.currentNodeId = null
+    state.previousNodeId = null
   }),
   setDeveloperDifficulty: (difficulty) => set((state) => {
     if (!state.developerMode) return
@@ -122,10 +156,22 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.worldMap = completeWorldDungeon(state.worldMap, state.activeDungeonId)
     state.activeDungeonId = null
     state.currentNodeId = null
+    state.previousNodeId = null
   }),
   moveToNode: (node) => set((state) => {
+    state.map = revealMapAroundNode(state.map, node.id)
+    state.previousNodeId = state.currentNodeId
     state.currentNodeId = node.id
     state.floor = node.floor
+  }),
+  returnToPreviousNode: () => set((state) => {
+    const previous = findMapNode(state.map, state.previousNodeId)
+    if (!previous) return
+    const abandonedNodeId = state.currentNodeId
+    state.map = revealMapAroundNode(state.map, previous.id)
+    state.currentNodeId = previous.id
+    state.previousNodeId = abandonedNodeId
+    state.floor = previous.floor
   }),
   completeNode: () => set((state) => {
     const completedNode = findMapNode(state.map, state.currentNodeId)
@@ -135,6 +181,7 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
       const enteredFloor = enterFloorAtStart(state.map, state.floor)
       state.map = enteredFloor.map
       state.currentNodeId = enteredFloor.currentNodeId
+      state.previousNodeId = null
     }
   }),
   damagePlayer: (amount, attackerStatuses = []) => set((state) => {
@@ -191,7 +238,11 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.combat.player.statuses = result.statuses
   }),
   markPrologueSeen: () => set((state) => { state.prologueSeen = true }),
+  markTutorialCompleted: () => set((state) => { state.tutorialCompleted = true }),
   beginBattle: (encounter) => set((state) => {
+    const initialBattlePiles = state.tutorialMode
+      ? { drawPile: state.deck.slice(HAND_SIZE), hand: state.deck.slice(0, HAND_SIZE), discardPile: [] }
+      : drawHand(startBattleDeck(state.deck))
     state.pendingBattle = {
       encounter,
       health: state.health,
@@ -199,8 +250,9 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
       armor: state.armor,
       gold: state.gold,
       deck: state.deck,
+      battlePiles: initialBattlePiles,
     }
-    state.battlePiles = drawHand(startBattleDeck(state.deck))
+    state.battlePiles = initialBattlePiles
     state.armor = 0
     state.combat = {
       player: createCombatantState(),
@@ -215,21 +267,31 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.armor = 0
     state.gold = snapshot.gold
     state.deck = snapshot.deck
-    state.battlePiles = drawHand(startBattleDeck(snapshot.deck))
+    state.battlePiles = hasSavedBattlePiles(state.battlePiles)
+      ? state.battlePiles
+      : hasSavedBattlePiles(snapshot.battlePiles)
+        ? snapshot.battlePiles
+        : drawHand(startBattleDeck(snapshot.deck))
     state.combat = {
       player: createCombatantState(),
       monster: createCombatantState(),
     }
   }),
   clearPendingBattle: () => set((state) => { state.pendingBattle = null }),
-  drawNextHand: (extraCount = 0) => set((state) => {
-    state.battlePiles = drawHand(discardHand(state.battlePiles), HAND_SIZE + Math.max(0, extraCount))
+  drawNextHand: (extraCount = 0, shuffleEveryTurn = false) => set((state) => {
+    const discarded = discardHand(state.battlePiles)
+    const piles = shuffleEveryTurn
+      ? startBattleDeck([...discarded.drawPile, ...discarded.discardPile])
+      : discarded
+    state.battlePiles = drawHand(piles, HAND_SIZE + Math.max(0, extraCount))
   }),
-})), {
+  }))
+  if (!persistent) return createStore(stateCreator)
+  return createStore(persist(stateCreator, {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
-    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const hydratedDeck = persisted.deck.map(hydrateBlock)
@@ -242,15 +304,27 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
           deck: keepFirstUniqueBlock(
             (persisted.pendingBattle.deck ?? persisted.deck).map(hydrateBlock),
           ),
+          ...(hasSavedBattlePiles(persisted.pendingBattle.battlePiles)
+            ? { battlePiles: hydrateBattlePiles(persisted.pendingBattle.battlePiles) }
+            : {}),
         }
       : null
+    const battlePiles = hasSavedBattlePiles(persisted.battlePiles)
+      ? hydrateBattlePiles(persisted.battlePiles)
+      : pendingBattle?.battlePiles ?? current.battlePiles
     const worldMap = persisted.worldMap
       ? {
           ...persisted.worldMap,
-          dungeons: persisted.worldMap.dungeons.map((dungeon) =>
-            dungeon.kind === 'final' && dungeon.status === 'locked'
-              ? { ...dungeon, status: 'available' }
-              : dungeon),
+          dungeons: persisted.worldMap.dungeons.map((dungeon) => {
+            const currentDungeon = current.worldMap.dungeons.find(({ id }) => id === dungeon.id)
+            return {
+              ...dungeon,
+              name: currentDungeon?.name ?? dungeon.name,
+              ...(dungeon.kind === 'final' && dungeon.status === 'locked'
+                ? { status: 'available' }
+                : {}),
+            }
+          }),
         }
       : current.worldMap
     const developerDifficulty = developerMode
@@ -265,9 +339,17 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     return {
       ...current,
       ...persisted,
+      map: persisted.activeDungeonId && persisted.map
+        ? {
+            ...persisted.map,
+            dungeonName: worldMap.dungeons.find(({ id }) =>
+              id === persisted.activeDungeonId)?.name ?? persisted.map.dungeonName,
+          }
+        : persisted.map ?? current.map,
       deck,
       worldMap,
       pendingBattle,
+      battlePiles,
       developerMode,
       developerDifficulty,
       uniqueBlockId,
@@ -279,7 +361,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
         : [],
     }
   },
-}))
+  }))
+}
 
 export const normalRunStore = createRunStore({
   storageName: 'blockable-save-v1',
@@ -290,3 +373,13 @@ export const developerRunStore = createRunStore({
   storageName: 'blockable-developer-save-v1',
   developerMode: true,
 })
+
+export const tutorialRunStore = createRunStore({
+  storageName: 'blockable-tutorial-session-v1',
+  developerMode: false,
+  persistent: false,
+})
+
+if (typeof localStorage !== 'undefined') {
+  localStorage.removeItem('blockable-tutorial-session-v1')
+}

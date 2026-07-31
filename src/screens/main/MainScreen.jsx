@@ -7,6 +7,7 @@ export function MainScreen({
   onStart,
   onContinue,
   canContinue,
+  onTutorial,
   developerToolsEnabled = false,
   onDeveloperStart,
   onDeveloperContinue,
@@ -31,6 +32,9 @@ export function MainScreen({
           </button>
           <button className="main-menu-button" type="button" onClick={onStart}>
             <span>새 게임</span>
+          </button>
+          <button className="main-menu-button" type="button" onClick={onTutorial}>
+            <span>튜토리얼</span>
           </button>
           <button className="main-menu-button" type="button" onClick={() => setSettingsOpen(true)}>
             <span>설정</span>

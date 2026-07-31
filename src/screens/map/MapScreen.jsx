@@ -101,10 +101,13 @@ export function MapScreen({
   const nodeDistances = getMapNodeDistances(map, floor, currentNodeId)
   const getVisibility = (node) => {
     if (developerMode && developerMapRevealed) return 'known'
-    if (node.status === 'complete') return 'known'
     const distance = nodeDistances.get(node.id)
-    if (distance <= 1) return 'known'
-    if (distance === 2) return 'mystery'
+    if (
+      node.status === 'complete'
+      || node.revealState === 'revealed'
+      || distance <= 1
+    ) return 'known'
+    if (node.revealState === 'mystery' || distance === 2) return 'mystery'
     return 'hidden'
   }
   const visibleNodes = nodes.filter((node) => getVisibility(node) !== 'hidden')
@@ -316,7 +319,7 @@ export function MapScreen({
                   disabled={!selectable}
                   className={mystery
                     ? 'room-node locked mystery'
-                    : `room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
+                    : `room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${selectable && node.id !== currentNodeId ? ' reachable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
                   onClick={() => onSelect(node)}
                   aria-label={mystery
                     ? `${floor}층 미확인 방`

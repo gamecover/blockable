@@ -83,7 +83,9 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
   const layer = {
     value: normalizedValue,
     intensify: ['stun', 'double_attack'].includes(update.id) ? 1 : update.intensify,
-    remainingTurns: update.id === 'stun'
+    remainingTurns: update.id === 'burn'
+      ? null
+      : update.id === 'stun'
       ? 1
       : [-1, -2].includes(update.duration)
         ? null
@@ -200,11 +202,9 @@ export const resolveTurnEndStatuses = ({
           const layers = (status.layers ?? [])
             .map((layer) => ({
               ...layer,
-              remainingTurns: nextRemainingTurns(layer.remainingTurns),
               intensify: Math.floor(layer.intensify / 2),
             }))
-            .filter(({ remainingTurns, intensify }) =>
-              hasRemainingDuration(remainingTurns) && intensify > 0)
+            .filter(({ intensify }) => intensify > 0)
           return { ...status, layers, stacks: layerStacks(layers) }
         }
         if (!survivedBleeding) return status

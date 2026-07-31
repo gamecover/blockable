@@ -538,6 +538,35 @@ export const getMapNodeDistances = (map, floor, startNodeId) => {
   return distances
 }
 
+export const revealMapAroundNode = (map, nodeId) => {
+  const current = findMapNode(map, nodeId)
+  if (!current) return map
+  const distances = getMapNodeDistances(map, current.floor, nodeId)
+
+  return {
+    ...map,
+    floors: map.floors.map((floor) => {
+      if (floor.number !== current.floor) return floor
+      return {
+        ...floor,
+        nodes: floor.nodes.map((node) => {
+          if (node.revealState === 'revealed' || node.status === 'complete') {
+            return node.revealState === 'revealed'
+              ? node
+              : { ...node, revealState: 'revealed' }
+          }
+          const distance = distances.get(node.id)
+          if (distance <= 1) return { ...node, revealState: 'revealed' }
+          if (distance === 2 && node.revealState !== 'mystery') {
+            return { ...node, revealState: 'mystery' }
+          }
+          return node
+        }),
+      }
+    }),
+  }
+}
+
 export const getShortestPathNodeIds = (map, floor, startNodeId, destinationNodeId) => {
   const visited = new Set([startNodeId])
   const queue = [[startNodeId]]
@@ -642,8 +671,9 @@ export const completeAndUnlockNext = (map, nodeId) => {
 
 export const enterFloorAtStart = (map, floorNumber) => {
   const startNodeId = map.floors.find(({ number }) => number === floorNumber)?.startNodeId ?? null
+  const enteredMap = startNodeId ? completeAndUnlockNext(map, startNodeId) : map
   return {
-    map: startNodeId ? completeAndUnlockNext(map, startNodeId) : map,
+    map: startNodeId ? revealMapAroundNode(enteredMap, startNodeId) : enteredMap,
     currentNodeId: startNodeId,
   }
 }

@@ -32,7 +32,11 @@ describe('status effects', () => {
       health: 14,
       armor: 0,
       damage: 6,
-      statuses: [],
+      statuses: [{
+        id: 'burn',
+        stacks: 1,
+        layers: [{ value: 3, intensify: 1, remainingTurns: null }],
+      }],
     })
   })
 
@@ -98,7 +102,7 @@ describe('status effects', () => {
       statuses: [{
         id: 'burn',
         stacks: 1,
-        layers: [{ value: 6, intensify: 1, remainingTurns: 1 }],
+        layers: [{ value: 6, intensify: 1, remainingTurns: null }],
       }],
     })
   })
@@ -199,5 +203,18 @@ describe('status effects', () => {
       damage: 3,
       statuses: [{ id: 'burn', stacks: 2 }],
     })
+  })
+
+  it('ignores burn duration and expires only after repeated stack halving', () => {
+    const initial = addStatusUpdate([], {
+      id: 'burn', value: 0, duration: 0, intensify: 5,
+    })
+    const first = resolveTurnEndStatuses({ health: 20, statuses: initial })
+    const second = resolveTurnEndStatuses({ health: first.health, statuses: first.statuses })
+    const third = resolveTurnEndStatuses({ health: second.health, statuses: second.statuses })
+
+    expect(first.statuses).toMatchObject([{ id: 'burn', stacks: 2 }])
+    expect(second.statuses).toMatchObject([{ id: 'burn', stacks: 1 }])
+    expect(third.statuses).toEqual([])
   })
 })

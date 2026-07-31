@@ -191,7 +191,7 @@ describe('block effects and combinations', () => {
     expect(action.combatants[0].statuses).toEqual([{
       id: 'burn',
       stacks: 3,
-      layers: [{ value: 5, intensify: 3, remainingTurns: 1, newlyApplied: true }],
+      layers: [{ value: 5, intensify: 3, remainingTurns: null, newlyApplied: true }],
     }])
   })
 

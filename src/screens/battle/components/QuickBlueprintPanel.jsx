@@ -6,11 +6,13 @@ import {
 } from '../../../game/systems/blueprintSystem.js'
 import { PLACEMENTS_PER_TURN } from '../../../game/constants/gameConfig.js'
 
-export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds }) {
+export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds, allowedCombinationIds = null }) {
   const placedIds = new Set(placedBlocks.map(({ block }) => block.id))
   const availableBlocks = hand.filter(({ id }) => !placedIds.has(id))
   const remainingPlacements = PLACEMENTS_PER_TURN - placedBlocks.length
+  const allowedIds = allowedCombinationIds ? new Set(allowedCombinationIds) : null
   const blueprints = getKnownBlueprints(discoveredBlueprintIds)
+    .filter(({ id }) => !allowedIds || allowedIds.has(id))
     .map((combination) => ({
       combination,
       plan: combination.instances.length <= remainingPlacements
@@ -20,7 +22,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
     .filter(({ plan }) => plan)
 
   return (
-    <aside className="quick-blueprints" aria-label="퀵 조합 청사진">
+    <aside className="quick-blueprints" data-tutorial-target="blueprint" aria-label="퀵 조합 청사진">
       <header>
         <strong>퀵 조합</strong>
         <small>거푸집으로 드래그</small>

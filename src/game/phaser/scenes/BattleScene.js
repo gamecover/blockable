@@ -121,6 +121,8 @@ export class BattleScene extends Phaser.Scene {
   init(data) {
     this.hand = data.hand ?? []
     this.developerMode = data.developerMode === true
+    this.tutorialMode = data.tutorialMode === true
+    this.knownBlueprintIds = new Set(data.knownBlueprintIds ?? [])
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
@@ -130,6 +132,7 @@ export class BattleScene extends Phaser.Scene {
     this.unsubReset = null
     this.unsubInput = null
     this.unsubQuickCombination = null
+    this.unsubHealthChanged = null
     this.inputEnabled = true
     this.handleWindowKeyDown = (event) => {
       if (!this.inputEnabled) return
@@ -186,6 +189,10 @@ export class BattleScene extends Phaser.Scene {
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
     this.unsubReset = gameBridge.on(GAME_EVENTS.RESET_BOARD, () => this.resetBoard())
+    this.unsubHealthChanged = gameBridge.on(
+      GAME_EVENTS.BOARD_HEALTH_CHANGED,
+      ({ health }) => this.updateActiveBoardCells(health),
+    )
     this.unsubQuickCombination = gameBridge.on(
       GAME_EVENTS.QUICK_COMBINATION_DROP,
       (payload) => this.placeQuickCombination(payload),
@@ -203,6 +210,7 @@ export class BattleScene extends Phaser.Scene {
       this.unsubReset?.()
       this.unsubInput?.()
       this.unsubQuickCombination?.()
+      this.unsubHealthChanged?.()
     })
     this.emitBoardState()
   }
@@ -210,6 +218,7 @@ export class BattleScene extends Phaser.Scene {
   drawBoard() {
     this.activeCells = BOARD_CELLS.slice(0, this.activeCellCount)
     this.activeCellKeys = new Set(this.activeCells.map(cellKey))
+    this.boardCellBackgrounds = new Map()
     const hasFormworkTexture = this.textures.exists('battle-formwork')
     if (this.textures.exists('battle-anvil')) {
       this.add.image(410, ANVIL_CENTER_Y, 'battle-anvil')
@@ -225,9 +234,10 @@ export class BattleScene extends Phaser.Scene {
 
     this.activeCells.forEach(([column, row]) => {
       const world = gridToWorld(row, column, BOARD_METRICS)
-      this.add.rectangle(world.x, world.y, BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap, COLORS.ghost, hasFormworkTexture ? 0.08 : 0.34)
+      const background = this.add.rectangle(world.x, world.y, BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap, COLORS.ghost, hasFormworkTexture ? 0.08 : 0.34)
         .setStrokeStyle(2, 0xc9a976, 0.4)
         .setDepth(-1)
+      this.boardCellBackgrounds.set(cellKey([column, row]), background)
     })
     this.drawMinimumFormworkBoundary()
     this.combinationGlowContainer = this.add.container(0, 0).setDepth(8)
@@ -491,26 +501,62 @@ export class BattleScene extends Phaser.Scene {
   }
 
   drawDisabledFormworkCells() {
+    this.disabledCellContainer?.destroy(true)
+    this.disabledCellContainer = this.add.container(0, 0).setDepth(0)
     for (let formworkRow = 0; formworkRow < FORMWORK_GRID_SIZE; formworkRow += 1) {
       for (let formworkColumn = 0; formworkColumn < FORMWORK_GRID_SIZE; formworkColumn += 1) {
         const column = formworkColumn - 1
         const row = formworkRow - 1
         if (this.activeCellKeys.has(cellKey([column, row]))) continue
         const world = gridToWorld(row, column, BOARD_METRICS)
-        this.add.rectangle(
+        const cover = this.add.rectangle(
           world.x,
           world.y,
           BOARD_METRICS.cellSize - BOARD_METRICS.gap,
           BOARD_METRICS.cellSize - BOARD_METRICS.gap,
           0x090807,
           0.68,
-        ).setStrokeStyle(2, 0x3e332a, 0.9).setDepth(0)
-        this.add.text(world.x, world.y, '×', {
+        ).setStrokeStyle(2, 0x3e332a, 0.9)
+        const label = this.add.text(world.x, world.y, '×', {
           fontFamily: 'DNF Forged Blade Medium',
           fontSize: '23px',
           color: '#5d5147',
-        }).setOrigin(0.5).setDepth(0)
+        }).setOrigin(0.5)
+        this.disabledCellContainer.add([cover, label])
       }
+    }
+  }
+
+  updateActiveBoardCells(health) {
+    const targetCount = getActiveBoardCellCount(health, BOARD_CELLS.length)
+    const previousCount = this.activeCellKeys.size
+    if (targetCount === previousCount) return
+
+    const nextKeys = new Set(BOARD_CELLS.slice(0, targetCount).map(cellKey))
+
+    const reduced = nextKeys.size < previousCount
+    this.activeCellKeys = nextKeys
+    this.activeCells = BOARD_CELLS.filter((cell) => nextKeys.has(cellKey(cell)))
+    this.activeCellCount = nextKeys.size
+    const hasFormworkTexture = this.textures.exists('battle-formwork')
+    BOARD_CELLS.forEach(([column, row]) => {
+      const key = cellKey([column, row])
+      const background = this.boardCellBackgrounds.get(key)
+      if (!nextKeys.has(key) || background) return
+      const world = gridToWorld(row, column, BOARD_METRICS)
+      this.boardCellBackgrounds.set(key, this.add.rectangle(
+        world.x,
+        world.y,
+        BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+        BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+        COLORS.ghost,
+        hasFormworkTexture ? 0.08 : 0.34,
+      ).setStrokeStyle(2, 0xc9a976, 0.4).setDepth(-1))
+    })
+    this.drawDisabledFormworkCells()
+    this.emitBoardState()
+    if (reduced && this.tutorialMode) {
+      gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'tutorial-board-shrunk' })
     }
   }
 
@@ -538,6 +584,7 @@ export class BattleScene extends Phaser.Scene {
   selectPiece(piece, pointer) {
     if (this.selected) return
     this.selected = piece
+    gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-drag-started' })
     if (piece.placed) this.removeOccupancy(piece)
     piece.container.setPosition(pointer.worldX, pointer.worldY)
     piece.container.setAlpha(DRAG_ALPHA)
@@ -622,6 +669,7 @@ export class BattleScene extends Phaser.Scene {
   rotateSelected() {
     if (!this.selected) return
     this.selected.rotation = (this.selected.rotation + 1) % 4
+    gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-rotated' })
     const { valid } = this.getPlacementCandidate(this.selected)
     if (valid) this.layoutPieceForBoard(this.selected)
     else this.layoutPieceForHand(this.selected)
@@ -660,6 +708,7 @@ export class BattleScene extends Phaser.Scene {
     piece.container.setPosition(world.x + anchor.x, world.y + anchor.y)
     this.refreshPlacedHighlights()
     this.emitBoardState()
+    gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-placed' })
   }
 
   removeOccupancy(piece) {
@@ -721,6 +770,7 @@ export class BattleScene extends Phaser.Scene {
     })
     this.refreshPlacedHighlights()
     this.emitBoardState()
+    gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'quick-combination-placed' })
   }
 
   resetBoard() {
@@ -751,7 +801,10 @@ export class BattleScene extends Phaser.Scene {
     const effects = resolveBlockEffects(placedBlocks)
     this.drawCombinationGlows(findMatchingCombinations(placedBlocks))
     this.updateFormworkAura(placedBlocks)
-    const effectValues = [
+    const hasUnknownCombination = effects.combinationDetails.some(
+      ({ id }) => !this.knownBlueprintIds.has(id),
+    )
+    const effectValues = hasUnknownCombination ? '???' : [
       [
         '공격력',
         effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0),
@@ -772,7 +825,9 @@ export class BattleScene extends Phaser.Scene {
       })
       .join('  ')
     const combinationDetails = effects.combinationDetails.length
-      ? effects.combinationDetails
+      ? effects.combinationDetails.map((detail) => !this.knownBlueprintIds.has(detail.id)
+        ? { ...detail, name: '???', color: null, effects: [] }
+        : detail)
       : [{ name: '조합 없음', color: null, effects: [] }]
     this.renderEffectSummary(effectValues, combinationDetails)
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {

@@ -11,6 +11,7 @@ export function WorldMapScreen({
   developerMode = false,
   developerDifficulty = 1,
   onDeveloperDifficultyChange,
+  onPrepare,
   onSelect,
 }) {
   const cleared = worldMap.dungeons.filter(({ kind, status }) =>
@@ -48,6 +49,8 @@ export function WorldMapScreen({
               className={`world-dungeon world-dungeon--${dungeon.kind} ${dungeon.status}`}
               style={{ left: `${dungeon.position.x}%`, top: `${dungeon.position.y}%` }}
               disabled={!selectable}
+              onPointerEnter={() => { if (selectable) onPrepare?.(dungeon) }}
+              onFocus={() => { if (selectable) onPrepare?.(dungeon) }}
               onClick={() => onSelect(dungeon)}
               aria-label={`${dungeon.name} · ${dungeon.status}`}
             >

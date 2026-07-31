@@ -1,5 +1,5 @@
 const GAME_ASSET_URLS = Object.values(import.meta.glob(
-  '../**/*.{png,jpg,jpeg,webp,gif,mp3,ogg,wav,ttf,woff,woff2}',
+  '../**/*.{png,jpg,jpeg,webp,gif,ttf,woff,woff2}',
   { eager: true, query: '?url', import: 'default' },
 ))
 

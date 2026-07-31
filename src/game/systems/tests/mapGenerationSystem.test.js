@@ -12,6 +12,7 @@ import {
   getMapNodePosition,
   getShortestPathNodeIds,
   getMapNodes,
+  revealMapAroundNode,
   validateFloorMap,
 } from '../mapGenerationSystem.js'
 
@@ -240,6 +241,26 @@ describe('Darkest Dungeon-style map generation', () => {
     expect(distances.get(startId)).toBe(0)
     expect(firstStep.every((nodeId) => distances.get(nodeId) === 1)).toBe(true)
     expect([...distances.values()].some((distance) => distance === 2)).toBe(true)
+  })
+
+  it('keeps previously revealed rooms when the player moves elsewhere', () => {
+    const generated = generateMap({ seed: 42 })
+    const entered = enterFloorAtStart(generated, 1)
+    const startId = entered.currentNodeId
+    const nextId = getConnectedNodeIds(entered.map, 1, startId)[0]
+    const firstReveal = revealMapAroundNode(entered.map, nextId)
+    const revealedBeforeReturning = getMapNodes(firstReveal, 1)
+      .filter(({ revealState }) => revealState !== 'hidden')
+      .map(({ id }) => id)
+    const returned = revealMapAroundNode(firstReveal, startId)
+    const revealedAfterReturning = new Set(
+      getMapNodes(returned, 1)
+        .filter(({ revealState }) => revealState !== 'hidden')
+        .map(({ id }) => id),
+    )
+
+    expect(revealedBeforeReturning.every((id) => revealedAfterReturning.has(id))).toBe(true)
+    expect(findMapNode(returned, nextId).revealState).toBe('revealed')
   })
 
   it('allows adjacent exploration and automatic travel only through completed rooms', () => {

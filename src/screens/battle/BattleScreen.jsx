@@ -7,6 +7,7 @@ import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
 import { StatusEffectList } from './components/StatusEffectList.jsx'
 import { BattlePileModal } from './components/BattlePileModal.jsx'
 import { MonsterPartyFrame } from './components/MonsterPartyFrame.jsx'
+import { TutorialOverlay } from '../tutorial/TutorialOverlay.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
 import { resolvePlayerTurn } from '../../game/systems/battleSystem.js'
@@ -22,7 +23,7 @@ import {
   resolvePlayerAction,
 } from '../../game/systems/playerAttackSystem.js'
 import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
-import { isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
+import { getKnownBlueprints, isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
 import {
   applyMonsterEvent,
   applyMonsterTurnTriggers,
@@ -34,6 +35,8 @@ import {
 } from '../../game/systems/monsterDesignSystem.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { useRunStore, useRunStoreApi } from '../../game/state/runStoreContext.js'
+import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
+import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
 
 const prepareMonsterTurn = (monster, runtime, turn, health) => {
   const context = { turn, monster_hp_ratio: health / monster.health }
@@ -66,10 +69,13 @@ export function BattleScreen({
   monster,
   monsters,
   battleType = 'normal',
+  dungeonId,
   developerMode = false,
   onWin,
   onLose,
   onAbandon,
+  tutorialMode = false,
+  onTutorialSkip,
 }) {
   const [machineState, send] = useMachine(battleTurnMachine)
   const [board, setBoard] = useState({
@@ -86,10 +92,14 @@ export function BattleScreen({
   })
   const [activeMonsterId, setActiveMonsterId] = useState(null)
   const [monsterActionNotice, setMonsterActionNotice] = useState(null)
+  const [tutorialFreeCombat, setTutorialFreeCombat] = useState(false)
+  const [tutorialVictory, setTutorialVictory] = useState(false)
+  const [tutorialExitConfirmOpen, setTutorialExitConfirmOpen] = useState(false)
   const [blueprintNotice, setBlueprintNotice] = useState([])
   const [openPile, setOpenPile] = useState(null)
   const [turn, setTurn] = useState(1)
   const victoryHandled = useRef(false)
+  const tutorialVictoryTimer = useRef(null)
   const extraTurnsRemaining = useRef(0)
   const runStore = useRunStoreApi()
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
@@ -121,17 +131,34 @@ export function BattleScreen({
   } = useRunStore()
   const playerStunned = combat.player.statuses.some(({ id, stacks }) =>
     id === 'stun' && stacks > 0)
+  const knownBlueprintIds = useMemo(
+    () => getKnownBlueprints(discoveredBlueprintIds).map(({ id }) => id),
+    [discoveredBlueprintIds],
+  )
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
     setBoard(nextBoard)
     if (developerMode) addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
   }), [addLog, developerMode])
 
+  useEffect(() => gameBridge.on(GAME_EVENTS.TUTORIAL_ACTION, ({ type }) => {
+    if (!tutorialMode || type !== 'free-combat-started') return
+    setTutorialFreeCombat(true)
+    drawNextHand(0, true)
+    gameBridge.emit(GAME_EVENTS.RESET_BOARD)
+  }), [drawNextHand, tutorialMode])
+
   useEffect(() => {
     if (!blueprintNotice.length) return undefined
     const timeoutId = window.setTimeout(() => setBlueprintNotice([]), 3600)
     return () => window.clearTimeout(timeoutId)
   }, [blueprintNotice])
+
+  useEffect(() => () => {
+    if (tutorialVictoryTimer.current !== null) {
+      window.clearTimeout(tutorialVictoryTimer.current)
+    }
+  }, [])
 
   const finishVictory = useCallback((source) => {
     if (victoryHandled.current) return
@@ -141,8 +168,13 @@ export function BattleScreen({
     }
     send({ type: source === 'developer' ? 'DEBUG_WIN' : 'MONSTER_DEFEATED' })
     if (developerMode) addLog(source === 'developer' ? '자동 승리 실행' : '전투 승리')
+    if (tutorialMode) {
+      setTutorialVictory(true)
+      tutorialVictoryTimer.current = window.setTimeout(onWin, 2800)
+      return
+    }
     onWin()
-  }, [addLog, developerMode, onWin, send])
+  }, [addLog, developerMode, onWin, send, tutorialMode])
 
   const endTurn = useCallback(() => {
     const currentPlayerStatuses = runStore.getState().combat.player.statuses
@@ -393,13 +425,13 @@ export function BattleScreen({
             : planned.find(({ currentHealth }) => currentHealth > 0))?.instanceId)
         }
         send({ type: hasExtraTurn ? 'TURN_ENDED' : 'MONSTER_DONE' })
-        drawNextHand(rawResult.drawCount)
+        drawNextHand(rawResult.drawCount, tutorialMode && tutorialFreeCombat)
         gameBridge.emit(GAME_EVENTS.RESET_BOARD)
         setTurn(nextTurn)
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn])
+  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
 
   const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
@@ -450,9 +482,15 @@ export function BattleScreen({
     })
     return positions
   }, [activeMonsterId, combatants, selectedMonsterId])
+  const battleBackground = dungeonId === 'ashen-forge-west'
+    ? floodedFoundryBackground
+    : ashenFurnaceBackground
 
   return (
-    <main className="battle-screen">
+    <main
+      className="battle-screen"
+      style={{ '--battle-background-image': `url("${battleBackground}")` }}
+    >
       <BattleHud
         health={health}
         maxHealth={maxHealth}
@@ -465,7 +503,7 @@ export function BattleScreen({
         placementLimit={board.placementLimit}
         playerStatuses={combat.player.statuses}
       />
-      <div className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
+      <div data-tutorial-target="monsters" className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
         {combatants.map((entry) => {
           const slotIntent = describeMonsterAbility(entry.turnPlan.ability)
           const selected = entry.instanceId === selectedMonsterId
@@ -483,7 +521,10 @@ export function BattleScreen({
                 width: `${formation?.width ?? 16}%`,
               }}
               disabled={entry.currentHealth <= 0 || !machineState.matches('playerInput')}
-              onClick={() => setSelectedMonsterId(entry.instanceId)}
+              onClick={() => {
+                setSelectedMonsterId(entry.instanceId)
+                if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'monster-selected' })
+              }}
               aria-label={`${entry.slotId}번 ${entry.name}, 체력 ${entry.currentHealth}/${entry.health}, ${selected ? '현재 공격 대상' : inRange ? '범위 공격 대상' : ''}`}
             >
               <b className="monster-slot__number">{entry.slotId}</b>
@@ -528,6 +569,7 @@ export function BattleScreen({
           hand={battlePiles.hand}
           placedBlocks={board.placedBlocks}
           discoveredBlueprintIds={discoveredBlueprintIds}
+          allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
         />
       )}
       {blueprintNotice.length > 0 && (
@@ -550,14 +592,23 @@ export function BattleScreen({
           : <span className="monster-glyph" aria-label={displayMonster?.name}>{displayMonster?.glyph}</span>}
         <div className="monster-shadow" />
       </div>
-      <GameContainer hand={battlePiles.hand} health={health} developerMode={developerMode} />
+      <GameContainer
+        hand={battlePiles.hand}
+        health={health}
+        developerMode={developerMode}
+        tutorialMode={tutorialMode}
+        knownBlueprintIds={knownBlueprintIds}
+      />
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>
-        <div><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.drawPile.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
+        <div data-tutorial-target="piles"><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.drawPile.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
         <div className="battle-action-buttons">
           {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
-          <button className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={endTurn}>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'} <span>→</span></button>
+          <button data-tutorial-target="end-turn" className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={() => {
+            if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'turn-ended' })
+            endTurn()
+          }}>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'} <span>→</span></button>
         </div>
       </div>
       {openPile && <BattlePileModal
@@ -567,6 +618,29 @@ export function BattleScreen({
           : battlePiles.discardPile}
         onClose={() => setOpenPile(null)}
       />}
+      {tutorialVictory && (
+        <aside className="tutorial-victory" role="status" aria-live="assertive">
+          <small>튜토리얼 완료</small>
+          <strong>잉걸불 슬라임을 제거했습니다.</strong>
+          <span>이제 블록을 이용해 적들을 물리치세요!</span>
+        </aside>
+      )}
+      {tutorialMode && !tutorialVictory && <>
+        <button type="button" className="tutorial-exit-button" onClick={() => setTutorialExitConfirmOpen(true)}>튜토리얼 종료</button>
+        <TutorialOverlay />
+      </>}
+      {tutorialExitConfirmOpen && !tutorialVictory && (
+        <div className="tutorial-exit-confirm" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="tutorial-exit-title">
+            <strong id="tutorial-exit-title">정말 튜토리얼을 종료하시겠습니까?</strong>
+            <p>튜토리얼은 메인 화면에서 언제든지 다시 할 수 있습니다.</p>
+            <div>
+              <button type="button" onClick={onTutorialSkip}>예</button>
+              <button type="button" autoFocus onClick={() => setTutorialExitConfirmOpen(false)}>아니오</button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
