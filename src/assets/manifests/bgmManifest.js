@@ -33,6 +33,14 @@ export const getMonsterBgmKey = (monsterId) => {
   return key && key in BGM_ASSETS ? key : null
 }
 
+export const getDungeonEntryBgmKeys = (activeDungeonId) => {
+  const dungeonKey = getDungeonBgmKey(activeDungeonId)
+  return dungeonKey ? [dungeonKey] : []
+}
+
+export const getDungeonBackgroundBgmKeys = () =>
+  Object.keys(BGM_ASSETS).filter((key) => key.startsWith('monster:'))
+
 export const getScreenBgmKey = ({
   screen,
   activeDungeonId,

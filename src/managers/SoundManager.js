@@ -15,7 +15,16 @@ class SoundManagerClass {
     if (this.sounds.has(key)) return
     const { group = 'sfx', ...howlOptions } = options
     const sound = new Howl({ src: [source], ...howlOptions, volume: group === 'music' ? this.musicVolume : this.sfxVolume })
-    this.sounds.set(key, { sound, group, source, howlOptions, loadPromise: null, failed: false })
+    this.sounds.set(key, {
+      sound,
+      group,
+      source,
+      howlOptions,
+      loadPromise: null,
+      primePromise: null,
+      primed: false,
+      failed: false,
+    })
   }
   play(key) { if (this.enabled) this.sounds.get(key)?.sound.play() }
   registerMusic(key, source) {
@@ -23,6 +32,7 @@ class SoundManagerClass {
   }
   createMusicHowl(entry, html5 = false) {
     entry.sound.unload()
+    entry.primed = false
     entry.sound = new Howl({
       src: [entry.source],
       ...entry.howlOptions,
@@ -84,6 +94,58 @@ class SoundManagerClass {
       })
     this.musicLoadQueue = entry.loadPromise.catch(() => {})
     return entry.loadPromise
+  }
+  isMusicReady(key) {
+    const entry = this.sounds.get(key)
+    return Boolean(entry?.group === 'music' && entry.sound.state() === 'loaded' && entry.primed)
+  }
+  primeMusic(key, { warmupMs = 180 } = {}) {
+    const entry = this.sounds.get(key)
+    if (!entry || entry.group !== 'music') {
+      return Promise.reject(new Error(`등록되지 않은 BGM입니다: ${key}`))
+    }
+    if (entry.primed || this.currentMusicKey === key) return Promise.resolve()
+    if (entry.primePromise) return entry.primePromise
+
+    entry.primePromise = this.prepareMusic(key)
+      .then(() => new Promise((resolve, reject) => {
+        const sound = entry.sound
+        let soundId
+        let warmupTimer
+        const timeout = window.setTimeout(() => {
+          cleanup()
+          if (soundId !== undefined) sound.stop(soundId)
+          reject(new Error(`BGM 첫 재생 준비 시간 초과: ${key}`))
+        }, 3000)
+        const cleanup = () => {
+          window.clearTimeout(timeout)
+          if (warmupTimer !== undefined) window.clearTimeout(warmupTimer)
+          sound.off('play', handlePlay, soundId)
+          sound.off('playerror', handleError, soundId)
+        }
+        const handlePlay = () => {
+          sound.volume(0, soundId)
+          warmupTimer = window.setTimeout(() => {
+            cleanup()
+            sound.stop(soundId)
+            entry.primed = true
+            resolve()
+          }, warmupMs)
+        }
+        const handleError = (_id, error) => {
+          cleanup()
+          reject(new Error(`BGM 첫 재생 준비 실패 (${key}): ${String(error ?? '알 수 없는 오류')}`))
+        }
+
+        soundId = sound.play()
+        sound.volume(0, soundId)
+        sound.once('play', handlePlay, soundId)
+        sound.once('playerror', handleError, soundId)
+      }))
+      .finally(() => {
+        entry.primePromise = null
+      })
+    return entry.primePromise
   }
   playMusic(key, { fadeMs = 1400 } = {}) {
     if (!this.enabled || !this.sounds.has(key)) return

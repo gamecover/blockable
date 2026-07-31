@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BGM_ASSETS,
+  getDungeonBackgroundBgmKeys,
   getDungeonBgmKey,
+  getDungeonEntryBgmKeys,
   getMonsterBgmKey,
   getScreenBgmKey,
 } from '../bgmManifest.js'
@@ -39,5 +42,12 @@ describe('BGM manifest routing', () => {
     expect(getDungeonBgmKey('ashen-forge-east')).toBe('dungeon:ashen_furnace')
     expect(getMonsterBgmKey('lava_heart')).toBe('monster:lava_heart')
     expect(getMonsterBgmKey('ember_slime')).toBeNull()
+  })
+
+  it('loads the regional track at entry and monster tracks in the background', () => {
+    const entryKeys = getDungeonEntryBgmKeys('ashen-forge-west')
+    const monsterKeys = Object.keys(BGM_ASSETS).filter((key) => key.startsWith('monster:'))
+    expect(entryKeys).toEqual(['dungeon:flooded_foundry'])
+    expect(getDungeonBackgroundBgmKeys()).toEqual(monsterKeys)
   })
 })

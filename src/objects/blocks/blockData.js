@@ -42,6 +42,17 @@ export const createStarterDeck = () =>
     .flatMap((definition) => Array.from({ length: 4 }, () => definition.id))
     .map((id, index) => createBlock(id, index))
 
+export const createTutorialDeck = () => {
+  const deck = [
+  's001', 's002', 's003', 's001', 's002',
+  's003', 's001', 's002', 's003', 's001',
+  's002', 's003', 's001',
+  ].map((id, index) => createBlock(id, `tutorial-${index}`))
+  // 첫 블록은 R 한 번으로 의자 조합의 세로 I 블록이 되도록 가로 방향으로 제공한다.
+  deck[0] = { ...deck[0], cells: [[0, 0], [1, 0], [2, 0]] }
+  return deck
+}
+
 export const createUniqueBlockChoiceIds = (count = 3, random = Math.random) => {
   const definitions = [...getUniqueBlockDefinitions()]
   for (let index = definitions.length - 1; index > 0; index -= 1) {

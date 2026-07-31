@@ -7,8 +7,9 @@ export const appMachine = setup({
   initial: 'splash',
   states: {
     splash: { on: { READY: 'menu' } },
-    menu: { on: { START: 'prologue', START_CHOICE: 'startChoice', CONTINUE: 'worldMap', CONTINUE_DUNGEON: 'map', CONTINUE_BATTLE: 'battle' } },
-    prologue: { on: { CONTINUE: 'startChoice', MENU: 'menu' } },
+    menu: { on: { START: 'prologue', START_CHOICE: 'startChoice', START_TUTORIAL: 'tutorial', CONTINUE: 'worldMap', CONTINUE_DUNGEON: 'map', CONTINUE_BATTLE: 'battle' } },
+    prologue: { on: { CONTINUE: 'tutorial', MENU: 'menu' } },
+    tutorial: { on: { TUTORIAL_GAME: 'startChoice', TUTORIAL_MENU: 'menu' } },
     worldMap: { on: { ENTER_DUNGEON: 'map', MENU: 'menu' } },
     map: { on: { ENTER_BATTLE: 'battle', ENTER_EVENT: 'event', ENTER_START: 'startChoice', LEAVE_DUNGEON: 'worldMap', MENU: 'menu' } },
     startChoice: { on: { DONE: 'worldMap', DONE_DUNGEON: 'map', MENU: 'menu' } },

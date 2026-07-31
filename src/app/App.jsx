@@ -8,12 +8,13 @@ import { pick } from '../game/systems/randomSystem.js'
 import { canTravelToNode } from '../game/systems/mapGenerationSystem.js'
 import { createCombatSlots } from '../game/systems/combatSlotSystem.js'
 import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem.js'
-import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
+import { developerRunStore, normalRunStore, tutorialRunStore } from '../game/state/useRunStore.js'
 import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
 import { SoundManager } from '../managers/SoundManager.js'
 import {
   BGM_ASSETS,
-  getDungeonBgmKey,
+  getDungeonBackgroundBgmKeys,
+  getDungeonEntryBgmKeys,
   getMonsterBgmKey,
   getScreenBgmKey,
 } from '../assets/manifests/bgmManifest.js'
@@ -31,6 +32,7 @@ import { CommonGameMenu } from '../components/game/CommonGameMenu.jsx'
 import { StartBlockChoiceScreen } from '../screens/map/StartBlockChoiceScreen.jsx'
 import { DungeonLoadingScreen } from '../screens/map/DungeonLoadingScreen.jsx'
 import { createUniqueBlockChoices } from '../objects/blocks/blockData.js'
+import { createMonsterEncounter, getMonsterDefinition } from '../game/systems/monsterDesignSystem.js'
 
 export function App() {
   const [appState, send] = useMachine(appMachine)
@@ -41,10 +43,17 @@ export function App() {
   const [conqueredDungeonName, setConqueredDungeonName] = useState('')
   const [resultFloor, setResultFloor] = useState(1)
   const [areaLoading, setAreaLoading] = useState(null)
+  const [tutorialReturn, setTutorialReturn] = useState('menu')
+  const [tutorialAttempt, setTutorialAttempt] = useState(0)
   const normalRun = useStore(normalRunStore)
   const developerRun = useStore(developerRunStore)
-  const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
-  const run = runMode === 'developer' ? developerRun : normalRun
+  const tutorialRun = useStore(tutorialRunStore)
+  const activeStore = runMode === 'tutorial'
+    ? tutorialRunStore
+    : runMode === 'developer' ? developerRunStore : normalRunStore
+  const run = runMode === 'tutorial'
+    ? tutorialRun
+    : runMode === 'developer' ? developerRun : normalRun
   const developerMode = DEVELOPER_TOOLS_ENABLED && runMode === 'developer' && run.developerMode
   const uniqueBlockChoices = useMemo(
     () => createUniqueBlockChoices(run.uniqueBlockChoiceIds),
@@ -80,7 +89,59 @@ export function App() {
     const prologueSeen = targetRun.prologueSeen
     targetRun.startRun()
     setRunMode(mode)
+    if (mode === 'normal' && prologueSeen && !targetRun.tutorialCompleted) {
+      beginTutorial('game')
+      return
+    }
     send({ type: mode === 'developer' || prologueSeen ? 'START_CHOICE' : 'START' })
+  }
+
+  const createTutorialEncounter = () => {
+    const definition = getMonsterDefinition('ember_slime')
+    if (!definition) throw new Error('튜토리얼 몬스터 잉걸불 슬라임을 찾을 수 없습니다.')
+    const monster = {
+      ...createMonsterEncounter(definition),
+      instanceId: 'ember_slime-tutorial',
+      slotId: 1,
+    }
+    return {
+      type: 'battle',
+      grade: 'normal',
+      battleType: 'normal',
+      monsters: [monster],
+      monster,
+      node: { id: 'tutorial-battle', type: 'battle', grade: 'normal', floor: 1 },
+    }
+  }
+
+  const beginTutorial = (returnTo = 'menu') => {
+    SoundManager.unlock()
+    const targetRun = tutorialRunStore.getState()
+    const nextEncounter = createTutorialEncounter()
+    targetRun.startTutorialRun()
+    targetRun.beginBattle(nextEncounter)
+    setEncounter(nextEncounter)
+    setTutorialReturn(returnTo)
+    setTutorialAttempt((attempt) => attempt + 1)
+    setRunMode('tutorial')
+    send({ type: current === 'prologue' ? 'CONTINUE' : 'START_TUTORIAL' })
+  }
+
+  const finishTutorial = () => {
+    normalRunStore.getState().markTutorialCompleted()
+    tutorialRunStore.getState().deleteRun()
+    setEncounter(null)
+    setRunMode('normal')
+    send({ type: tutorialReturn === 'menu' ? 'TUTORIAL_MENU' : 'TUTORIAL_GAME' })
+  }
+
+  const restartTutorialBattle = () => {
+    const targetRun = tutorialRunStore.getState()
+    const nextEncounter = createTutorialEncounter()
+    targetRun.startTutorialRun()
+    targetRun.beginBattle(nextEncounter)
+    setEncounter(nextEncounter)
+    setTutorialAttempt((attempt) => attempt + 1)
   }
 
   const continueRun = (mode = 'normal') => {
@@ -98,7 +159,12 @@ export function App() {
       send({ type: 'CONTINUE_BATTLE' })
       return
     }
-    send({ type: targetRun.activeDungeonId ? 'CONTINUE_DUNGEON' : 'CONTINUE' })
+    if (targetRun.activeDungeonId) {
+      send({ type: 'CONTINUE_DUNGEON' })
+      void prepareDungeonBackgroundMusic()
+      return
+    }
+    send({ type: 'CONTINUE' })
   }
 
   const enterNode = (node) => {
@@ -146,42 +212,55 @@ export function App() {
       setAreaLoading(null)
       send({ type: 'ENTER_BATTLE' })
     }
-    if (!musicKey) {
+    if (!musicKey || SoundManager.isMusicReady(musicKey)) {
       completeEntry()
       return
     }
-    setAreaLoading({
-      kind: 'battle',
-      dungeonId: run.activeDungeonId,
-      title: nextEncounter.monster?.name ?? '전투 준비',
-      message: '적의 기척과 전투 음악을 준비하고 있습니다.',
-      retry: () => prepareBattleMusic(),
-      continue: completeEntry,
-      error: '',
-    })
     const prepareBattleMusic = () => {
       setAreaLoading((currentLoading) => currentLoading
         ? { ...currentLoading, error: '' }
         : currentLoading)
       SoundManager.prepareMusic(musicKey)
+        .then(() => SoundManager.primeMusic(musicKey))
         .then(completeEntry)
         .catch((error) => setAreaLoading((currentLoading) => currentLoading
           ? { ...currentLoading, error: error instanceof Error ? error.message : String(error) }
           : currentLoading))
     }
+    setAreaLoading({
+      kind: 'battle',
+      dungeonId: run.activeDungeonId,
+      title: nextEncounter.monster?.name ?? '전투 준비',
+      message: '적의 기척을 살피고 전투 태세를 갖추고 있습니다.',
+      retry: prepareBattleMusic,
+      continue: completeEntry,
+      error: '',
+    })
     prepareBattleMusic()
+  }
+
+  const prepareDungeonBackgroundMusic = async () => {
+    try {
+      for (const musicKey of getDungeonBackgroundBgmKeys()) {
+        await SoundManager.prepareMusic(musicKey)
+        await SoundManager.primeMusic(musicKey)
+      }
+    } catch (error) {
+      console.warn('던전 몬스터 BGM 백그라운드 준비 실패:', error)
+    }
   }
 
   const completeDungeonEntry = (dungeon) => {
     setAreaLoading(null)
     run.enterDungeon(dungeon)
     send({ type: 'ENTER_DUNGEON' })
+    void prepareDungeonBackgroundMusic()
   }
 
   const prepareDungeon = (dungeon, showLoading = false) => {
     if (dungeon.status === 'locked' && !developerMode) return
-    const musicKey = getDungeonBgmKey(dungeon.id)
-    if (!musicKey) {
+    const musicKeys = getDungeonEntryBgmKeys(dungeon.id)
+    if (!musicKeys.length) {
       if (showLoading) completeDungeonEntry(dungeon)
       return
     }
@@ -197,7 +276,13 @@ export function App() {
         error: '',
       })
     }
-    SoundManager.prepareMusic(musicKey)
+    const prepareDungeonAssets = async () => {
+      for (const musicKey of musicKeys) await SoundManager.prepareMusic(musicKey)
+      if (showLoading) {
+        for (const musicKey of musicKeys) await SoundManager.primeMusic(musicKey)
+      }
+    }
+    prepareDungeonAssets()
       .then(() => { if (showLoading) completeDungeonEntry(dungeon) })
       .catch((error) => {
         if (!showLoading) return
@@ -288,6 +373,7 @@ export function App() {
     canContinue={normalRun.runStarted}
     onStart={() => startNewRun('normal')}
     onContinue={() => continueRun('normal')}
+    onTutorial={() => beginTutorial('menu')}
     developerToolsEnabled={DEVELOPER_TOOLS_ENABLED}
     canDeveloperContinue={developerRun.runStarted}
     onDeveloperStart={() => startNewRun('developer')}
@@ -303,11 +389,26 @@ export function App() {
   />
 
   let screen = null
-  if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
+  if (current === 'prologue') screen = <PrologueScreen onContinue={() => {
+    normalRunStore.getState().markPrologueSeen()
+    beginTutorial('game')
+  }} />
   if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onDeveloperDifficultyChange={(difficulty) => { if (developerMode) run.setDeveloperDifficulty(difficulty) }} onPrepare={(dungeon) => prepareDungeon(dungeon)} onSelect={enterDungeon} />
   if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
   if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
   if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} dungeonId={run.activeDungeonId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { setResultFloor(run.floor); deleteActiveRun(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
+  if (current === 'tutorial' && monster) screen = <BattleScreen
+    key={`tutorial-${tutorialAttempt}`}
+    tutorialMode
+    dungeonId="ashen-forge-east"
+    monster={monster}
+    monsters={encounter.monsters}
+    battleType="normal"
+    onWin={finishTutorial}
+    onLose={restartTutorialBattle}
+    onAbandon={finishTutorial}
+    onTutorialSkip={finishTutorial}
+  />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} onDefer={() => send({ type: 'DONE' })} />
   if (current === 'dungeonConquest') screen = <DungeonConquestScreen dungeonName={conqueredDungeonName} onContinue={() => send({ type: 'CONTINUE' })} />
@@ -316,7 +417,7 @@ export function App() {
 
   return <RunStoreProvider store={activeStore}>
     {screen}
-    <CommonGameMenu
+    {current !== 'tutorial' && <CommonGameMenu
         floor={run.floor}
         map={run.map}
         worldMap={run.worldMap}
@@ -326,6 +427,6 @@ export function App() {
         currentNodeId={run.currentNodeId}
         currentScreen={current}
         onMainMenu={backToMenu}
-      />
+      />}
   </RunStoreProvider>
 }

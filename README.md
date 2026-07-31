@@ -1,20 +1,23 @@
 # Blockable
 
-현재 버전: `v0.5.0`
+현재 버전: `v0.7.0`
 
 Blockable은 블록을 거푸집에 배치해 공격·방어·회복 효과와 조합식을 발동하는 웹 기반 턴제 로그라이크 게임입니다. 플레이어는 대장장이가 되어 분기형 던전을 탐색하고, 블록 주머니를 관리하며 몬스터와 전투합니다.
 
 ## 현재 게임 구성
 
-- 기본 던전: 잿빛 용광로
-- 난이도: 1
-- 던전 구성: 2개 층, 층마다 5단계 노드
+- 일반 던전: 잿빛 용광로, 침수된 주조장
+- 최종 던전: 전체 지도의 중앙 최종 던전
+- 일반 모드 난이도: 1 (개발자 모드는 1~10 조절 가능)
+- 던전 구성: 난이도에 따라 생성되는 다층 방·양방향 통로 탐험 지도
 - 시작 블록: 기본 강철 블록 12개와 선택한 고유 블록 1개
 - 손패: 매 턴 기본 5개 드로우
 - 배치: 매 턴 최대 3개 블록
-- 노드: 시작, 전투, 이벤트, 휴식, 보스
+- 방 종류: 시작, 전투, 강력, 이벤트, 휴식, 계단, 보스
 - 전투 효과: 피해, 방어도, 회복, 상태 효과, 추가 드로우와 블록 조합
 - 상태 효과: 출혈, 화상, 약화, 상처, 기절
+- 청사진: 3×3 이하 기본 조합과 전투에서 발견한 조합 기록, 전투 중 퀵 조합
+- 튜토리얼: 실제 전투 UI를 사용하는 9단계 잉걸불 슬라임 훈련
 
 현재 블록과 몬스터 수치 및 행동은 코드에 중복 작성하지 않고 Designer가 출력한 JSON을 원본으로 사용합니다.
 
@@ -60,8 +63,10 @@ Designer 애플리케이션은 별도 프로젝트이며, 이 저장소에는 �
 ```text
 blockable/
 ├── docs/
-│   ├── CODEX_DEVELOPMENT_GUIDE.md
-│   ├── GAME_DESIGN.md
+│   ├── BLOCKABLE_CODEX_DEVELOPMENT_GUIDE.md
+│   ├── BLOCKABLE_GAME_DESIGN.md
+│   ├── BLOCKABLE_COMBAT_SYSTEM.md
+│   ├── BLOCKABLE_MAP_SYSTEM.md
 │   ├── BLOCKABLE_BLOCK_DESIGN_CODEX_INTERACTION_INSTRUCTION.md
 │   ├── BLOCKABLE_MONSTER_DESIGN_CODEX_INTERACTION_INSTRUCTION.md
 │   └── references/
@@ -116,8 +121,10 @@ npm run build
 
 ## 주요 문서
 
-- 게임 기획: [`docs/GAME_DESIGN.md`](./docs/GAME_DESIGN.md)
-- 개발 지침: [`docs/CODEX_DEVELOPMENT_GUIDE.md`](./docs/CODEX_DEVELOPMENT_GUIDE.md)
+- 게임 기획: [`docs/BLOCKABLE_GAME_DESIGN.md`](./docs/BLOCKABLE_GAME_DESIGN.md)
+- 전투 시스템: [`docs/BLOCKABLE_COMBAT_SYSTEM.md`](./docs/BLOCKABLE_COMBAT_SYSTEM.md)
+- 지도 시스템: [`docs/BLOCKABLE_MAP_SYSTEM.md`](./docs/BLOCKABLE_MAP_SYSTEM.md)
+- 개발 지침: [`docs/BLOCKABLE_CODEX_DEVELOPMENT_GUIDE.md`](./docs/BLOCKABLE_CODEX_DEVELOPMENT_GUIDE.md)
 - 버전별 변경 내역: [`update.txt`](./update.txt)
 
 ## 개발 상태
