@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getScreenBgmKey } from '../bgmManifest.js'
+import {
+  getDungeonBgmKey,
+  getMonsterBgmKey,
+  getScreenBgmKey,
+} from '../bgmManifest.js'
 
 describe('BGM manifest routing', () => {
   it('uses a monster track in battle and falls back to the dungeon track', () => {
@@ -12,10 +16,14 @@ describe('BGM manifest routing', () => {
       screen: 'battle',
       activeDungeonId: 'ashen-forge-west',
       monsterId: 'ember_slime',
-    })).toBe('dungeon:ashen_furnace')
+    })).toBe('dungeon:flooded_foundry')
   })
 
   it('uses the dungeon track inside a dungeon and stops it outside', () => {
+    expect(getScreenBgmKey({
+      screen: 'event',
+      activeDungeonId: 'ashen-forge-west',
+    })).toBe('dungeon:flooded_foundry')
     expect(getScreenBgmKey({
       screen: 'map',
       activeDungeonId: 'great-forge',
@@ -24,5 +32,12 @@ describe('BGM manifest routing', () => {
       screen: 'worldMap',
       activeDungeonId: null,
     })).toBeNull()
+  })
+
+  it('provides loadable keys for regional and monster transition screens', () => {
+    expect(getDungeonBgmKey('ashen-forge-west')).toBe('dungeon:flooded_foundry')
+    expect(getDungeonBgmKey('ashen-forge-east')).toBe('dungeon:ashen_furnace')
+    expect(getMonsterBgmKey('lava_heart')).toBe('monster:lava_heart')
+    expect(getMonsterBgmKey('ember_slime')).toBeNull()
   })
 })

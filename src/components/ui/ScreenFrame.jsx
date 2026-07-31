@@ -1,8 +1,19 @@
 import { GameLogo } from './GameLogo.jsx'
+import { useRunStore } from '../../game/state/runStoreContext.js'
+import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
+import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
 
 export function ScreenFrame({ children, title, subtitle, compactLogo = true, actions, barVariant = 'alpha' }) {
+  const activeDungeonId = useRunStore((state) => state.activeDungeonId)
+  const background = activeDungeonId === 'ashen-forge-west'
+    ? floodedFoundryBackground
+    : ashenFurnaceBackground
+
   return (
-    <main className="screen-frame">
+    <main
+      className="screen-frame"
+      style={{ '--screen-background-image': `url("${background}")` }}
+    >
       <header className={`topbar topbar--${barVariant}`}>
         <GameLogo compact={compactLogo} />
         <div className="screen-heading"><span>{subtitle}</span><h2>{title}</h2></div>

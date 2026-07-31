@@ -6,6 +6,7 @@ import {
   completeAndUnlockNext,
   enterFloorAtStart,
   findMapNode,
+  revealMapAroundNode,
 } from '../systems/mapGenerationSystem.js'
 import {
   createStarterDeck,
@@ -36,6 +37,7 @@ const initialRun = (developerMode = false) => ({
   worldMap: createWorldMapState(),
   activeDungeonId: null,
   currentNodeId: null,
+  previousNodeId: null,
   floor: 1,
   prologueSeen: false,
   runStarted: false,
@@ -75,6 +77,9 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.runStarted = true
     state.prologueSeen = prologueSeen
   }),
+  deleteRun: () => set((state) => {
+    Object.assign(state, initialRun(developerMode))
+  }),
   chooseUniqueBlock: (block) => set((state) => {
     if (state.uniqueBlockId || !state.uniqueBlockChoiceIds.includes(block.definitionId)) return
     state.deck.push(block)
@@ -87,6 +92,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.discoveredBlueprintIds = [...discovered]
   }),
   selectNode: (node) => set((state) => {
+    state.map = revealMapAroundNode(state.map, node.id)
+    state.previousNodeId = state.currentNodeId
     state.currentNodeId = node.id
     state.floor = node.floor
   }),
@@ -103,11 +110,13 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     const enteredFloor = enterFloorAtStart(generatedMap, 1)
     state.map = enteredFloor.map
     state.currentNodeId = enteredFloor.currentNodeId
+    state.previousNodeId = null
     state.floor = 1
   }),
   leaveDungeon: () => set((state) => {
     state.activeDungeonId = null
     state.currentNodeId = null
+    state.previousNodeId = null
   }),
   setDeveloperDifficulty: (difficulty) => set((state) => {
     if (!state.developerMode) return
@@ -122,10 +131,22 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     state.worldMap = completeWorldDungeon(state.worldMap, state.activeDungeonId)
     state.activeDungeonId = null
     state.currentNodeId = null
+    state.previousNodeId = null
   }),
   moveToNode: (node) => set((state) => {
+    state.map = revealMapAroundNode(state.map, node.id)
+    state.previousNodeId = state.currentNodeId
     state.currentNodeId = node.id
     state.floor = node.floor
+  }),
+  returnToPreviousNode: () => set((state) => {
+    const previous = findMapNode(state.map, state.previousNodeId)
+    if (!previous) return
+    const abandonedNodeId = state.currentNodeId
+    state.map = revealMapAroundNode(state.map, previous.id)
+    state.currentNodeId = previous.id
+    state.previousNodeId = abandonedNodeId
+    state.floor = previous.floor
   }),
   completeNode: () => set((state) => {
     const completedNode = findMapNode(state.map, state.currentNodeId)
@@ -135,6 +156,7 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
       const enteredFloor = enterFloorAtStart(state.map, state.floor)
       state.map = enteredFloor.map
       state.currentNodeId = enteredFloor.currentNodeId
+      state.previousNodeId = null
     }
   }),
   damagePlayer: (amount, attackerStatuses = []) => set((state) => {
@@ -228,8 +250,8 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
 })), {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
-    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, runStarted, developerMode, developerDifficulty, pendingBattle, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const hydratedDeck = persisted.deck.map(hydrateBlock)
@@ -247,10 +269,16 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     const worldMap = persisted.worldMap
       ? {
           ...persisted.worldMap,
-          dungeons: persisted.worldMap.dungeons.map((dungeon) =>
-            dungeon.kind === 'final' && dungeon.status === 'locked'
-              ? { ...dungeon, status: 'available' }
-              : dungeon),
+          dungeons: persisted.worldMap.dungeons.map((dungeon) => {
+            const currentDungeon = current.worldMap.dungeons.find(({ id }) => id === dungeon.id)
+            return {
+              ...dungeon,
+              name: currentDungeon?.name ?? dungeon.name,
+              ...(dungeon.kind === 'final' && dungeon.status === 'locked'
+                ? { status: 'available' }
+                : {}),
+            }
+          }),
         }
       : current.worldMap
     const developerDifficulty = developerMode
@@ -265,6 +293,13 @@ const createRunStore = ({ storageName, developerMode }) => createStore(persist(i
     return {
       ...current,
       ...persisted,
+      map: persisted.activeDungeonId && persisted.map
+        ? {
+            ...persisted.map,
+            dungeonName: worldMap.dungeons.find(({ id }) =>
+              id === persisted.activeDungeonId)?.name ?? persisted.map.dungeonName,
+          }
+        : persisted.map ?? current.map,
       deck,
       worldMap,
       pendingBattle,

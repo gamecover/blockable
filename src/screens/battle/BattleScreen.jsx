@@ -34,6 +34,8 @@ import {
 } from '../../game/systems/monsterDesignSystem.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { useRunStore, useRunStoreApi } from '../../game/state/runStoreContext.js'
+import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
+import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
 
 const prepareMonsterTurn = (monster, runtime, turn, health) => {
   const context = { turn, monster_hp_ratio: health / monster.health }
@@ -66,6 +68,7 @@ export function BattleScreen({
   monster,
   monsters,
   battleType = 'normal',
+  dungeonId,
   developerMode = false,
   onWin,
   onLose,
@@ -450,9 +453,15 @@ export function BattleScreen({
     })
     return positions
   }, [activeMonsterId, combatants, selectedMonsterId])
+  const battleBackground = dungeonId === 'ashen-forge-west'
+    ? floodedFoundryBackground
+    : ashenFurnaceBackground
 
   return (
-    <main className="battle-screen">
+    <main
+      className="battle-screen"
+      style={{ '--battle-background-image': `url("${battleBackground}")` }}
+    >
       <BattleHud
         health={health}
         maxHealth={maxHealth}

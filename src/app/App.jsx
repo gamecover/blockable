@@ -11,7 +11,12 @@ import { createBlockRewards, rollGoldReward } from '../game/systems/rewardSystem
 import { developerRunStore, normalRunStore } from '../game/state/useRunStore.js'
 import { RunStoreProvider } from '../game/state/RunStoreContext.jsx'
 import { SoundManager } from '../managers/SoundManager.js'
-import { BGM_ASSETS, getScreenBgmKey } from '../assets/manifests/bgmManifest.js'
+import {
+  BGM_ASSETS,
+  getDungeonBgmKey,
+  getMonsterBgmKey,
+  getScreenBgmKey,
+} from '../assets/manifests/bgmManifest.js'
 import { SplashScreen } from '../screens/main/SplashScreen.jsx'
 import { MainScreen } from '../screens/main/MainScreen.jsx'
 import { PrologueScreen } from '../screens/prologue/PrologueScreen.jsx'
@@ -24,6 +29,7 @@ import { ResultScreen } from '../screens/result/ResultScreen.jsx'
 import { DungeonConquestScreen } from '../screens/result/DungeonConquestScreen.jsx'
 import { CommonGameMenu } from '../components/game/CommonGameMenu.jsx'
 import { StartBlockChoiceScreen } from '../screens/map/StartBlockChoiceScreen.jsx'
+import { DungeonLoadingScreen } from '../screens/map/DungeonLoadingScreen.jsx'
 import { createUniqueBlockChoices } from '../objects/blocks/blockData.js'
 
 export function App() {
@@ -33,6 +39,8 @@ export function App() {
   const [earnedGold, setEarnedGold] = useState(0)
   const [runMode, setRunMode] = useState('normal')
   const [conqueredDungeonName, setConqueredDungeonName] = useState('')
+  const [resultFloor, setResultFloor] = useState(1)
+  const [areaLoading, setAreaLoading] = useState(null)
   const normalRun = useStore(normalRunStore)
   const developerRun = useStore(developerRunStore)
   const activeStore = runMode === 'developer' ? developerRunStore : normalRunStore
@@ -101,18 +109,23 @@ export function App() {
       return
     }
 
-    run.selectNode(node)
-    if (node.type === 'floor_start') return
+    if (node.type === 'floor_start') {
+      run.selectNode(node)
+      return
+    }
     if (node.type === 'stairs') {
+      run.selectNode(node)
       run.completeNode()
       return
     }
     if (node.type === 'rest') {
+      run.selectNode(node)
       setEncounter({ type: 'event', event: 'rest' })
       send({ type: 'ENTER_EVENT' })
       return
     }
     if (node.type === 'event') {
+      run.selectNode(node)
       setEncounter({ type: 'event', event: Math.random() < 0.3 ? 'spring' : pick(['shop', 'chest']) })
       send({ type: 'ENTER_EVENT' })
       return
@@ -123,16 +136,86 @@ export function App() {
       difficultyTier: run.map.difficulty ?? DEFAULT_DUNGEON.difficulty,
     })
     const nextEncounter = { type: node.type, grade: node.grade, node, ...combat, monster: combat.monsters[0] }
-    setEncounter(nextEncounter)
-    run.beginBattle(nextEncounter)
-    send({ type: 'ENTER_BATTLE' })
+    const musicMonsterId = combat.monsters.find(({ slotId }) => slotId === 5)?.id
+      ?? combat.monsters[0]?.id
+    const musicKey = getMonsterBgmKey(musicMonsterId)
+    const completeEntry = () => {
+      run.selectNode(node)
+      setEncounter(nextEncounter)
+      run.beginBattle(nextEncounter)
+      setAreaLoading(null)
+      send({ type: 'ENTER_BATTLE' })
+    }
+    if (!musicKey) {
+      completeEntry()
+      return
+    }
+    setAreaLoading({
+      kind: 'battle',
+      dungeonId: run.activeDungeonId,
+      title: nextEncounter.monster?.name ?? '전투 준비',
+      message: '적의 기척과 전투 음악을 준비하고 있습니다.',
+      retry: () => prepareBattleMusic(),
+      continue: completeEntry,
+      error: '',
+    })
+    const prepareBattleMusic = () => {
+      setAreaLoading((currentLoading) => currentLoading
+        ? { ...currentLoading, error: '' }
+        : currentLoading)
+      SoundManager.prepareMusic(musicKey)
+        .then(completeEntry)
+        .catch((error) => setAreaLoading((currentLoading) => currentLoading
+          ? { ...currentLoading, error: error instanceof Error ? error.message : String(error) }
+          : currentLoading))
+    }
+    prepareBattleMusic()
   }
 
-  const enterDungeon = (dungeon) => {
-    if (dungeon.status === 'locked' && !developerMode) return
+  const completeDungeonEntry = (dungeon) => {
+    setAreaLoading(null)
     run.enterDungeon(dungeon)
     send({ type: 'ENTER_DUNGEON' })
   }
+
+  const prepareDungeon = (dungeon, showLoading = false) => {
+    if (dungeon.status === 'locked' && !developerMode) return
+    const musicKey = getDungeonBgmKey(dungeon.id)
+    if (!musicKey) {
+      if (showLoading) completeDungeonEntry(dungeon)
+      return
+    }
+    if (showLoading) {
+      const retry = () => prepareDungeon(dungeon, true)
+      setAreaLoading({
+        kind: 'dungeon',
+        dungeonId: dungeon.id,
+        title: dungeon.name,
+        message: '원정에 필요한 준비를 하고 있습니다.',
+        retry,
+        continue: () => completeDungeonEntry(dungeon),
+        error: '',
+      })
+    }
+    SoundManager.prepareMusic(musicKey)
+      .then(() => { if (showLoading) completeDungeonEntry(dungeon) })
+      .catch((error) => {
+        if (!showLoading) return
+        setAreaLoading((currentLoading) => currentLoading
+          ? { ...currentLoading, error: error instanceof Error ? error.message : String(error) }
+          : currentLoading)
+      })
+  }
+
+  const enterDungeon = (dungeon) => prepareDungeon(dungeon, true)
+
+  const deleteActiveRun = useCallback(() => {
+    activeStore.getState().deleteRun()
+    activeStore.persist.clearStorage()
+    setEncounter(null)
+    setRewards([])
+    setEarnedGold(0)
+  }, [activeStore])
 
   const winBattle = useCallback(() => {
     const gold = rollGoldReward()
@@ -144,12 +227,16 @@ export function App() {
       const activeDungeon = run.worldMap.dungeons.find(({ id }) => id === run.activeDungeonId)
       setConqueredDungeonName(activeDungeon?.name ?? run.map.dungeonName)
       run.completeDungeon()
+      if (activeDungeon?.kind === 'final') {
+        setResultFloor(run.floor)
+        deleteActiveRun()
+      }
       send({ type: activeDungeon?.kind === 'final' ? 'BOSS_WIN' : 'DUNGEON_WIN' })
       return
     }
     setRewards(createBlockRewards())
     send({ type: 'WIN' })
-  }, [encounter, run, send])
+  }, [deleteActiveRun, encounter, run, send])
 
   const finishReward = (block) => {
     if (block) run.addBlock(block)
@@ -178,11 +265,20 @@ export function App() {
 
   const abandonBattle = () => {
     run.clearPendingBattle()
-    send({ type: 'ABANDON' })
+    if (developerMode) {
+      run.returnToPreviousNode()
+      send({ type: 'ABANDON' })
+      return
+    }
+    setResultFloor(run.floor)
+    deleteActiveRun()
+    send({ type: 'LOSE' })
   }
 
   const backToMenu = () => {
-    activeStore.setState({ lastSavedAt: Date.now() })
+    if (activeStore.getState().runStarted) {
+      activeStore.setState({ lastSavedAt: Date.now() })
+    }
     send({ type: 'MENU' })
   }
 
@@ -197,18 +293,26 @@ export function App() {
     onDeveloperStart={() => startNewRun('developer')}
     onDeveloperContinue={() => continueRun('developer')}
   />
+  if (areaLoading) return <DungeonLoadingScreen
+    dungeonId={areaLoading.dungeonId}
+    title={areaLoading.title}
+    message={areaLoading.message}
+    error={areaLoading.error}
+    onRetry={areaLoading.retry}
+    onContinue={areaLoading.continue}
+  />
 
   let screen = null
   if (current === 'prologue') screen = <PrologueScreen onContinue={() => { run.markPrologueSeen(); send({ type: 'CONTINUE' }) }} />
-  if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onDeveloperDifficultyChange={(difficulty) => { if (developerMode) run.setDeveloperDifficulty(difficulty) }} onSelect={enterDungeon} />
+  if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onDeveloperDifficultyChange={(difficulty) => { if (developerMode) run.setDeveloperDifficulty(difficulty) }} onPrepare={(dungeon) => prepareDungeon(dungeon)} onSelect={enterDungeon} />
   if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
   if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
-  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { run.clearPendingBattle(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
+  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} dungeonId={run.activeDungeonId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { setResultFloor(run.floor); deleteActiveRun(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} onDefer={() => send({ type: 'DONE' })} />
   if (current === 'dungeonConquest') screen = <DungeonConquestScreen dungeonName={conqueredDungeonName} onContinue={() => send({ type: 'CONTINUE' })} />
-  if (current === 'gameover') screen = <ResultScreen floor={run.floor} onMenu={backToMenu} />
-  if (current === 'ending') screen = <ResultScreen victory floor={run.floor} onMenu={backToMenu} />
+  if (current === 'gameover') screen = <ResultScreen floor={resultFloor} onMenu={backToMenu} />
+  if (current === 'ending') screen = <ResultScreen victory floor={resultFloor} onMenu={backToMenu} />
 
   return <RunStoreProvider store={activeStore}>
     {screen}
