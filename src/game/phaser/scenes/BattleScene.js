@@ -3,7 +3,7 @@ import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import {
-  describeDamageRange,
+  describeFinalBlockEffects,
   getDominantCombinationColor,
   resolveBlockEffects,
 } from '../../systems/blockEffectSystem.js'
@@ -11,6 +11,7 @@ import { findMatchingCombinations } from '../../systems/blockCombinationSystem.j
 import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
 import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
+import { resolveCombatFormulaPreview } from '../../systems/combatFormulaPreviewSystem.js'
 import curseTexture from '../../../assets/sprites/blocks/block_curse.png'
 import fireTexture from '../../../assets/sprites/blocks/block_fire.png'
 import legendTexture from '../../../assets/sprites/blocks/block_legend.png'
@@ -123,6 +124,14 @@ export class BattleScene extends Phaser.Scene {
     this.developerMode = data.developerMode === true
     this.tutorialMode = data.tutorialMode === true
     this.knownBlueprintIds = new Set(data.knownBlueprintIds ?? [])
+    this.currentArmor = Number(data.armor ?? 0)
+    this.combatFormulaContext = {
+      damageBonus: 0,
+      attackMultiplier: 1,
+      attackReductionMultiplier: 1,
+      woundMultiplier: 1,
+      hitCountBonus: 0,
+    }
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
@@ -133,6 +142,8 @@ export class BattleScene extends Phaser.Scene {
     this.unsubInput = null
     this.unsubQuickCombination = null
     this.unsubHealthChanged = null
+    this.unsubArmorChanged = null
+    this.unsubCombatContextChanged = null
     this.inputEnabled = true
     this.handleWindowKeyDown = (event) => {
       if (!this.inputEnabled) return
@@ -158,7 +169,8 @@ export class BattleScene extends Phaser.Scene {
           piece.boardY,
         ).map(([x, y]) => ({ x, y })),
       }))
-    const bonus = resolveBlockEffects(placedBlocks).placementCountChanges
+    const bonus = resolveBlockEffects(placedBlocks, { currentArmor: this.currentArmor })
+      .placementCountChanges
       .reduce((sum, effect) => sum + Math.max(0, effect.value), 0)
     return PLACEMENTS_PER_TURN + bonus
   }
@@ -193,6 +205,20 @@ export class BattleScene extends Phaser.Scene {
       GAME_EVENTS.BOARD_HEALTH_CHANGED,
       ({ health }) => this.updateActiveBoardCells(health),
     )
+    this.unsubArmorChanged = gameBridge.on(
+      GAME_EVENTS.BOARD_ARMOR_CHANGED,
+      ({ armor }) => {
+        this.currentArmor = Number(armor ?? 0)
+        this.emitBoardState()
+      },
+    )
+    this.unsubCombatContextChanged = gameBridge.on(
+      GAME_EVENTS.BOARD_COMBAT_CONTEXT_CHANGED,
+      (context) => {
+        this.combatFormulaContext = { ...this.combatFormulaContext, ...context }
+        this.emitBoardState()
+      },
+    )
     this.unsubQuickCombination = gameBridge.on(
       GAME_EVENTS.QUICK_COMBINATION_DROP,
       (payload) => this.placeQuickCombination(payload),
@@ -211,6 +237,8 @@ export class BattleScene extends Phaser.Scene {
       this.unsubInput?.()
       this.unsubQuickCombination?.()
       this.unsubHealthChanged?.()
+      this.unsubArmorChanged?.()
+      this.unsubCombatContextChanged?.()
     })
     this.emitBoardState()
   }
@@ -420,7 +448,12 @@ export class BattleScene extends Phaser.Scene {
     ).setDepth(28)
   }
 
-  renderEffectSummary(effectValues, combinationDetails) {
+  renderEffectSummary(
+    effectValues,
+    combinationDetails,
+    colorSynergyLabels = [],
+    combatFormulaLines = [],
+  ) {
     const container = this.formworkSummaryContainer
     if (!container) return
     container.removeAll(true)
@@ -442,6 +475,20 @@ export class BattleScene extends Phaser.Scene {
       wordWrap: { width: contentWidth },
     }
     let cursorY = padding
+    if (colorSynergyLabels.length) {
+      const synergyLabel = this.add.text(padding, cursorY, '속성 시너지', labelStyle)
+      container.add(synergyLabel)
+      cursorY += synergyLabel.height + 3
+      colorSynergyLabels.forEach(({ color, text: value }) => {
+        const synergyText = this.add.text(padding, cursorY, value, {
+          ...textStyle,
+          color: COMBINATION_NAME_COLORS[color] ?? '#f1dfc2',
+        })
+        container.add(synergyText)
+        cursorY += synergyText.height + 2
+      })
+      cursorY += 4
+    }
     const finalLabel = this.add.text(padding, cursorY, '최종 적용', labelStyle)
     container.add(finalLabel)
     cursorY += finalLabel.height + 3
@@ -453,6 +500,22 @@ export class BattleScene extends Phaser.Scene {
     )
     container.add(finalText)
     cursorY += finalText.height + 7
+
+    if (combatFormulaLines.length) {
+      const formulaLabel = this.add.text(padding, cursorY, '개발자 전투 계산', labelStyle)
+      container.add(formulaLabel)
+      cursorY += formulaLabel.height + 3
+      combatFormulaLines.forEach((line) => {
+        const formulaText = this.add.text(padding, cursorY, line, {
+          ...textStyle,
+          fontSize: '9px',
+          color: '#d8c3a1',
+        })
+        container.add(formulaText)
+        cursorY += formulaText.height + 2
+      })
+      cursorY += 4
+    }
 
     const divider = this.add.graphics()
     divider.lineStyle(1, 0x8f5b32, 0.9)
@@ -798,38 +861,39 @@ export class BattleScene extends Phaser.Scene {
         piece.boardY,
       ).map(([x, y]) => ({ x, y })),
     }))
-    const effects = resolveBlockEffects(placedBlocks)
+    const effects = resolveBlockEffects(placedBlocks, { currentArmor: this.currentArmor })
     this.drawCombinationGlows(findMatchingCombinations(placedBlocks))
     this.updateFormworkAura(placedBlocks)
     const hasUnknownCombination = effects.combinationDetails.some(
       ({ id }) => !this.knownBlueprintIds.has(id),
     )
-    const effectValues = hasUnknownCombination ? '???' : [
-      [
-        '공격력',
-        effects.baseDamageEffects.reduce((sum, effect) => sum + effect.amount, 0),
-        effects.baseDamageEffects,
-      ],
-      [
-        '효과',
-        effects.independentDamageEffects.reduce((sum, effect) => sum + effect.amount, 0),
-        effects.independentDamageEffects,
-      ],
-      ['방어', effects.armor, []],
-      ['회복', effects.healing, []],
-    ]
-      .filter(([, value]) => value !== 0)
-      .map(([label, value, damageEffects]) => {
-        const ranges = [...new Set(damageEffects.map(describeDamageRange))]
-        return `${label} ${value}${ranges.length ? ` · 범위 ${ranges.join('/')}` : ''}`
-      })
-      .join('  ')
+    const combatFormula = resolveCombatFormulaPreview(effects, this.combatFormulaContext)
+    const effectValues = hasUnknownCombination ? '???' : describeFinalBlockEffects(effects, {
+      baseDamage: combatFormula.baseResult,
+      independentDamage: combatFormula.independentResult,
+    })
+    const disclosedEffectValues = hasUnknownCombination ? effectValues : [
+      effectValues,
+      effects.colorSynergy.hitCountModifier
+        ? `타격 횟수 +${effects.colorSynergy.hitCountModifier}`
+        : '',
+      effects.colorSynergy.retainArmorNextTurn ? '방어도 다음 턴 유지' : '',
+      effects.colorSynergy.addArmorToIndependentDamage ? '방어도→효과 피해' : '',
+    ].filter(Boolean).join('  ')
     const combinationDetails = effects.combinationDetails.length
       ? effects.combinationDetails.map((detail) => !this.knownBlueprintIds.has(detail.id)
         ? { ...detail, name: '???', color: null, effects: [] }
         : detail)
       : [{ name: '조합 없음', color: null, effects: [] }]
-    this.renderEffectSummary(effectValues, combinationDetails)
+    const combatFormulaLines = this.developerMode
+      ? combatFormula.lines
+      : []
+    this.renderEffectSummary(
+      disclosedEffectValues,
+      combinationDetails,
+      effects.colorSynergy.labels,
+      combatFormulaLines,
+    )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
       placementLimit: this.getPlacementLimit(),

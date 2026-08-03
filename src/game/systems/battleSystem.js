@@ -1,8 +1,8 @@
 import { resolveBlockEffects } from './blockEffectSystem.js'
 
-export const resolvePlayerTurn = ({ placedBlocks = [], occupiedCells, totalBoardCells }) => {
+export const resolvePlayerTurn = ({ placedBlocks = [], occupiedCells, totalBoardCells, currentArmor = 0 }) => {
   const boardComplete = occupiedCells === totalBoardCells
-  return { ...resolveBlockEffects(placedBlocks), boardComplete }
+  return { ...resolveBlockEffects(placedBlocks, { currentArmor }), boardComplete }
 }
 
 export const applyDamage = (health, damage, armor = 0) => ({

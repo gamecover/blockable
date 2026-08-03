@@ -21,7 +21,7 @@ describe('monster design integration', () => {
       .toBe('docs/references/designs/blockable_monster_design.json')
     expect(monsterDesign.schema_version).toBe('1.0.0')
     expect(monsterDesign.data_type).toBe('blockable_monster_design')
-    expect(monsterDesign.monsters).toHaveLength(13)
+    expect(monsterDesign.monsters).toHaveLength(17)
     expect(monsterDesignDiagnostics.errors).toEqual([])
   })
 
@@ -36,8 +36,7 @@ describe('monster design integration', () => {
     const slime = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
       .find(({ id }) => id === 'ember_slime')
     expect(createMonsterEncounter(slime).imageUrl).toContain('ember_slime_alpha.png')
-    const knight = getSpawnableMonsters({ floor: 1, gradeId: 'boss' })
-      .find(({ id }) => id === 'seething_furnace_knight')
+    const knight = monsterDesign.monsters.find(({ id }) => id === 'seething_furnace_knight')
     expect(createMonsterEncounter(knight).imageUrl).toContain('seething_furnace_knight.png')
     const missingAssetMonster = monsterDesign.monsters.find(({ id }) => id === 'hanging_ashes')
     expect(createMonsterEncounter(missingAssetMonster).imageUrl).toBeNull()
@@ -130,9 +129,11 @@ describe('monster design integration', () => {
     expect(monsterDesignDiagnostics.warnings)
       .toContain('monsters[4].monster_id: 연결된 이미지 에셋 없음 (hanging_ashes)')
     expect(monsterDesignDiagnostics.warnings.filter((warning) =>
-      warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(6)
+      warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(10)
     expect(monsterDesignDiagnostics.warnings.filter((warning) =>
-      warning.includes('삭제된 BUFF + HIT_COUNT'))).toHaveLength(3)
+      warning.includes('삭제된 BUFF + HIT_COUNT'))).toHaveLength(0)
+    expect(monsterDesignDiagnostics.warnings.filter((warning) =>
+      warning.includes('미적용 BUFF + DAMAGE_BONUS'))).toHaveLength(4)
   })
 
   it('JSON 문법과 미지원 사용자 정의 변수를 원인과 함께 실패시킨다', () => {

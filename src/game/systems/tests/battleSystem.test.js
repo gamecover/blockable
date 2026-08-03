@@ -3,7 +3,7 @@ import { createBlock } from '../../../objects/blocks/blockData.js'
 import { applyDamage, resolvePlayerTurn } from '../battleSystem.js'
 
 describe('battle system', () => {
-  it('adds each block own damage, armor, and healing effects', () => {
+  it('adds each block effect and disables synergy when all three colors are present', () => {
     const placedBlocks = [
       { block: createBlock('s001', 0), cells: [{ x: 0, y: 0 }] },
       { block: createBlock('f001', 1), cells: [{ x: 4, y: 0 }] },
@@ -15,8 +15,8 @@ describe('battle system', () => {
       occupiedCells: 12,
       totalBoardCells: 15,
     })).toMatchObject({
-      damage: 25,
-      armor: 10,
+      damage: 34,
+      armor: 8,
       healing: 5,
       boardComplete: false,
     })

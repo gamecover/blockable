@@ -7,7 +7,9 @@ import {
 } from './statusEffectSystem.js'
 
 const groupDamageEffects = (effects) => [...effects.reduce((groups, effect) => {
-  const key = `${effect.target}:${effect.range}:${effect.distance}`
+  const key = effect.packetId
+    ? `${effect.target}:${effect.range}:${effect.distance}:${effect.packetId}`
+    : `${effect.target}:${effect.range}:${effect.distance}`
   const current = groups.get(key)
   groups.set(key, current
     ? { ...current, amount: current.amount + effect.amount }

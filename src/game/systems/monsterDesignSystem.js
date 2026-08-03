@@ -40,6 +40,13 @@ const SUPPORTED_PARAMETER_IDS = new Set([
   // 구형 디자이너 파일의 삭제 효과를 진단한 뒤 실행에서 제외하기 위해 허용한다.
   'HIT_COUNT',
   'RAGE',
+  'DAMAGE_BONUS',
+])
+const PARAMETER_OPTIONAL_EFFECT_TYPES = new Set([
+  'BASE_DAMAGE',
+  'INDEPENDENT_DAMAGE',
+  'BLOCK',
+  'RECOVERY',
 ])
 const SUPPORTED_TARGET = /^(SELECTED|self|all|[LRB]\d+)$/
 const SUPPORTED_STEP_TYPES = new Set(['SKILL', 'RANDOM_CHOICE'])
@@ -93,7 +100,9 @@ const validateEffect = (effect, location, errors) => {
     errors.push(`${location}.parameters: 객체가 필요합니다.`)
     return
   }
-  if (!SUPPORTED_PARAMETER_IDS.has(parameters.id)) {
+  const hasOptionalParameterId = PARAMETER_OPTIONAL_EFFECT_TYPES.has(type)
+    && ['', 'NONE', 'CURRENT_ACTION'].includes(parameters.id)
+  if (!hasOptionalParameterId && !SUPPORTED_PARAMETER_IDS.has(parameters.id)) {
     errors.push(`${location}.parameters.id: 런타임 처리기가 없는 변수 ${parameters.id ?? '없음'}`)
   }
   if (!Number.isInteger(parameters.duration) || parameters.duration < -2) {
@@ -175,6 +184,11 @@ export const validateMonsterDesign = (design) => {
           .filter((effect) => effect.type === 'BUFF' && effect.parameters?.id === 'HIT_COUNT')
           .forEach(() => warnings.push(
             `${skillLocation}: 삭제된 BUFF + HIT_COUNT 효과를 실행에서 제외합니다.`,
+          ))
+        skill.effects
+          .filter((effect) => effect.type === 'BUFF' && effect.parameters?.id === 'DAMAGE_BONUS')
+          .forEach(() => warnings.push(
+            `${skillLocation}: 미적용 BUFF + DAMAGE_BONUS 효과를 실행에서 제외합니다.`,
           ))
       }
     })
@@ -285,7 +299,8 @@ const normalizeSkill = (skill) => ({
   display_name: skill.skill_name,
   description: skill.description,
   effects: skill.effects
-    .filter((effect) => !(effect.type === 'BUFF' && effect.parameters?.id === 'HIT_COUNT'))
+    .filter((effect) => !(effect.type === 'BUFF'
+      && ['HIT_COUNT', 'DAMAGE_BONUS'].includes(effect.parameters?.id)))
     .map(normalizeEffect),
   cooldown_turns: 0,
   availability_condition: null,

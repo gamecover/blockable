@@ -195,6 +195,16 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
   }),
   clearArmor: () => set((state) => { state.armor = 0 }),
+  retainArmorNextTurn: () => set((state) => {
+    state.combat.player.retainArmorNextTurn = true
+  }),
+  resolveArmorTurnEnd: () => set((state) => {
+    if (state.combat.player.retainArmorNextTurn) {
+      state.combat.player.retainArmorNextTurn = false
+      return
+    }
+    state.armor = 0
+  }),
   gainArmor: (amount) => set((state) => { state.armor += Math.max(0, amount) }),
   addGold: (amount) => set((state) => { state.gold = Math.max(0, state.gold + amount) }),
   addBlock: (block) => set((state) => {

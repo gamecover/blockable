@@ -3,6 +3,7 @@ import { createBlock } from '../../../objects/blocks/blockData.js'
 import { conditionMatches } from '../blockCombinationSystem.js'
 import {
   describeDamageRange,
+  describeFinalBlockEffects,
   describePlacedBlockColors,
   getColoredCombinationName,
   resolveBlockEffects,
@@ -35,6 +36,31 @@ describe('block effects and combinations', () => {
     expect(describeDamageRange({ range: 'all', distance: 0 })).toBe('전체')
   })
 
+  it('orders the final preview as B, A, range, self buffs, and enemy debuffs', () => {
+    expect(describeFinalBlockEffects({
+      baseDamageEffects: [{ amount: 18, range: 'all', distance: 0 }],
+      independentDamageEffects: [{ amount: 20, range: 'all', distance: 0 }],
+      buffs: [{ id: 'rage', target: 'self', stacks: 2 }],
+      debuffs: [{ id: 'weakness', target: 'enemy', stacks: 1 }],
+      armor: 0,
+      healing: 0,
+    })).toBe('기본 데미지(B) 18 + 독립 데미지(A) 20  /  범위 전체  /  나의 버프 분노 2  /  적 디버프 약화 1')
+  })
+
+  it('shows the resolved B damage after H is applied', () => {
+    expect(describeFinalBlockEffects({
+      baseDamageEffects: [{ amount: 18, range: 'all', distance: 0 }],
+      independentDamageEffects: [{ amount: 45, range: 'all', distance: 0 }],
+      buffs: [],
+      debuffs: [],
+      armor: 0,
+      healing: 0,
+    }, {
+      baseDamage: 54,
+      independentDamage: 45,
+    })).toBe('기본 데미지(B) 54 + 독립 데미지(A) 45  /  범위 전체')
+  })
+
   it('describes placed colors and prefixes a combination with the dominant non-steel color', () => {
     const combination = BLOCK_RULE_INDEX.combinations.get('base_33_05')
     const fire = { block: createBlock('f001', 'color-fire') }
@@ -46,6 +72,77 @@ describe('block effects and combinations', () => {
       .toBe('화염의 미완성 권총')
     expect(getColoredCombinationName(combination, [nature, fire]))
       .toBe('자연의 미완성 권총')
+  })
+
+  it('disables every color synergy when all three synergy colors are present', () => {
+    const blocks = [
+      { block: createBlock('f001', 'fire-1'), cells: [] },
+      { block: createBlock('f002', 'fire-2'), cells: [] },
+      { block: createBlock('f003', 'fire-3'), cells: [] },
+      { block: createBlock('w001', 'water-1'), cells: [] },
+      { block: createBlock('n001', 'nature-1'), cells: [] },
+    ]
+    blocks.forEach(({ block }) => { block.effects = [] })
+
+    const result = resolveBlockEffects(blocks)
+
+    expect(result.colorSynergy.labels).toEqual([])
+    expect(result.colorSynergy.disabledByThreeColors).toBe(true)
+    expect(result.baseDamageEffects).toEqual([])
+    expect(result.independentDamageEffects).toEqual([])
+    expect(result.hitCountModifier).toBe(0)
+    expect(result.armor).toBe(0)
+    expect(result.healing).toBe(0)
+  })
+
+  it('adds a two-color mixed attack bonus to A instead of B', () => {
+    const blocks = [
+      { block: createBlock('f001', 'fire-mixed'), cells: [] },
+      { block: createBlock('w001', 'water-mixed'), cells: [] },
+    ]
+    blocks.forEach(({ block }) => { block.effects = [] })
+
+    const result = resolveBlockEffects(blocks)
+
+    expect(result.baseDamageEffects).toEqual([])
+    expect(result.independentDamageEffects).toEqual([
+      { target: 'enemy', range: 'single', distance: 0, amount: 5 },
+    ])
+    expect(result.armor).toBe(5)
+  })
+
+  it('applies all five water tiers to armor and independent damage', () => {
+    const blocks = Array.from({ length: 5 }, (_, index) => {
+      const block = createBlock('w001', `water-${index}`)
+      block.effects = []
+      return { block, cells: [] }
+    })
+
+    const result = resolveBlockEffects(blocks, { currentArmor: 7 })
+
+    expect(result.armor).toBe(60)
+    expect(result.retainArmorNextTurn).toBe(true)
+    expect(result.independentDamageEffects).toEqual([
+      { target: 'enemy', range: 'single', distance: 0, amount: 67 },
+    ])
+  })
+
+  it('adds one base hit at each of fire tiers four and five', () => {
+    const blocks = Array.from({ length: 5 }, (_, index) => {
+      const block = createBlock('f001', `fire-hit-${index}`)
+      block.effects = []
+      return { block, cells: [] }
+    })
+
+    const result = resolveBlockEffects(blocks)
+
+    expect(result.hitCountModifier).toBe(2)
+    expect(result.independentDamageEffects).toContainEqual({
+      target: 'allEnemies',
+      range: 'all',
+      distance: 0,
+      amount: 30,
+    })
   })
 
   it('matches the chair recipe and uses the updated JSON values', () => {
@@ -64,18 +161,18 @@ describe('block effects and combinations', () => {
     expect(result.combinations).toContain('base_33_01')
     expect(result.combinationDetails).toContainEqual({
       id: 'base_33_01',
-      name: '의자',
+      name: '작은 의자',
       color: null,
-      effects: ['회복 5'],
+      effects: ['회복 2', '공격력 -5'],
     })
-    expect(result.damage).toBe(20)
-    expect(result.damageByTarget).toEqual({ enemy: 20, allEnemies: 0 })
+    expect(result.damage).toBe(15)
+    expect(result.damageByTarget).toEqual({ enemy: 15, allEnemies: 0 })
     expect(result.damageEffects).toEqual([
-      { target: 'enemy', range: 'single', distance: 0, amount: 20 },
+      { target: 'enemy', range: 'single', distance: 0, amount: 15 },
     ])
     expect(result.baseDamageEffects).toEqual(result.damageEffects)
     expect(result.independentDamageEffects).toEqual([])
-    expect(result.healing).toBe(5)
+    expect(result.healing).toBe(2)
   })
 
   it('honors the optional color ID for all_same_color', () => {
@@ -122,7 +219,7 @@ describe('block effects and combinations', () => {
     expect(action.combatants.map(({ currentHealth }) => currentHealth)).toEqual([35, 35])
   })
 
-  it('uses BASE_HIT_COUNT value as per-hit damage and intensify as the total hit count', () => {
+  it('converts an unmatched block BASE_HIT_COUNT value to one independent packet', () => {
     const block = createBlock('s001', 'multi-hit')
     block.effects = [{
       effect_id: 'test_multi_hit',
@@ -146,11 +243,46 @@ describe('block effects and combinations', () => {
       effects,
     })
 
-    expect(effects.baseDamageEffects).toEqual([
+    expect(effects.baseDamageEffects).toEqual([])
+    expect(effects.independentDamageEffects).toEqual([
       { target: 'enemy', range: 'single', distance: 0, amount: 7 },
     ])
+    expect(action.hitCount).toBe(1)
+    expect(action.combatants[0].currentHealth).toBe(43)
+  })
+
+  it('keeps recipe damage in B and converts an unused block B into a one-hit A packet', () => {
+    const placedBlocks = placeRecipe('base_33_05', {
+      s001: 'f001',
+      s002: 'f002',
+    })
+    const unusedDefinition = BLOCK_RULE_INDEX.blocks.get('f003')
+    placedBlocks.push({
+      block: createBlock('f003', 'unused-fire'),
+      cells: unusedDefinition.shape.cells.map(({ x, y }) => ({ x: x + 4, y: y + 4 })),
+    })
+
+    const effects = resolveBlockEffects(placedBlocks)
+    const action = resolvePlayerAction({
+      combatants: [
+        { instanceId: 'enemy-1', slotId: 1, currentHealth: 120, armor: 0, statuses: [] },
+      ],
+      selectedMonsterId: 'enemy-1',
+      battleType: 'normal',
+      effects,
+    })
+
+    expect(effects.combinations).toContain('base_33_05')
+    expect(effects.baseDamageEffects).toEqual([
+      { target: 'allEnemies', range: 'all', distance: 0, amount: 18 },
+    ])
+    expect(effects.independentDamageEffects).toEqual([
+      { target: 'allEnemies', range: 'all', distance: 0, amount: 15 },
+      { target: 'allEnemies', range: 'all', distance: 0, amount: 30 },
+    ])
     expect(action.hitCount).toBe(3)
-    expect(action.combatants[0].currentHealth).toBe(29)
+    expect(action.damageBySlot.get(1)).toBe(99)
+    expect(action.combatants[0].currentHealth).toBe(21)
   })
 
   it('applies block STATUS_DAMAGE intensify through the shared status runtime', () => {
@@ -275,9 +407,9 @@ describe('block effects and combinations', () => {
     expect(result.combinations).toContain('base_33_01')
     expect(result.combinationDetails).toContainEqual({
       id: 'base_33_01',
-      name: '화염의 의자',
+      name: '화염의 작은 의자',
       color: 'fire',
-      effects: ['회복 5'],
+      effects: ['회복 2', '공격력 -5'],
     })
   })
 
@@ -288,6 +420,6 @@ describe('block effects and combinations', () => {
     }))
 
     expect(result.combinations).toEqual(['base_33_01'])
-    expect(result.combinationDetails[0].name).toBe('화염의 의자')
+    expect(result.combinationDetails[0].name).toBe('화염의 작은 의자')
   })
 })
