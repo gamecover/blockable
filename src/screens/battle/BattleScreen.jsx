@@ -118,8 +118,9 @@ export function BattleScreen({
     combat,
     battlePiles,
     damagePlayer,
-    clearArmor,
     gainArmor,
+    retainArmorNextTurn,
+    resolveArmorTurnEnd,
     heal,
     addGold,
     drawNextHand,
@@ -185,8 +186,8 @@ export function BattleScreen({
     send({ type: 'END_TURN' })
     const playerStatuses = currentPlayerStatuses
     const rawResult = stunned
-      ? resolvePlayerTurn({ placedBlocks: [], occupiedCells: 0, totalBoardCells: board.totalBoardCells })
-      : resolvePlayerTurn(board)
+      ? resolvePlayerTurn({ placedBlocks: [], occupiedCells: 0, totalBoardCells: board.totalBoardCells, currentArmor: armor })
+      : resolvePlayerTurn({ ...board, currentArmor: armor })
     if (stunned) {
       consumeCombatStatus('player', 'stun')
       if (developerMode) addLog('플레이어 · 기절로 행동 취소')
@@ -216,6 +217,7 @@ export function BattleScreen({
     }
     let afterPlayerAction = playerAction.combatants
     if (rawResult.armor) gainArmor(rawResult.armor)
+    if (rawResult.retainArmorNextTurn) retainArmorNextTurn()
     if (rawResult.healing) heal(rawResult.healing)
     if (rawResult.gold) addGold(rawResult.gold)
     rawResult.playerStatuses.forEach((status) => {
@@ -408,7 +410,7 @@ export function BattleScreen({
           finishVictory('battle')
           return
         }
-        clearArmor()
+        resolveArmorTurnEnd()
         const nextTurn = turn + 1
         const planned = afterPlayerAction.map((entry) => entry.currentHealth > 0
           ? {
@@ -431,7 +433,7 @@ export function BattleScreen({
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, battleType, board, clearArmor, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolvePlayerTurnEndStatuses, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
+  }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
 
   const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
@@ -595,6 +597,9 @@ export function BattleScreen({
       <GameContainer
         hand={battlePiles.hand}
         health={health}
+        armor={armor}
+        playerStatuses={combat.player.statuses}
+        targetStatuses={selectedMonster?.statuses ?? []}
         developerMode={developerMode}
         tutorialMode={tutorialMode}
         knownBlueprintIds={knownBlueprintIds}

@@ -4,7 +4,7 @@
   "metadata": {
     "project_name": "Blockable",
     "designer_name": "Blockable Monster Designer",
-    "updated_at": "2026-07-29T10:12:25+09:00",
+    "updated_at": "2026-08-01T17:02:28+09:00",
     "validation_status": "valid",
     "migrated_from_schema": "1.4.0"
   },
@@ -14,7 +14,7 @@
       "monster_name": "잉걸불 슬라임",
       "description": "",
       "grade": "NORMAL",
-      "hp": 80,
+      "hp": 50,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -36,7 +36,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -56,7 +56,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -89,7 +89,7 @@
               "value": 20,
               "type": "RECOVERY",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -172,7 +172,7 @@
       "monster_name": "잔불 박쥐",
       "description": "",
       "grade": "NORMAL",
-      "hp": 50,
+      "hp": 60,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -194,7 +194,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -214,7 +214,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -319,11 +319,11 @@
       "monster_name": "녹슨 골렘",
       "description": "",
       "grade": "NORMAL",
-      "hp": 90,
+      "hp": 70,
       "appearance_condition": [
         {
           "dungeon_id": "all",
-          "floor_min": 1,
+          "floor_min": 2,
           "floor_max": 2
         }
       ],
@@ -341,7 +341,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -361,7 +361,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -374,7 +374,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -417,7 +417,7 @@
         {
           "dungeon_id": "all",
           "floor_min": 2,
-          "floor_max": 3
+          "floor_max": 2
         }
       ],
       "skills": [
@@ -434,7 +434,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -454,7 +454,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -487,7 +487,7 @@
               "value": 100,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -500,7 +500,7 @@
               "value": 50,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -563,11 +563,11 @@
       "monster_name": "매달리는 잿더미",
       "description": "",
       "grade": "NORMAL",
-      "hp": 120,
+      "hp": 100,
       "appearance_condition": [
         {
           "dungeon_id": "all",
-          "floor_min": 2,
+          "floor_min": 3,
           "floor_max": 3
         }
       ],
@@ -585,7 +585,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -602,11 +602,11 @@
               "effect_name": "상태 효과 적용",
               "description": "",
               "target": "SELECTED",
-              "value": 1,
+              "value": 0,
               "type": "CROWD_CONTROL",
               "parameters": {
                 "id": "STUN",
-                "duration": 0,
+                "duration": 1,
                 "intensify": 1
               }
             },
@@ -696,7 +696,7 @@
       "monster_name": "매연 망령",
       "description": "",
       "grade": "NORMAL",
-      "hp": 130,
+      "hp": 90,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -718,7 +718,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -751,7 +751,7 @@
               "value": 20,
               "type": "RECOVERY",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -793,7 +793,7 @@
       "monster_name": "화염 구울",
       "description": "",
       "grade": "ELITE",
-      "hp": 50,
+      "hp": 200,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -815,7 +815,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -868,7 +868,7 @@
               "value": 10,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -970,13 +970,13 @@
       "monster_id": "lava_heart",
       "monster_name": "용암 심장",
       "description": "",
-      "grade": "NORMAL",
-      "hp": 150,
+      "grade": "ELITE",
+      "hp": 200,
       "appearance_condition": [
         {
           "dungeon_id": "all",
           "floor_min": 2,
-          "floor_max": 3
+          "floor_max": 2
         }
       ],
       "skills": [
@@ -993,7 +993,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1026,7 +1026,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1120,7 +1120,7 @@
       "monster_name": "모루의 수호자",
       "description": "",
       "grade": "ELITE",
-      "hp": 130,
+      "hp": 220,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -1142,7 +1142,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1175,7 +1175,7 @@
               "value": 20,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1192,11 +1192,11 @@
               "effect_name": "상태 효과 적용",
               "description": "",
               "target": "self",
-              "value": 1,
+              "value": 5,
               "type": "BUFF",
               "parameters": {
-                "id": "HIT_COUNT",
-                "duration": 0,
+                "id": "DAMAGE_BONUS",
+                "duration": 1,
                 "intensify": 1
               }
             }
@@ -1269,7 +1269,7 @@
       "monster_name": "녹아내린 드레이크",
       "description": "",
       "grade": "BOSS",
-      "hp": 200,
+      "hp": 300,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -1291,7 +1291,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1311,7 +1311,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1324,7 +1324,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1390,7 +1390,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1503,11 +1503,11 @@
       "monster_name": "끓어오르는 용광로 기사",
       "description": "",
       "grade": "BOSS",
-      "hp": 200,
+      "hp": 310,
       "appearance_condition": [
         {
           "dungeon_id": "all",
-          "floor_min": 1,
+          "floor_min": 2,
           "floor_max": 2
         }
       ],
@@ -1525,7 +1525,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1578,7 +1578,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1624,7 +1624,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1722,12 +1722,12 @@
       "monster_name": "잿빛 사멸의 화룡",
       "description": "",
       "grade": "BOSS",
-      "hp": 220,
+      "hp": 350,
       "appearance_condition": [
         {
           "dungeon_id": "all",
           "floor_min": 2,
-          "floor_max": 3
+          "floor_max": 2
         }
       ],
       "skills": [
@@ -1744,7 +1744,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1794,11 +1794,11 @@
               "effect_name": "상태 효과 적용",
               "description": "",
               "target": "self",
-              "value": 1,
+              "value": 5,
               "type": "BUFF",
               "parameters": {
-                "id": "HIT_COUNT",
-                "duration": 0,
+                "id": "DAMAGE_BONUS",
+                "duration": 999,
                 "intensify": 1
               }
             },
@@ -1810,7 +1810,7 @@
               "value": 30,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1920,8 +1920,8 @@
       "monster_id": "god_of_the_eternal_forge",
       "monster_name": "영원의 주조신",
       "description": "",
-      "grade": "NORMAL",
-      "hp": 50,
+      "grade": "BOSS",
+      "hp": 250,
       "appearance_condition": [
         {
           "dungeon_id": "all",
@@ -1943,7 +1943,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1960,11 +1960,11 @@
               "effect_name": "상태 효과 적용",
               "description": "",
               "target": "self",
-              "value": 1,
+              "value": 20,
               "type": "BUFF",
               "parameters": {
-                "id": "HIT_COUNT",
-                "duration": 0,
+                "id": "DAMAGE_BONUS",
+                "duration": 999,
                 "intensify": 1
               }
             },
@@ -2009,7 +2009,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2022,7 +2022,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "CURRENT_ACTION",
+                "id": "",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2119,6 +2119,451 @@
                 {
                   "type": "SKILL",
                   "skill_id": "a0025"
+                }
+              ]
+            },
+            "triggers": []
+          }
+        ]
+      }
+    },
+    {
+      "monster_id": "scrap_amalgam",
+      "monster_name": "고철 얽힘이",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 30,
+      "appearance_condition": [
+        {
+          "dungeon_id": "all",
+          "floor_min": 1,
+          "floor_max": 1
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "basic_damage_01",
+              "effect_name": "기본 피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        },
+        {
+          "skill_id": "a0027",
+          "skill_name": "몸통 박치기",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "basic_damage_01",
+              "effect_name": "기본 피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            },
+            {
+              "effect_id": "injury",
+              "effect_name": "상처",
+              "description": "",
+              "target": "SELECTED",
+              "value": 1,
+              "type": "DEBUFF",
+              "parameters": {
+                "id": "DAMAGE_TAKEN_INCREASE",
+                "duration": 1,
+                "intensify": 1
+              }
+            }
+          ]
+        }
+      ],
+      "behavior": {
+        "initial_phase_id": "main_phase",
+        "phases": [
+          {
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
+            "loop": {
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
+              "steps": [
+                {
+                  "type": "RANDOM_CHOICE",
+                  "choices": [
+                    {
+                      "skill_id": "basic_attack",
+                      "weight": 40
+                    },
+                    {
+                      "skill_id": "a0027",
+                      "weight": 60
+                    }
+                  ]
+                }
+              ]
+            },
+            "triggers": []
+          }
+        ]
+      }
+    },
+    {
+      "monster_id": "burning_worm",
+      "monster_name": "불타는 기생충",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 40,
+      "appearance_condition": [
+        {
+          "dungeon_id": "all",
+          "floor_min": 2,
+          "floor_max": 2
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "basic_damage_01",
+              "effect_name": "기본 피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        },
+        {
+          "skill_id": "a0028",
+          "skill_name": "화염 흡혈",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "burn",
+              "effect_name": "화상",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
+              "parameters": {
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 0
+              }
+            },
+            {
+              "effect_id": "heal",
+              "effect_name": "회복",
+              "description": "",
+              "target": "self",
+              "value": 5,
+              "type": "RECOVERY",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        }
+      ],
+      "behavior": {
+        "initial_phase_id": "main_phase",
+        "phases": [
+          {
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
+            "loop": {
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
+              "steps": [
+                {
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
+                },
+                {
+                  "type": "SKILL",
+                  "skill_id": "a0028"
+                }
+              ]
+            },
+            "triggers": []
+          }
+        ]
+      }
+    },
+    {
+      "monster_id": "slag_imp",
+      "monster_name": "슬래그 임프",
+      "description": "",
+      "grade": "NORMAL",
+      "hp": 45,
+      "appearance_condition": [
+        {
+          "dungeon_id": "all",
+          "floor_min": 3,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "basic_damage_01",
+              "effect_name": "기본 피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        },
+        {
+          "skill_id": "a0029",
+          "skill_name": "슬래그 투척",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "burn",
+              "effect_name": "화상",
+              "description": "",
+              "target": "SELECTED",
+              "value": 10,
+              "type": "STATUS_DAMAGE",
+              "parameters": {
+                "id": "BURN",
+                "duration": 0,
+                "intensify": 0
+              }
+            },
+            {
+              "effect_id": "weak",
+              "effect_name": "약화",
+              "description": "",
+              "target": "SELECTED",
+              "value": 1,
+              "type": "DEBUFF",
+              "parameters": {
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        }
+      ],
+      "behavior": {
+        "initial_phase_id": "main_phase",
+        "phases": [
+          {
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
+            "loop": {
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
+              "steps": [
+                {
+                  "type": "SKILL",
+                  "skill_id": "basic_attack"
+                },
+                {
+                  "type": "SKILL",
+                  "skill_id": "a0029"
+                }
+              ]
+            },
+            "triggers": []
+          }
+        ]
+      }
+    },
+    {
+      "monster_id": "cursed_spiked_aegis",
+      "monster_name": "저주받은 가시 방패",
+      "description": "",
+      "grade": "ELITE",
+      "hp": 160,
+      "appearance_condition": [
+        {
+          "dungeon_id": "all",
+          "floor_min": 3,
+          "floor_max": 3
+        }
+      ],
+      "skills": [
+        {
+          "skill_id": "basic_attack",
+          "skill_name": "기본 공격",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "basic_damage_01",
+              "effect_name": "기본 피해",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "BASE_DAMAGE",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        },
+        {
+          "skill_id": "a0030",
+          "skill_name": "악의의 오라",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "damagebonus",
+              "effect_name": "기본 피해 증가",
+              "description": "",
+              "target": "self",
+              "value": 5,
+              "type": "BUFF",
+              "parameters": {
+                "id": "DAMAGE_BONUS",
+                "duration": 999,
+                "intensify": 1
+              }
+            },
+            {
+              "effect_id": "weak",
+              "effect_name": "약화",
+              "description": "",
+              "target": "SELECTED",
+              "value": 5,
+              "type": "DEBUFF",
+              "parameters": {
+                "id": "ATTACK_REDUCTION",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        },
+        {
+          "skill_id": "a0031",
+          "skill_name": "방패 올리기",
+          "description": "",
+          "effects": [
+            {
+              "effect_id": "defense",
+              "effect_name": "방어력 획득",
+              "description": "",
+              "target": "self",
+              "value": 5,
+              "type": "BLOCK",
+              "parameters": {
+                "id": "",
+                "duration": 0,
+                "intensify": 0
+              }
+            }
+          ]
+        }
+      ],
+      "behavior": {
+        "initial_phase_id": "main_phase",
+        "phases": [
+          {
+            "phase_id": "main_phase",
+            "phase_name": "기본 페이즈",
+            "loop": {
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
+              "steps": [
+                {
+                  "type": "SKILL",
+                  "skill_id": "a0030"
+                }
+              ]
+            },
+            "triggers": [
+              {
+                "trigger_id": "reflection",
+                "event_id": "MONSTER_HP_CHANGED",
+                "condition": null,
+                "priority": 0,
+                "once": false,
+                "cooldown_turns": 0,
+                "max_triggers_per_turn": 0,
+                "max_triggers_per_battle": 0,
+                "allow_chained_triggers": false,
+                "response": {
+                  "type": "IMMEDIATE",
+                  "cancel_current_intent": false,
+                  "skill_id": "basic_attack"
+                }
+              },
+              {
+                "trigger_id": "repeat",
+                "event_id": "TURN_STARTED",
+                "condition": {
+                  "condition_id": "TURN",
+                  "operator": "EQ",
+                  "value": 2
+                },
+                "priority": 0,
+                "once": false,
+                "cooldown_turns": 0,
+                "max_triggers_per_turn": 0,
+                "max_triggers_per_battle": 0,
+                "allow_chained_triggers": false,
+                "response": {
+                  "type": "TRANSITION_PHASE",
+                  "cancel_current_intent": false,
+                  "target_phase_id": "repeat_phase"
+                }
+              }
+            ]
+          },
+          {
+            "phase_id": "repeat_phase",
+            "phase_name": "반복 페이즈",
+            "loop": {
+              "mode": "STRICT_SEQUENCE",
+              "fallback_skill_id": "basic_attack",
+              "steps": [
+                {
+                  "type": "SKILL",
+                  "skill_id": "a0031"
                 }
               ]
             },

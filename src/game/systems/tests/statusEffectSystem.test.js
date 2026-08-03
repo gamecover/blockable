@@ -22,6 +22,7 @@ describe('status effects', () => {
     expect(createCombatantState().attributes).toEqual({ strength: null, dexterity: null })
   })
 
+
   it('resolves bleeding before stack-based burn and lets armor absorb burn', () => {
     const statuses = addStatusUpdate(addStatusUpdate([], {
       id: 'bleeding', value: 2, duration: 1, intensify: 3,

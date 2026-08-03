@@ -3,6 +3,8 @@ export const GAME_EVENTS = {
   TURN_RESOLVED: 'turn:resolved',
   RESET_BOARD: 'board:reset',
   BOARD_HEALTH_CHANGED: 'board:health-changed',
+  BOARD_ARMOR_CHANGED: 'board:armor-changed',
+  BOARD_COMBAT_CONTEXT_CHANGED: 'board:combat-context-changed',
   QUICK_COMBINATION_DROP: 'quick-combination:drop',
   SET_INPUT_ENABLED: 'input:set-enabled',
   TUTORIAL_ACTION: 'tutorial:action',
