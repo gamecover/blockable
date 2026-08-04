@@ -10,6 +10,7 @@ import {
 } from './blockRulesSystem.js'
 import { STATUS_EFFECTS, createStatusUpdateFromEffect } from './statusEffectSystem.js'
 import { resolveColorSynergy } from './colorSynergySystem.js'
+import { normalizeCombatEffectsV054 } from './combatEffectSchemaSystem.js'
 
 const ADDITIVE_EFFECTS = {
   gain_block: { resultKey: 'armor', parameter: 'amount' },
@@ -137,8 +138,8 @@ export const getDominantCombinationColor = (participatingBlocks = []) => {
 export const describeBlockEffect = (rawEffect) => {
   const effect = normalizeEffect(rawEffect)
   const parameters = effect.parameters ?? {}
-  if (effect.type === 'BASE_HIT_COUNT') {
-    return `연속 공격 ${effect.value}×${parameters.intensify}`
+  if (effect.type === 'EXTRA' && parameters.id === 'HIT_COUNT') {
+    return `추가 공격 횟수 ${effect.value}`
   }
   switch (effect.effect_id) {
     case 'deal_damage': return `공격력 ${effect.value}`
@@ -156,7 +157,7 @@ export const describeBlockEffect = (rawEffect) => {
         BLOCK: '방어력',
         RECOVERY: '체력 회복',
         DRAW: '추가 드로우',
-        EXTRA_TURN: '추가 턴',
+        EXTRA: '추가 효과',
       }[effect.type]
       return typedLabel ? `${typedLabel} ${effect.value}` : effect.effect_id
     }
@@ -165,8 +166,8 @@ export const describeBlockEffect = (rawEffect) => {
 
 const effectLabel = (effect) => {
   const parameters = effect.parameters ?? {}
-  if (effect.type?.toUpperCase() === 'BASE_HIT_COUNT') {
-    return `연속 공격 ${effect.value}×${parameters.intensify}`
+  if (effect.type === 'EXTRA' && parameters.id === 'HIT_COUNT') {
+    return `추가 공격 횟수 ${effect.value}`
   }
   switch (effect.effect_id) {
     case 'deal_damage': return `피해 ${parameters.amount}`
@@ -183,8 +184,7 @@ const effectLabel = (effect) => {
         INDEPENDENT_DAMAGE: '효과 피해',
         BLOCK: '방어',
         RECOVERY: '회복',
-        DRAW: '추가 드로우',
-        EXTRA_TURN: '추가 턴',
+        EXTRA: '추가 효과',
       }[effect.type?.toUpperCase()]
       return typedLabel ? `${typedLabel} ${effect.value}` : effect.effect_id
     }
@@ -224,6 +224,7 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     crowdControls: [],
     deckCapacityChanges: [],
     placementCountChanges: [],
+    attackRangeChanges: [],
     operations: [],
     colorSynergy,
     combinations: matches.map(({ combination }) => combination.id),
@@ -249,24 +250,34 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     convertBaseToIndependent = false,
     packetId = null,
     contributesHitCount = true,
+    canonical = false,
   } = {}) => {
+    if (!canonical) {
+      const normalizedEffects = normalizeCombatEffectsV054([rawEffect])
+      const changedShape = normalizedEffects.length !== 1
+        || normalizedEffects[0].type !== rawEffect.type?.toUpperCase()
+        || normalizedEffects[0].parameters?.id !== rawEffect.parameters?.id
+      if (changedShape) {
+        normalizedEffects.forEach((effect) => addEffect(effect, fallbackDamageKind, {
+          convertBaseToIndependent,
+          packetId,
+          contributesHitCount,
+          canonical: true,
+        }))
+        return
+      }
+    }
     const effect = normalizeEffect(rawEffect)
     const isDamage = effect.effect_id === 'deal_damage'
-      || ['BASE_DAMAGE', 'BASE_HIT_COUNT', 'INDEPENDENT_DAMAGE'].includes(effect.type)
+      || ['BASE_DAMAGE', 'INDEPENDENT_DAMAGE'].includes(effect.type)
     if (isDamage) {
-      if (effect.type === 'BASE_HIT_COUNT' && contributesHitCount) {
-        result.hitCountModifier = Math.max(
-          result.hitCountModifier,
-          Math.max(0, effect.parameters.intensify - 1),
-        )
-      }
       const amount = effect.value
       const targetRange = effect.targetSpec?.range ?? 'single'
       const range = targetRange === 'single'
         ? effect.parameters.range ?? targetRange
         : targetRange
       const targetDistance = effect.targetSpec?.distance ?? 0
-      const isBaseDamage = ['BASE_DAMAGE', 'BASE_HIT_COUNT'].includes(effect.type)
+      const isBaseDamage = effect.type === 'BASE_DAMAGE'
       const damageKind = isBaseDamage && !convertBaseToIndependent
         ? 'baseDamageEffects'
         : effect.type === 'INDEPENDENT_DAMAGE'
@@ -303,50 +314,31 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     const typedAdditive = {
       BLOCK: 'armor',
       RECOVERY: 'healing',
-      DRAW: 'drawCount',
     }[effect.type]
     if (typedAdditive) {
       result[typedAdditive] += effect.value
       return
     }
-    if (effect.type === 'EXTRA_TURN') {
-      if (!['CURRENT_ACTION', 'PLAYER_TURN'].includes(effect.parameters.id)) {
-        throw new BlockRulesRuntimeError(
-          'DISPATCH',
-          `EXTRA_TURN은 parameters.id=CURRENT_ACTION 또는 PLAYER_TURN이 필요합니다. (현재: ${effect.parameters.id})`,
-        )
+    if (effect.type === 'EXTRA') {
+      const extraId = effect.parameters.id
+      if (extraId === 'DRAW') result.drawCount += effect.value
+      else if (extraId === 'HIT_COUNT') {
+        if (contributesHitCount) result.hitCountModifier += Math.max(0, effect.value)
+      } else if (extraId === 'ATTACK_RANGE') {
+        result.attackRangeChanges.push({
+          channel: effect.value,
+          target: effect.target,
+          range: effect.targetSpec?.range ?? 'single',
+          distance: effect.targetSpec?.distance ?? 0,
+        })
+      } else if (extraId === 'TURN') {
+        result.extraTurns += Math.max(0, effect.value)
+        result.extraTurnChanges.push({ turnId: 'TURN', value: effect.value })
+      } else if (extraId === 'PLACEMENT') {
+        result.placementCountChanges.push({ placementId: 'PLACEMENT', value: effect.value })
+      } else {
+        throw new BlockRulesRuntimeError('DISPATCH', `지원하지 않는 EXTRA 효과입니다: ${extraId}`)
       }
-      result.extraTurns += effect.value
-      result.extraTurnChanges.push({
-        turnId: effect.parameters.id,
-        value: effect.value,
-        duration: 0,
-        intensify: 1,
-      })
-      return
-    }
-    if (effect.type === 'DECK_CAPACITY') {
-      result.deckCapacityChanges.push({
-        deckId: effect.parameters.id,
-        value: effect.value,
-        duration: 0,
-        intensify: 1,
-      })
-      return
-    }
-    if (effect.type === 'PLACEMENT_COUNT') {
-      if (effect.parameters.id !== 'BLOCK_PLACEMENT') {
-        throw new BlockRulesRuntimeError(
-          'DISPATCH',
-          `PLACEMENT_COUNT는 parameters.id=BLOCK_PLACEMENT가 필요합니다. (현재: ${effect.parameters.id})`,
-        )
-      }
-      result.placementCountChanges.push({
-        placementId: effect.parameters.id,
-        value: effect.value,
-        duration: 0,
-        intensify: 1,
-      })
       return
     }
     const additive = ADDITIVE_EFFECTS[effect.effect_id]
@@ -354,14 +346,14 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
       result[additive.resultKey] += Number(effect.parameters[additive.parameter] ?? 0)
       return
     }
-    if (effect.type === 'STATUS_DAMAGE') {
+    if (effect.type === 'DAMAGE_OVER_TIME') {
       const status = createStatusUpdateFromEffect(effect)
       if (!status) {
         throw new BlockRulesRuntimeError('DISPATCH', [
           `effect_id=${effect.effect_id ?? '없음'}`,
           `type=${effect.type}`,
           `parameters.id=${effect.parameters.id ?? '없음'}`,
-          '이 상태 피해를 실행할 런타임 처리기가 없습니다.',
+          '이 지속 피해를 실행할 런타임 처리기가 없습니다.',
         ])
       }
       if (effect.target === 'self') {
@@ -383,10 +375,10 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
         id: effect.reference_id ?? commonStatus?.id ?? parameterId,
         sourceId: commonStatus?.sourceId ?? parameterId,
         name: effect.parameters.status_name,
-        stacks: Number(effect.parameters.stacks ?? effect.parameters.intensify ?? effect.value ?? 1),
+        stacks: Number(effect.parameters.stacks ?? commonStatus?.stacks ?? effect.value ?? 1),
         value: effect.value,
         duration: effect.parameters.duration ?? null,
-        intensify: effect.parameters.intensify ?? 0,
+        intensify: Number(commonStatus?.intensify ?? effect.value ?? 0),
         target: effect.target,
         range: effect.targetSpec?.range ?? 'single',
         distance: effect.targetSpec?.distance ?? 0,
@@ -413,11 +405,25 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     const convertedBasePacketId = `unused-block-${block.id ?? blockIndex}-base`
     block.effects?.forEach((effect) => addEffect(effect, 'independentDamageEffects', {
       convertBaseToIndependent: true,
-      packetId: ['BASE_DAMAGE', 'BASE_HIT_COUNT'].includes(effect.type?.toUpperCase())
+      packetId: effect.type?.toUpperCase() === 'BASE_DAMAGE'
         ? convertedBasePacketId
         : null,
       contributesHitCount: false,
     }))
+  })
+  result.attackRangeChanges.forEach(({ channel, target, range, distance }) => {
+    if ([1, 2].includes(channel) && baseDamageScope) {
+      baseDamageScope.target = target
+      baseDamageScope.range = range
+      baseDamageScope.distance = distance
+    }
+    if ([0, 2].includes(channel)) {
+      result.independentDamageEffects.forEach((effect) => {
+        effect.target = target
+        effect.range = range
+        effect.distance = distance
+      })
+    }
   })
   if (colorSynergy.independentRange === 'all') {
     if (baseDamageScope) {

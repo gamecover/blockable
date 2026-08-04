@@ -195,9 +195,6 @@ export const resolvePlayerAction = ({
       return commonStatuses.length
         ? {
             ...entry,
-            armor: entry.armor + commonStatuses
-              .filter(({ id }) => id === 'ironclad')
-              .reduce((sum, status) => sum + status.stacks, 0),
             statuses: commonStatuses.reduce(
               (statuses, status) => addStatusUpdate(statuses, status, true),
               entry.statuses,

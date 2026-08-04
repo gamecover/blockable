@@ -32,9 +32,9 @@ describe('official block rules', () => {
     }).toEqual({
       colors: 7,
       blockTypes: 7,
-      effects: 21,
+      effects: 17,
       blocks: 28,
-      combinations: 32,
+      combinations: 26,
       synergies: 0,
     })
     expect(getRuleBlock('s001').display_name).toBe('강철_I')
@@ -58,6 +58,17 @@ describe('official block rules', () => {
     expect(result.valid).toBe(false)
     expect(result.errors).toContain(
       'blocks.s001.effects[0].parameters.id: 런타임 처리기가 없는 사용자 정의 변수 CUSTOM_DAMAGE_RULE',
+    )
+  })
+
+  it('rejects legacy combat effect types instead of migrating them at runtime', () => {
+    const invalidRules = structuredClone(BLOCK_RULES)
+    invalidRules.blocks[0].effects[0].type = 'STATUS_DAMAGE'
+    const result = validateBlockRules(invalidRules)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContain(
+      'blocks.s001.effects[0].type: 지원하지 않는 공통 효과 타입 STATUS_DAMAGE',
     )
   })
 

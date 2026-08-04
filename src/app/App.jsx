@@ -16,7 +16,7 @@ import {
   getDungeonBackgroundBgmKeys,
   getDungeonEntryBgmKeys,
   getMonsterBgmKey,
-  getScreenBgmKey,
+  getScreenBgmRequests,
 } from '../assets/manifests/bgmManifest.js'
 import { SplashScreen } from '../screens/main/SplashScreen.jsx'
 import { MainScreen } from '../screens/main/MainScreen.jsx'
@@ -73,14 +73,16 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    const bgmKey = getScreenBgmKey({
+    const bgmRequests = getScreenBgmRequests({
       screen: current,
       activeDungeonId: run.activeDungeonId,
       monsterId: encounterMusicMonsterId,
+      eventId: typeof encounter?.event === 'string'
+        ? encounter.event
+        : encounter?.event?.id,
     })
-    if (bgmKey) SoundManager.playMusic(bgmKey)
-    else SoundManager.stopMusic()
-  }, [current, encounterMusicMonsterId, run.activeDungeonId])
+    SoundManager.setMusicRequests(bgmRequests)
+  }, [current, encounter?.event, encounterMusicMonsterId, run.activeDungeonId])
 
   const startNewRun = (mode = 'normal') => {
     SoundManager.unlock()

@@ -194,6 +194,9 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     state.armor -= absorbed
     state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
   }),
+  damagePlayerIgnoringArmor: (amount) => set((state) => {
+    state.health = Math.max(0, state.health - Math.max(0, amount))
+  }),
   clearArmor: () => set((state) => { state.armor = 0 }),
   retainArmorNextTurn: () => set((state) => {
     state.combat.player.retainArmorNextTurn = true

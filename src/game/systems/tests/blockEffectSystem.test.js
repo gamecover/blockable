@@ -219,17 +219,20 @@ describe('block effects and combinations', () => {
     expect(action.combatants.map(({ currentHealth }) => currentHealth)).toEqual([35, 35])
   })
 
-  it('converts an unmatched block BASE_HIT_COUNT value to one independent packet', () => {
+  it('converts an unmatched block B to one independent packet and ignores its hit-count effect', () => {
     const block = createBlock('s001', 'multi-hit')
-    block.effects = [{
-      effect_id: 'test_multi_hit',
-      effect_name: 'multi_hit',
-      description: '',
-      target: 'SELECTED',
-      value: 7,
-      type: 'BASE_HIT_COUNT',
-      parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 3 },
-    }]
+    block.effects = [
+      {
+        effect_id: 'test_multi_hit:base_damage', effect_name: '기본 피해', description: '',
+        target: 'SELECTED', value: 7, type: 'BASE_DAMAGE',
+        parameters: { id: 'NONE', duration: 0, intensify: 0 },
+      },
+      {
+        effect_id: 'test_multi_hit:hit_count', effect_name: '추가 공격 횟수', description: '',
+        target: 'SELECTED', value: 2, type: 'EXTRA',
+        parameters: { id: 'HIT_COUNT', duration: 0, intensify: 0 },
+      },
+    ]
     const effects = resolveBlockEffects([{
       block,
       cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
@@ -285,7 +288,7 @@ describe('block effects and combinations', () => {
     expect(action.combatants[0].currentHealth).toBe(21)
   })
 
-  it('applies block STATUS_DAMAGE intensify through the shared status runtime', () => {
+  it('uses canonical DAMAGE_OVER_TIME value as the 0.5.4 stack count', () => {
     const block = createBlock('s001', 'status-damage')
     block.effects = [{
       effect_id: 'test_burn',
@@ -293,8 +296,8 @@ describe('block effects and combinations', () => {
       description: '',
       target: 'SELECTED',
       value: 5,
-      type: 'STATUS_DAMAGE',
-      parameters: { id: 'BURN', duration: 0, intensify: 3 },
+      type: 'DAMAGE_OVER_TIME',
+      parameters: { id: 'BURN', duration: 0, intensify: 0 },
     }]
     const effects = resolveBlockEffects([{
       block,
@@ -312,19 +315,40 @@ describe('block effects and combinations', () => {
     expect(effects.statusDamageEffects).toEqual([{
       id: 'burn',
       sourceId: 'BURN',
-      stacks: 3,
+      stacks: 5,
       value: 5,
       duration: 0,
-      intensify: 3,
+      intensify: 5,
       target: 'enemy',
       range: 'single',
       distance: 0,
     }])
     expect(action.combatants[0].statuses).toEqual([{
       id: 'burn',
-      stacks: 3,
-      layers: [{ value: 5, intensify: 3, remainingTurns: null, newlyApplied: true }],
+      stacks: 5,
+      layers: [{ value: 5, intensify: 5, remainingTurns: null, newlyApplied: true }],
     }])
+  })
+
+  it('uses value as the stack count for canonical buffs and debuffs', () => {
+    const block = createBlock('s001', 'stack-effects')
+    block.effects = [
+      {
+        effect_id: 'test_rage', effect_name: '분노', description: '', target: 'self',
+        value: 3, type: 'BUFF', parameters: { id: 'RAGE', duration: 9, intensify: 8 },
+      },
+      {
+        effect_id: 'test_wound', effect_name: '상처', description: '', target: 'SELECTED',
+        value: 2, type: 'DEBUFF', parameters: { id: 'WOUND', duration: 9, intensify: 8 },
+      },
+    ]
+    const effects = resolveBlockEffects([{
+      block,
+      cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
+    }])
+
+    expect(effects.playerStatuses).toContainEqual(expect.objectContaining({ id: 'rage', stacks: 3 }))
+    expect(effects.statuses).toContainEqual(expect.objectContaining({ id: 'wound', stacks: 2 }))
   })
 
   it('uses value only for immediate turn and placement resource effects', () => {
@@ -336,8 +360,8 @@ describe('block effects and combinations', () => {
         description: '',
         target: 'self',
         value: 2,
-        type: 'EXTRA_TURN',
-        parameters: { id: 'PLAYER_TURN', duration: 99, intensify: 7 },
+        type: 'EXTRA',
+        parameters: { id: 'TURN', duration: 0, intensify: 0 },
       },
       {
         effect_id: 'test_draw',
@@ -345,8 +369,8 @@ describe('block effects and combinations', () => {
         description: '',
         target: 'self',
         value: 3,
-        type: 'DRAW',
-        parameters: { id: 'MAIN_DECK', duration: 99, intensify: 7 },
+        type: 'EXTRA',
+        parameters: { id: 'DRAW', duration: 0, intensify: 0 },
       },
       {
         effect_id: 'test_placement',
@@ -354,8 +378,8 @@ describe('block effects and combinations', () => {
         description: '',
         target: 'self',
         value: 1,
-        type: 'PLACEMENT_COUNT',
-        parameters: { id: 'BLOCK_PLACEMENT', duration: 99, intensify: 7 },
+        type: 'EXTRA',
+        parameters: { id: 'PLACEMENT', duration: 0, intensify: 0 },
       },
     ]
     const result = resolveBlockEffects([{
@@ -365,15 +389,11 @@ describe('block effects and combinations', () => {
 
     expect(result.extraTurns).toBe(2)
     expect(result.drawCount).toBe(3)
-    expect(result.extraTurnChanges[0]).toMatchObject({ value: 2, duration: 0, intensify: 1 })
-    expect(result.placementCountChanges[0]).toMatchObject({
-      value: 1,
-      duration: 0,
-      intensify: 1,
-    })
+    expect(result.extraTurnChanges[0]).toEqual({ turnId: 'TURN', value: 2 })
+    expect(result.placementCountChanges[0]).toEqual({ placementId: 'PLACEMENT', value: 1 })
   })
 
-  it('accepts the current Designer EXTRA_TURN parameter ID', () => {
+  it('rejects a legacy EXTRA_TURN effect at dispatch instead of adapting it', () => {
     const block = createBlock('s001', 'current-action-extra-turn')
     block.effects = [{
       effect_id: 'test_current_action_extra_turn',
@@ -384,18 +404,10 @@ describe('block effects and combinations', () => {
       target: 'self',
       parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 1 },
     }]
-    const result = resolveBlockEffects([{
+    expect(() => resolveBlockEffects([{
       block,
       cells: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }],
-    }])
-
-    expect(result.extraTurns).toBe(1)
-    expect(result.extraTurnChanges).toContainEqual({
-      turnId: 'CURRENT_ACTION',
-      value: 1,
-      duration: 0,
-      intensify: 1,
-    })
+    }])).toThrow('이 효과를 실행할 런타임 처리기가 없습니다.')
   })
 
   it('matches a normal-block recipe by shape even when its participating colors differ', () => {

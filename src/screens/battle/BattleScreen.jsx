@@ -15,7 +15,10 @@ import { isCombatVictory } from '../../game/systems/combatSlotSystem.js'
 import {
   addStatusUpdate,
   consumeStun,
+  getArmorGainBonus,
+  getBuffDamageBonus,
   getHitCountBonus,
+  getPoisonPlacementDamage,
   resolveTurnEndStatuses,
 } from '../../game/systems/statusEffectSystem.js'
 import {
@@ -101,6 +104,7 @@ export function BattleScreen({
   const victoryHandled = useRef(false)
   const tutorialVictoryTimer = useRef(null)
   const extraTurnsRemaining = useRef(0)
+  const previousPlacedCount = useRef(0)
   const runStore = useRunStoreApi()
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
     ?? combatants.find(({ currentHealth }) => currentHealth > 0)
@@ -118,6 +122,7 @@ export function BattleScreen({
     combat,
     battlePiles,
     damagePlayer,
+    damagePlayerIgnoringArmor,
     gainArmor,
     retainArmorNextTurn,
     resolveArmorTurnEnd,
@@ -138,9 +143,24 @@ export function BattleScreen({
   )
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
+    const addedBlocks = Math.max(0, nextBoard.placedCount - previousPlacedCount.current)
+    if (addedBlocks > 0) {
+      const poisonDamage = getPoisonPlacementDamage(
+        runStore.getState().combat.player.statuses,
+        addedBlocks,
+      )
+      if (poisonDamage > 0) {
+        damagePlayerIgnoringArmor(poisonDamage)
+        if (runStore.getState().health <= 0) {
+          send({ type: 'PLAYER_DEFEATED' })
+          onLose()
+        }
+      }
+    }
+    previousPlacedCount.current = nextBoard.placedCount
     setBoard(nextBoard)
     if (developerMode) addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
-  }), [addLog, developerMode])
+  }), [addLog, damagePlayerIgnoringArmor, developerMode, onLose, runStore, send])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.TUTORIAL_ACTION, ({ type }) => {
     if (!tutorialMode || type !== 'free-combat-started') return
@@ -216,13 +236,12 @@ export function BattleScreen({
       consumeCombatStatus('player', 'double_attack')
     }
     let afterPlayerAction = playerAction.combatants
-    if (rawResult.armor) gainArmor(rawResult.armor)
+    if (rawResult.armor) gainArmor(rawResult.armor + getArmorGainBonus(playerStatuses))
     if (rawResult.retainArmorNextTurn) retainArmorNextTurn()
     if (rawResult.healing) heal(rawResult.healing)
     if (rawResult.gold) addGold(rawResult.gold)
     rawResult.playerStatuses.forEach((status) => {
       applyCombatStatus('player', status, undefined, true)
-      if (status.id === 'ironclad') gainArmor(status.stacks)
     })
     setCombatants(afterPlayerAction)
     if (developerMode) {
@@ -299,15 +318,16 @@ export function BattleScreen({
             const hitCountBonus = getHitCountBonus(entry.statuses)
             const doubleAttack = hitCountBonus > 0
             const before = runStore.getState()
-            const monsterHitCount = 1 + hitCountBonus
+            const monsterHitCount = 1 + hitCountBonus + action.hitCountBonus
             const monsterActionCount = 1 + action.extraTurns
+            const monsterRageBonus = getBuffDamageBonus(entry.statuses)
             for (let hit = 0; hit < monsterHitCount * monsterActionCount; hit += 1) {
-              damagePlayer(action.playerBaseDamage, entry.statuses)
+              damagePlayer(action.playerBaseDamage + monsterRageBonus, entry.statuses)
             }
             action.playerBaseHitAttacks.forEach((attack) => {
               const hitCount = (attack.hitCount + hitCountBonus) * monsterActionCount
               for (let hit = 0; hit < hitCount; hit += 1) {
-                damagePlayer(attack.value, entry.statuses)
+                damagePlayer(attack.value + monsterRageBonus, entry.statuses)
               }
             })
             if (action.playerIndependentDamage) {
@@ -324,9 +344,11 @@ export function BattleScreen({
               addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
             }
             playerDefeated = after.health <= 0
-            const selfBaseDamage = action.selfBaseDamage * monsterHitCount * monsterActionCount
+            const selfBaseDamage = (action.selfBaseDamage + monsterRageBonus)
+              * monsterHitCount * monsterActionCount
               + action.selfBaseHitAttacks.reduce((sum, attack) =>
-                sum + attack.value * (attack.hitCount + hitCountBonus) * monsterActionCount, 0)
+                sum + (attack.value + monsterRageBonus)
+                  * (attack.hitCount + hitCountBonus) * monsterActionCount, 0)
             const resolvedSelfDamage = selfBaseDamage
               + action.selfIndependentDamage * monsterActionCount
             const selfAbsorbed = Math.min(entry.armor, resolvedSelfDamage)
@@ -346,11 +368,7 @@ export function BattleScreen({
                 entry.currentHealth - (resolvedSelfDamage - selfAbsorbed))
                 + action.selfHealing * monsterActionCount),
               armor: Math.max(0, entry.armor - selfAbsorbed)
-                + action.selfArmor * monsterActionCount
-                + action.selfStatuses
-                  .filter(({ id }) => id === 'ironclad')
-                  .reduce((sum, status) =>
-                    sum + status.stacks * monsterActionCount, 0),
+                + (action.selfArmor + getArmorGainBonus(entry.statuses)) * monsterActionCount,
               statuses,
               turnPlan: { ...entry.turnPlan, runtime: triggered.runtime },
             }
@@ -389,11 +407,15 @@ export function BattleScreen({
             statusResolvedCombatants.push(entry)
             continue
           }
-          const resolved = resolveTurnEndStatuses({
+          const resolved = hasExtraTurn ? {
             health: entry.currentHealth,
             armor: entry.armor,
             statuses: entry.statuses,
-            placedBlockCount: board.placedCount,
+          } : resolveTurnEndStatuses({
+            health: entry.currentHealth,
+            armor: entry.armor,
+            statuses: entry.statuses,
+            owner: 'monster',
           })
           const nextEntry = {
             ...entry,

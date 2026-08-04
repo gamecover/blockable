@@ -1,36 +1,38 @@
 import rulesSource from '../../../docs/references/designs/blockable_block_design.json?raw'
+import { normalizeCombatEffectsV054 } from './combatEffectSchemaSystem.js'
 
 export const BLOCK_RULES_SOURCE_PATH = 'docs/references/designs/blockable_block_design.json'
 export const SUPPORTED_BLOCK_RULES_SCHEMA = '1.1.0'
+export const SUPPORTED_COMBAT_EFFECT_SPEC_VERSION = '0.5.4'
 export const STANDARD_BLOCK_TYPE_IDS = Object.freeze(['steel', 'fire', 'water', 'nature'])
 
 const SUPPORTED_EFFECT_TYPES = new Set([
   'BASE_DAMAGE',
-  'BASE_HIT_COUNT',
   'INDEPENDENT_DAMAGE',
   'BLOCK',
   'RECOVERY',
-  'STATUS_DAMAGE',
+  'DAMAGE_OVER_TIME',
   'DEBUFF',
   'CROWD_CONTROL',
   'BUFF',
-  'EXTRA_TURN',
-  'DECK_CAPACITY',
-  'DRAW',
-  'PLACEMENT_COUNT',
+  'EXTRA',
 ])
 const SUPPORTED_PARAMETER_IDS = new Set([
   'NONE',
-  'CURRENT_ACTION',
-  'ATTACK_REDUCTION',
-  'DAMAGE_TAKEN_INCREASE',
-  'BLEEDING',
+  'WEAKNESS',
+  'WOUND',
+  'CHILL',
+  'BLEED',
   'BURN',
+  'POISON',
   'STUN',
   'RAGE',
-  'PLAYER_TURN',
-  'BLOCK_PLACEMENT',
-  'MAIN_DECK',
+  'ARMOR',
+  'DRAW',
+  'HIT_COUNT',
+  'ATTACK_RANGE',
+  'TURN',
+  'PLACEMENT',
 ])
 const SUPPORTED_SLOT_KINDS = new Set(['exact_block', 'any_block', 'type', 'color', 'tag'])
 const SUPPORTED_CONDITION_KINDS = new Set([
@@ -109,6 +111,9 @@ const normalizeDesignerRules = (raw) => {
   }
   const blocks = requireArray(raw, 'blocks', errors)
   const combinations = requireArray(raw, 'combinations', errors)
+  if (raw.metadata?.combat_effect_spec_version !== SUPPORTED_COMBAT_EFFECT_SPEC_VERSION) {
+    errors.push(`metadata.combat_effect_spec_version: ${raw.metadata?.combat_effect_spec_version ?? '없음'} (지원: ${SUPPORTED_COMBAT_EFFECT_SPEC_VERSION})`)
+  }
   if (errors.length) throw new BlockRulesRuntimeError('NORMALIZE', errors)
 
   const blockTypes = [...new Map(blocks.map((block, index) => {
@@ -144,7 +149,7 @@ const normalizeDesignerRules = (raw) => {
         allow_rotation: block?.transform_rule?.allow_rotation ?? false,
         allow_reflection: block?.transform_rule?.allow_reflection ?? false,
       },
-      effects: (block?.effects ?? []).map((effect, effectIndex) => ({
+      effects: normalizeCombatEffectsV054(block?.effects ?? []).map((effect, effectIndex) => ({
         ...effect,
         order: effect.order ?? effectIndex,
       })),
@@ -168,11 +173,14 @@ const normalizeDesignerRules = (raw) => {
         allow_recipe_rotation: combination?.transform_rule?.allow_rotation ?? false,
         allow_recipe_mirroring: combination?.transform_rule?.allow_reflection ?? false,
       },
-      effects: (combination?.effects ?? []).map((effect, effectIndex) => ({
+      effects: normalizeCombatEffectsV054(combination?.effects ?? []).map((effect, effectIndex) => ({
         ...effect,
         order: effect.order ?? effectIndex,
       })),
-      conditional_effects: combination?.conditional_effects ?? [],
+      conditional_effects: (combination?.conditional_effects ?? []).map((entry) => ({
+        ...entry,
+        effects: normalizeCombatEffectsV054(entry.effects ?? []),
+      })),
       tags: combination?.tags ?? [],
     }
   })
@@ -197,7 +205,10 @@ const normalizeDesignerRules = (raw) => {
     effect_definitions: effectDefinitions,
     blocks: normalizedBlocks,
     combinations: normalizedCombinations,
-    color_synergies: raw.color_synergies ?? [],
+    color_synergies: (raw.color_synergies ?? []).map((synergy) => ({
+      ...synergy,
+      effects: normalizeCombatEffectsV054(synergy.effects ?? []),
+    })),
   }
 }
 
@@ -213,7 +224,7 @@ export const parseBlockRules = (source = rulesSource) => {
 
 const validateEffect = (effect, location, errors) => {
   if (!effect?.effect_id) errors.push(`${location}.effect_id: 필수 값 누락`)
-  const type = effect?.type?.toUpperCase()
+  const type = effect?.type
   if (!SUPPORTED_EFFECT_TYPES.has(type)) {
     errors.push(`${location}.type: 지원하지 않는 공통 효과 타입 ${effect?.type ?? '없음'}`)
   }
@@ -235,15 +246,12 @@ const validateEffect = (effect, location, errors) => {
   if (!Number.isInteger(intensify) || intensify < 0) {
     errors.push(`${location}.parameters.intensify: 0 이상의 정수가 필요합니다.`)
   }
-  if (type === 'BASE_HIT_COUNT' && (!Number.isInteger(intensify) || intensify < 1)) {
-    errors.push(`${location}.parameters.intensify: BASE_HIT_COUNT는 1 이상의 연속 공격 횟수가 필요합니다.`)
+  if (type === 'EXTRA' && !['DRAW', 'HIT_COUNT', 'ATTACK_RANGE', 'TURN', 'PLACEMENT'].includes(parameterId)) {
+    errors.push(`${location}.parameters.id: EXTRA에서 지원하지 않는 추가 효과 ${parameterId}`)
   }
-  if (type === 'BASE_HIT_COUNT' && parameterId !== 'CURRENT_ACTION') {
-    errors.push(`${location}.parameters.id: BASE_HIT_COUNT는 CURRENT_ACTION이 필요합니다.`)
-  }
-  if (parameterId === 'CURRENT_ACTION'
-    && !['BASE_HIT_COUNT', 'EXTRA_TURN'].includes(type)) {
-    errors.push(`${location}.parameters.id: CURRENT_ACTION은 BASE_HIT_COUNT 또는 EXTRA_TURN에서만 사용할 수 있습니다.`)
+  if (['BASE_DAMAGE', 'INDEPENDENT_DAMAGE', 'BLOCK', 'RECOVERY'].includes(type)
+    && parameterId !== 'NONE') {
+    errors.push(`${location}.parameters.id: ${type}은 NONE만 사용할 수 있습니다.`)
   }
 }
 

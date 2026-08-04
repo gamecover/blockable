@@ -7,6 +7,8 @@ class SoundManagerClass {
     this.musicVolume = 0.45
     this.sfxVolume = 0.45
     this.currentMusicKey = null
+    this.desiredMusicKey = null
+    this.musicRequests = new Map()
     this.musicStopTimers = new Map()
     this.musicLoadQueue = Promise.resolve()
   }
@@ -152,7 +154,9 @@ class SoundManagerClass {
     const requested = this.sounds.get(key).sound
     if (requested.state() !== 'loaded') {
       this.prepareMusic(key)
-        .then(() => this.playMusic(key, { fadeMs }))
+        .then(() => {
+          if (this.desiredMusicKey === key) this.playMusic(key, { fadeMs })
+        })
         .catch((error) => console.error(error))
       return
     }
@@ -177,6 +181,16 @@ class SoundManagerClass {
     const currentKey = this.currentMusicKey
     this.currentMusicKey = null
     if (currentKey) this.fadeOutAndStop(currentKey, fadeMs)
+  }
+  setMusicRequests(requests = [], { fadeMs = 1400 } = {}) {
+    this.musicRequests = new Map(requests
+      .filter(({ id, key, priority }) => id && this.sounds.has(key) && Number.isFinite(priority))
+      .map((request, order) => [request.id, { ...request, order }]))
+    const selected = [...this.musicRequests.values()]
+      .sort((left, right) => right.priority - left.priority || right.order - left.order)[0]
+    this.desiredMusicKey = selected?.key ?? null
+    if (selected) this.playMusic(selected.key, { fadeMs })
+    else this.stopMusic({ fadeMs })
   }
   fadeOutAndStop(key, fadeMs) {
     const entry = this.sounds.get(key)
@@ -214,6 +228,8 @@ class SoundManagerClass {
     this.musicStopTimers.forEach((timer) => window.clearTimeout(timer))
     this.musicStopTimers.clear()
     this.currentMusicKey = null
+    this.desiredMusicKey = null
+    this.musicRequests.clear()
     this.sounds.forEach(({ sound }) => sound.unload())
     this.sounds.clear()
   }

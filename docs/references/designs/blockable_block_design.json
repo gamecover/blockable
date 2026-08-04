@@ -9,10 +9,7 @@
     "validation_error_count": 0,
     "validation_warning_count": 39,
     "designer_name": "Blockable Block Designer",
-    "migration_notes": [
-      "레거시 conditional_effects 3개는 새 조합식 스키마의 대상이 아닙니다.",
-      "레거시 color_synergies 4개는 본 게임 공통 판정으로 이전해야 합니다."
-    ]
+    "combat_effect_spec_version": "0.5.4"
   },
   "blocks": [
     {
@@ -545,9 +542,9 @@
           "value": 1,
           "type": "DEBUFF",
           "parameters": {
-            "id": "ATTACK_REDUCTION",
-            "duration": 1,
-            "intensify": 1
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -617,9 +614,9 @@
           "value": 1,
           "type": "DEBUFF",
           "parameters": {
-            "id": "ATTACK_REDUCTION",
-            "duration": 1,
-            "intensify": 1
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -693,9 +690,9 @@
           "value": 1,
           "type": "DEBUFF",
           "parameters": {
-            "id": "ATTACK_REDUCTION",
-            "duration": 1,
-            "intensify": 1
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -1452,9 +1449,9 @@
           "value": 2,
           "type": "DEBUFF",
           "parameters": {
-            "id": "ATTACK_REDUCTION",
-            "duration": 2,
-            "intensify": 2
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -1615,16 +1612,29 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_attack_per_time",
-          "effect_name": "추가 공격 횟수",
+          "effect_id": "extra_effect_attack_per_time:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
           "description": "추가 공격 횟수를 획득 합니다",
           "target": "SELECTED",
           "value": 0,
-          "type": "BASE_HIT_COUNT",
+          "type": "BASE_DAMAGE",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "NONE",
             "duration": 0,
-            "intensify": 3
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -1676,16 +1686,29 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_attack_per_time_2",
-          "effect_name": "추가 공격 횟수",
+          "effect_id": "extra_effect_attack_per_time_2:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
           "description": "추가 공격 횟수를 획득 합니다",
           "target": "SELECTED",
           "value": 5,
-          "type": "BASE_HIT_COUNT",
+          "type": "BASE_DAMAGE",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "NONE",
             "duration": 0,
-            "intensify": 2
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_2:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -1744,9 +1767,9 @@
           "value": 5,
           "type": "DEBUFF",
           "parameters": {
-            "id": "DAMAGE_TAKEN_INCREASE",
-            "duration": 5,
-            "intensify": 5
+            "id": "WOUND",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -1912,11 +1935,11 @@
           "description": "추가 턴을 획득합니다",
           "target": "self",
           "value": 1,
-          "type": "EXTRA_TURN",
+          "type": "EXTRA",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "TURN",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         },
         {
@@ -1989,8 +2012,8 @@
           "type": "BUFF",
           "parameters": {
             "id": "RAGE",
-            "duration": 3,
-            "intensify": 3
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -1999,11 +2022,11 @@
           "description": "추가 턴을 획득합니다",
           "target": "self",
           "value": 1,
-          "type": "EXTRA_TURN",
+          "type": "EXTRA",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "TURN",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         }
       ]
@@ -2052,16 +2075,29 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_attack_per_time_3",
-          "effect_name": "추가 공격 횟수",
+          "effect_id": "extra_effect_attack_per_time_3:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
           "description": "추가 공격 횟수를 획득 합니다",
           "target": "SELECTED",
           "value": 0,
-          "type": "BASE_HIT_COUNT",
+          "type": "BASE_DAMAGE",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "NONE",
             "duration": 0,
-            "intensify": 3
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_3:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2128,11 +2164,11 @@
           "description": "추가 턴을 획득합니다",
           "target": "SELECTED",
           "value": 1,
-          "type": "EXTRA_TURN",
+          "type": "EXTRA",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "TURN",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         },
         {
@@ -2144,8 +2180,8 @@
           "type": "BUFF",
           "parameters": {
             "id": "RAGE",
-            "duration": 2,
-            "intensify": 2
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2241,8 +2277,8 @@
           "type": "BUFF",
           "parameters": {
             "id": "RAGE",
-            "duration": 5,
-            "intensify": 5
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -2298,9 +2334,9 @@
           "value": 2,
           "type": "DEBUFF",
           "parameters": {
-            "id": "ATTACK_REDUCTION",
-            "duration": 5,
-            "intensify": 5
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2369,9 +2405,9 @@
           "value": 5,
           "type": "DEBUFF",
           "parameters": {
-            "id": "DAMAGE_TAKEN_INCREASE",
-            "duration": 5,
-            "intensify": 5
+            "id": "WOUND",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2438,11 +2474,11 @@
           "description": "적에게 출혈 디버프를 부여합니다",
           "target": "SELECTED",
           "value": 4,
-          "type": "STATUS_DAMAGE",
+          "type": "DAMAGE_OVER_TIME",
           "parameters": {
-            "id": "BLEEDING",
-            "duration": 4,
-            "intensify": 4
+            "id": "BLEED",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2646,16 +2682,29 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_attack_per_time_4",
-          "effect_name": "추가 공격 횟수",
+          "effect_id": "extra_effect_attack_per_time_4:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
           "description": "추가 공격 횟수를 획득 합니다",
           "target": "SELECTED",
           "value": 0,
-          "type": "BASE_HIT_COUNT",
+          "type": "BASE_DAMAGE",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "NONE",
             "duration": 0,
-            "intensify": 2
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_4:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2775,16 +2824,29 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_attack_per_time_5",
-          "effect_name": "추가 공격 횟수",
+          "effect_id": "extra_effect_attack_per_time_5:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
           "description": "추가 공격 횟수를 획득 합니다",
           "target": "all",
           "value": 8,
-          "type": "BASE_HIT_COUNT",
+          "type": "BASE_DAMAGE",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "NONE",
             "duration": 0,
-            "intensify": 2
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_5:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "all",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
           }
         }
       ]
@@ -2988,8 +3050,8 @@
           "type": "BUFF",
           "parameters": {
             "id": "RAGE",
-            "duration": 5,
-            "intensify": 5
+            "duration": 0,
+            "intensify": 0
           }
         },
         {
@@ -2998,11 +3060,11 @@
           "description": "추가 턴을 획득합니다",
           "target": "self",
           "value": 1,
-          "type": "EXTRA_TURN",
+          "type": "EXTRA",
           "parameters": {
-            "id": "CURRENT_ACTION",
+            "id": "TURN",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         },
         {

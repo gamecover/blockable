@@ -55,10 +55,10 @@ describe('monster design integration', () => {
   it('공통 effect type과 parameters.id를 기존 전투 변수로 연결한다', () => {
     const result = resolveMonsterAbility({
       effects: [
-        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 5, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'BLOCK', target: 'self', value: 10, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'RECOVERY', target: 'self', value: 7, order: 2, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'STATUS_DAMAGE', target: 'SELECTED', value: 2, order: 3, parameters: { id: 'BLEEDING', duration: 2, intensify: 2 } },
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 5, order: 0, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'BLOCK', target: 'self', value: 10, order: 1, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'RECOVERY', target: 'self', value: 7, order: 2, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'DAMAGE_OVER_TIME', target: 'SELECTED', value: 2, order: 3, parameters: { id: 'BLEED', duration: 0, intensify: 0 } },
       ],
     })
     expect(result).toMatchObject({
@@ -67,10 +67,10 @@ describe('monster design integration', () => {
       selfHealing: 7,
       playerStatuses: [{
         id: 'bleeding',
-        sourceId: 'BLEEDING',
+        sourceId: 'BLEED',
         stacks: 2,
         value: 2,
-        duration: 2,
+        duration: 0,
       }],
     })
   })
@@ -78,8 +78,8 @@ describe('monster design integration', () => {
   it('BASE_DAMAGE와 INDEPENDENT_DAMAGE를 서로 다른 공격 단계로 보존한다', () => {
     const result = resolveMonsterAbility({
       effects: [
-        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 7, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'INDEPENDENT_DAMAGE', target: 'SELECTED', value: 4, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 7, order: 0, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'INDEPENDENT_DAMAGE', target: 'SELECTED', value: 4, order: 1, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
       ],
     })
 
@@ -93,18 +93,16 @@ describe('monster design integration', () => {
   it('preserves monster extra turns and explicitly ignores block-only resources', () => {
     const result = resolveMonsterAbility({
       effects: [
-        { type: 'EXTRA_TURN', target: 'self', value: 2, order: 0, parameters: { id: 'PLAYER_TURN', duration: 0, intensify: 1 } },
-        { type: 'DRAW', target: 'self', value: 3, order: 1, parameters: { id: 'MAIN_DECK', duration: 0, intensify: 1 } },
-        { type: 'DECK_CAPACITY', target: 'self', value: 4, order: 2, parameters: { id: 'MAIN_DECK', duration: 0, intensify: 1 } },
-        { type: 'PLACEMENT_COUNT', target: 'self', value: 1, order: 3, parameters: { id: 'BLOCK_PLACEMENT', duration: 0, intensify: 1 } },
+        { type: 'EXTRA', target: 'self', value: 2, order: 0, parameters: { id: 'TURN', duration: 0, intensify: 0 } },
+        { type: 'EXTRA', target: 'self', value: 3, order: 1, parameters: { id: 'DRAW', duration: 0, intensify: 0 } },
+        { type: 'EXTRA', target: 'self', value: 1, order: 2, parameters: { id: 'PLACEMENT', duration: 0, intensify: 0 } },
       ],
     })
 
     expect(result.extraTurns).toBe(2)
     expect(result.ignoredBlockResourceEffects).toEqual([
       'DRAW',
-      'DECK_CAPACITY',
-      'PLACEMENT_COUNT',
+      'PLACEMENT',
     ])
   })
 
@@ -112,9 +110,9 @@ describe('monster design integration', () => {
     const description = describeMonsterAbility({
       display_name: '복합 행동',
       effects: [
-        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 9, order: 0, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'BLOCK', target: 'self', value: 6, order: 1, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
-        { type: 'RECOVERY', target: 'self', value: 4, order: 2, parameters: { id: 'CURRENT_ACTION', duration: 0, intensify: 0 } },
+        { type: 'BASE_DAMAGE', target: 'SELECTED', value: 9, order: 0, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'BLOCK', target: 'self', value: 6, order: 1, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
+        { type: 'RECOVERY', target: 'self', value: 4, order: 2, parameters: { id: 'NONE', duration: 0, intensify: 0 } },
       ],
     })
 
@@ -130,10 +128,17 @@ describe('monster design integration', () => {
       .toContain('monsters[4].monster_id: 연결된 이미지 에셋 없음 (hanging_ashes)')
     expect(monsterDesignDiagnostics.warnings.filter((warning) =>
       warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(10)
-    expect(monsterDesignDiagnostics.warnings.filter((warning) =>
-      warning.includes('삭제된 BUFF + HIT_COUNT'))).toHaveLength(0)
-    expect(monsterDesignDiagnostics.warnings.filter((warning) =>
-      warning.includes('미적용 BUFF + DAMAGE_BONUS'))).toHaveLength(4)
+    expect(monsterDesignDiagnostics.warnings.some((warning) =>
+      warning.includes('DAMAGE_BONUS'))).toBe(false)
+  })
+
+  it('구형 전투 효과를 런타임에서 변환하지 않고 검증 오류로 거부한다', () => {
+    const invalid = structuredClone(monsterDesign)
+    invalid.monsters[0].skills[0].effects[0].type = 'STATUS_DAMAGE'
+
+    const diagnostics = validateMonsterDesign(invalid)
+    expect(diagnostics.errors.some((error) =>
+      error.includes('지원하지 않는 효과 타입 STATUS_DAMAGE'))).toBe(true)
   })
 
   it('JSON 문법과 미지원 사용자 정의 변수를 원인과 함께 실패시킨다', () => {

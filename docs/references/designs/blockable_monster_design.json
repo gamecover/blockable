@@ -6,7 +6,7 @@
     "designer_name": "Blockable Monster Designer",
     "updated_at": "2026-08-01T17:02:28+09:00",
     "validation_status": "valid",
-    "migrated_from_schema": "1.4.0"
+    "combat_effect_spec_version": "0.5.4"
   },
   "monsters": [
     {
@@ -36,7 +36,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -56,7 +56,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -67,11 +67,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 5,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 5
+                "intensify": 0
               }
             }
           ]
@@ -89,7 +89,7 @@
               "value": 20,
               "type": "RECOVERY",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -194,7 +194,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -214,7 +214,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -225,11 +225,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 2,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
-                "id": "BLEEDING",
+                "id": "BLEED",
                 "duration": 0,
-                "intensify": 2
+                "intensify": 0
               }
             }
           ]
@@ -341,7 +341,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -361,7 +361,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -374,7 +374,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -434,7 +434,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -454,7 +454,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -465,11 +465,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             }
           ]
@@ -487,7 +487,7 @@
               "value": 100,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -500,7 +500,7 @@
               "value": 50,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -585,7 +585,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -606,8 +606,8 @@
               "type": "CROWD_CONTROL",
               "parameters": {
                 "id": "STUN",
-                "duration": 1,
-                "intensify": 1
+                "duration": 0,
+                "intensify": 0
               }
             },
             {
@@ -616,11 +616,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 5,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
-                "id": "BLEEDING",
+                "id": "BLEED",
                 "duration": 0,
-                "intensify": 5
+                "intensify": 0
               }
             }
           ]
@@ -718,7 +718,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -736,11 +736,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             },
             {
@@ -751,7 +751,7 @@
               "value": 20,
               "type": "RECOVERY",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -815,7 +815,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -833,11 +833,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             },
             {
@@ -848,9 +848,9 @@
               "value": 2,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 2
+                "intensify": 0
               }
             }
           ]
@@ -868,7 +868,7 @@
               "value": 10,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -947,7 +947,7 @@
                 "condition": {
                   "condition_id": "MONSTER_HP_RATIO",
                   "operator": "LTE",
-                  "value": 0.0
+                  "value": 0
                 },
                 "priority": 0,
                 "once": false,
@@ -993,7 +993,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1011,11 +1011,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             },
             {
@@ -1026,7 +1026,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1044,11 +1044,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 15,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 15
+                "intensify": 0
               }
             }
           ]
@@ -1142,7 +1142,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1160,11 +1160,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 5,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
-                "id": "BLEEDING",
+                "id": "BLEED",
                 "duration": 0,
-                "intensify": 5
+                "intensify": 0
               }
             },
             {
@@ -1175,29 +1175,9 @@
               "value": 20,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
-              }
-            }
-          ]
-        },
-        {
-          "skill_id": "a0014",
-          "skill_name": "강철 메이스 제작",
-          "description": "",
-          "effects": [
-            {
-              "effect_id": "apply_status_01",
-              "effect_name": "상태 효과 적용",
-              "description": "",
-              "target": "self",
-              "value": 5,
-              "type": "BUFF",
-              "parameters": {
-                "id": "DAMAGE_BONUS",
-                "duration": 1,
-                "intensify": 1
               }
             }
           ]
@@ -1216,10 +1196,6 @@
                 {
                   "type": "SKILL",
                   "skill_id": "a0013"
-                },
-                {
-                  "type": "SKILL",
-                  "skill_id": "a0014"
                 }
               ]
             },
@@ -1291,7 +1267,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1311,7 +1287,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1324,7 +1300,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1337,9 +1313,9 @@
               "value": 1,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
-                "intensify": 1
+                "intensify": 0
               }
             }
           ]
@@ -1355,11 +1331,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 15,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 15
+                "intensify": 0
               }
             },
             {
@@ -1370,9 +1346,9 @@
               "value": 1,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 1
+                "intensify": 0
               }
             }
           ]
@@ -1390,7 +1366,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1403,9 +1379,9 @@
               "value": 3,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 3
+                "intensify": 0
               }
             },
             {
@@ -1416,9 +1392,9 @@
               "value": 3,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
-                "intensify": 3
+                "intensify": 0
               }
             }
           ]
@@ -1525,7 +1501,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1543,11 +1519,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 20,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 20
+                "intensify": 0
               }
             },
             {
@@ -1558,9 +1534,9 @@
               "value": 3,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 3
+                "intensify": 0
               }
             }
           ]
@@ -1578,7 +1554,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1589,11 +1565,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             }
           ]
@@ -1609,11 +1585,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 10
+                "intensify": 0
               }
             },
             {
@@ -1624,7 +1600,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1744,7 +1720,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1762,11 +1738,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 20,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 20
+                "intensify": 0
               }
             },
             {
@@ -1777,9 +1753,9 @@
               "value": 5,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 5
+                "intensify": 0
               }
             }
           ]
@@ -1790,19 +1766,6 @@
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status_01",
-              "effect_name": "상태 효과 적용",
-              "description": "",
-              "target": "self",
-              "value": 5,
-              "type": "BUFF",
-              "parameters": {
-                "id": "DAMAGE_BONUS",
-                "duration": 999,
-                "intensify": 1
-              }
-            },
-            {
               "effect_id": "gain_block_02",
               "effect_name": "방어도 획득",
               "description": "",
@@ -1810,7 +1773,7 @@
               "value": 30,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1828,11 +1791,11 @@
               "description": "",
               "target": "SELECTED",
               "value": 30,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
-                "intensify": 30
+                "intensify": 0
               }
             }
           ]
@@ -1943,7 +1906,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -1956,19 +1919,6 @@
           "description": "",
           "effects": [
             {
-              "effect_id": "apply_status_01",
-              "effect_name": "상태 효과 적용",
-              "description": "",
-              "target": "self",
-              "value": 20,
-              "type": "BUFF",
-              "parameters": {
-                "id": "DAMAGE_BONUS",
-                "duration": 999,
-                "intensify": 1
-              }
-            },
-            {
               "effect_id": "apply_status_02",
               "effect_name": "상태 효과 적용",
               "description": "",
@@ -1976,9 +1926,9 @@
               "value": 2,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
-                "intensify": 2
+                "intensify": 0
               }
             },
             {
@@ -1989,9 +1939,9 @@
               "value": 2,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
+                "id": "WOUND",
                 "duration": 0,
-                "intensify": 2
+                "intensify": 0
               }
             }
           ]
@@ -2009,7 +1959,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2022,7 +1972,7 @@
               "value": 10,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2042,9 +1992,9 @@
               "value": 5,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
-                "intensify": 5
+                "intensify": 0
               }
             }
           ]
@@ -2154,7 +2104,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2174,7 +2124,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2187,9 +2137,9 @@
               "value": 1,
               "type": "DEBUFF",
               "parameters": {
-                "id": "DAMAGE_TAKEN_INCREASE",
-                "duration": 1,
-                "intensify": 1
+                "id": "WOUND",
+                "duration": 0,
+                "intensify": 0
               }
             }
           ]
@@ -2252,7 +2202,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2270,7 +2220,7 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
@@ -2285,7 +2235,7 @@
               "value": 5,
               "type": "RECOVERY",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2345,7 +2295,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2363,7 +2313,7 @@
               "description": "",
               "target": "SELECTED",
               "value": 10,
-              "type": "STATUS_DAMAGE",
+              "type": "DAMAGE_OVER_TIME",
               "parameters": {
                 "id": "BURN",
                 "duration": 0,
@@ -2378,7 +2328,7 @@
               "value": 1,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2438,7 +2388,7 @@
               "value": 5,
               "type": "BASE_DAMAGE",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2451,19 +2401,6 @@
           "description": "",
           "effects": [
             {
-              "effect_id": "damagebonus",
-              "effect_name": "기본 피해 증가",
-              "description": "",
-              "target": "self",
-              "value": 5,
-              "type": "BUFF",
-              "parameters": {
-                "id": "DAMAGE_BONUS",
-                "duration": 999,
-                "intensify": 1
-              }
-            },
-            {
               "effect_id": "weak",
               "effect_name": "약화",
               "description": "",
@@ -2471,7 +2408,7 @@
               "value": 5,
               "type": "DEBUFF",
               "parameters": {
-                "id": "ATTACK_REDUCTION",
+                "id": "WEAKNESS",
                 "duration": 0,
                 "intensify": 0
               }
@@ -2491,7 +2428,7 @@
               "value": 5,
               "type": "BLOCK",
               "parameters": {
-                "id": "",
+                "id": "NONE",
                 "duration": 0,
                 "intensify": 0
               }
