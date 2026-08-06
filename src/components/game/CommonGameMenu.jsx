@@ -6,7 +6,7 @@ import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
 import { getMapNodePosition, isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
 import { getKnownBlueprints } from '../../game/systems/blueprintSystem.js'
-import globalMap from '../../screens/map/assets/pictures/global_map.png'
+import globalMap from '../../screens/map/assets/pictures/maps_volcano.png'
 import { BlueprintRecipe } from './BlueprintRecipe.jsx'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import './styles/common-game-menu.css'
@@ -87,7 +87,7 @@ function WorldMapModal({ worldMap, activeDungeonId, onClose }) {
       <div className="world-map common-world-map" style={{ backgroundImage: `url(${globalMap})` }} aria-label="읽기 전용 전체 지도">
         {worldMap.dungeons.map((dungeon) => (
           <div
-            className={`world-dungeon world-dungeon--${dungeon.kind} ${dungeon.status}${dungeon.id === activeDungeonId ? ' current' : ''}`}
+            className={`world-dungeon world-dungeon--${dungeon.kind} world-dungeon--${dungeon.id} ${dungeon.status}${dungeon.id === activeDungeonId ? ' current' : ''}`}
             style={{ left: `${dungeon.position.x}%`, top: `${dungeon.position.y}%` }}
             key={dungeon.id}
           >
