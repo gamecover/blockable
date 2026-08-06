@@ -9,12 +9,20 @@ import {
   getMapNodePosition,
   getMapNodes,
 } from '../../game/systems/mapGenerationSystem.js'
-import mapArrowCurveUp from './assets/pictures/map_arrow_01.png'
-import mapArrowLong from './assets/pictures/map_arrow_02.png'
-import mapArrowCurveDown from './assets/pictures/map_arrow_03.png'
-import mapArrowShort from './assets/pictures/map_arrow_short_01.png'
-import mapArrowShortCurve from './assets/pictures/map_arrow_short_02.png'
 import mapBase from './assets/pictures/map_base_alpha.png'
+import roomBattle from './assets/pictures/rooms/room_battle.png'
+import roomBoss from './assets/pictures/rooms/room_boss.png'
+import roomElite from './assets/pictures/rooms/room_elite.png'
+import roomEvent from './assets/pictures/rooms/room_event.png'
+import roomRest from './assets/pictures/rooms/room_rest.png'
+import roomStairs from './assets/pictures/rooms/room_stairs_node.png'
+import roomStart from './assets/pictures/rooms/room_start_node.png'
+import roomUnknown from './assets/pictures/rooms/room_unknown_node.png'
+import stairsA from './assets/pictures/stairs/stairs_a.png'
+import stairsB from './assets/pictures/stairs/stairs_b.png'
+import stairsC from './assets/pictures/stairs/stairs_c.png'
+import stairsD from './assets/pictures/stairs/stairs_d.png'
+import stairsE from './assets/pictures/stairs/stairs_e.png'
 
 const MAP_CANVAS_WIDTH = 2600
 const MAP_CANVAS_HEIGHT = Math.round(MAP_CANVAS_WIDTH * 1066 / 3110)
@@ -24,20 +32,21 @@ const MAX_MAP_ZOOM = 1.25
 const MAP_ZOOM_STEP = 0.1
 const MAP_EDGE_PADDING = 48
 
-const symbols = {
-  unique_block_selection: '◆',
-  floor_start: '●',
-  battle: '⚔',
-  elite: '☠',
-  event: '?',
-  rest: '♥',
-  stairs: '⇧',
-  boss: '♜',
-}
+const roomIcons = Object.freeze({
+  battle: roomBattle,
+  boss: roomBoss,
+  elite: roomElite,
+  event: roomEvent,
+  floor_start: roomStart,
+  rest: roomRest,
+  stairs: roomStairs,
+})
+
+const corridorStairs = Object.freeze([stairsA, stairsB, stairsC, stairsD, stairsE])
 
 const labels = {
   unique_block_selection: '고유 블록',
-  floor_start: '층 시작',
+  floor_start: '시작',
   battle: '전투',
   elite: '강적',
   event: '사건',
@@ -46,7 +55,7 @@ const labels = {
   boss: '보스',
 }
 
-const getCorridorArrow = ({ corridor, start, end }) => {
+const getCorridorArrow = ({ start, end }) => {
   const startX = start.x * 10
   const startY = start.y * 6
   const endX = end.x * 10
@@ -54,14 +63,10 @@ const getCorridorArrow = ({ corridor, start, end }) => {
   const deltaX = endX - startX
   const deltaY = endY - startY
   const distance = Math.hypot(deltaX, deltaY)
-  const isShort = distance < 255
-  const image = isShort
-    ? Math.abs(deltaY) > 45 ? mapArrowShortCurve : mapArrowShort
-    : corridor.pathRole === 'risk'
-      ? mapArrowCurveDown
-      : Math.abs(deltaY) > 80 ? mapArrowCurveUp : mapArrowLong
-  const renderedDistance = distance * 0.72
-  const height = isShort ? 50 : 61
+  const direction = (Math.atan2(deltaY, deltaX) + Math.PI * 2) % (Math.PI * 2)
+  const image = corridorStairs[Math.floor(direction / (Math.PI * 2) * corridorStairs.length)]
+  const renderedDistance = distance * 0.58
+  const height = Math.max(42, Math.min(68, renderedDistance * 0.42))
   const centerX = (startX + endX) / 2
   const centerY = (startY + endY) / 2
   return {
@@ -70,7 +75,7 @@ const getCorridorArrow = ({ corridor, start, end }) => {
     y: centerY - height / 2,
     width: renderedDistance,
     height,
-    angle: Math.atan2(deltaY, deltaX) * 180 / Math.PI,
+    angle: direction * 180 / Math.PI,
     centerX,
     centerY,
   }
@@ -286,7 +291,7 @@ export function MapScreen({
               if (!start || !end) return null
               const traveled = [corridor.from, corridor.to].every((id) =>
                 nodes.find((node) => node.id === id)?.status === 'complete')
-              const arrow = getCorridorArrow({ corridor, start, end })
+              const arrow = getCorridorArrow({ start, end })
               return (
                 <g
                   key={corridor.id}
@@ -309,6 +314,7 @@ export function MapScreen({
             const position = positions.get(node.id)
             const visibility = getVisibility(node)
             const mystery = visibility === 'mystery'
+            const roomIcon = mystery ? roomUnknown : roomIcons[node.type]
             const selectable = !mystery
               && canTravelToNode(map, currentNodeId, node.id, developerMode)
             return (
@@ -318,15 +324,15 @@ export function MapScreen({
                   whileHover={selectable ? { scale: 1.08 } : {}}
                   disabled={!selectable}
                   className={mystery
-                    ? 'room-node locked mystery'
-                    : `room-node ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${selectable && node.id !== currentNodeId ? ' reachable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
+                    ? 'room-node has-room-icon locked mystery'
+                    : `room-node has-room-icon ${node.status} ${node.type} ${node.pathRole}${developerMode ? ' developer-selectable' : ''}${selectable && node.id !== currentNodeId ? ' reachable' : ''}${node.id === currentNodeId ? ' current' : ''}`}
                   onClick={() => onSelect(node)}
                   aria-label={mystery
                     ? `${floor}층 미확인 방`
                     : `${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
                 >
-                  <b>{mystery ? '?' : symbols[node.type]}</b>
-                  <small>{mystery ? '미확인' : labels[node.type]}</small>
+                  <img className="room-node__icon" src={roomIcon} alt="" />
+                  <small className="room-node__label">{mystery ? '미확인' : labels[node.type]}</small>
                 </motion.button>
               </div>
             )

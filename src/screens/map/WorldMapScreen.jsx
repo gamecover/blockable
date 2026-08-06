@@ -1,7 +1,7 @@
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { canEnterWorldDungeon } from '../../game/systems/worldMapSystem.js'
-import globalMap from './assets/pictures/global_map.png'
+import globalMap from './assets/pictures/maps_volcano.png'
 
 export function WorldMapScreen({
   worldMap,
@@ -46,7 +46,7 @@ export function WorldMapScreen({
             <button
               type="button"
               key={dungeon.id}
-              className={`world-dungeon world-dungeon--${dungeon.kind} ${dungeon.status}`}
+              className={`world-dungeon world-dungeon--${dungeon.kind} world-dungeon--${dungeon.id} ${dungeon.status}`}
               style={{ left: `${dungeon.position.x}%`, top: `${dungeon.position.y}%` }}
               disabled={!selectable}
               onPointerEnter={() => { if (selectable) onPrepare?.(dungeon) }}
