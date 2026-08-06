@@ -7,6 +7,7 @@ import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
 import { StatusEffectList } from './components/StatusEffectList.jsx'
 import { BattlePileModal } from './components/BattlePileModal.jsx'
 import { MonsterPartyFrame } from './components/MonsterPartyFrame.jsx'
+import { BattleCenterOverlay } from './components/BattleCenterOverlay.jsx'
 import { TutorialOverlay } from '../tutorial/TutorialOverlay.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
@@ -589,14 +590,21 @@ export function BattleScreen({
         canSelect={machineState.matches('playerInput')}
         onSelect={setSelectedMonsterId}
       />
-      {machineState.matches('playerInput') && (
-        <QuickBlueprintPanel
-          hand={battlePiles.hand}
-          placedBlocks={board.placedBlocks}
-          discoveredBlueprintIds={discoveredBlueprintIds}
-          allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
+      <div className="battle-left-center-cluster">
+        {machineState.matches('playerInput') && (
+          <QuickBlueprintPanel
+            hand={battlePiles.hand}
+            placedBlocks={board.placedBlocks}
+            discoveredBlueprintIds={discoveredBlueprintIds}
+            allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
+          />
+        )}
+        <BattleCenterOverlay
+          health={health}
+          maxHealth={maxHealth}
+          playerStatuses={combat.player.statuses}
         />
-      )}
+      </div>
       {blueprintNotice.length > 0 && (
         <div className="blueprint-discovery" role="status" aria-live="polite">
           <b>새로운 조합 발견</b>
@@ -627,6 +635,14 @@ export function BattleScreen({
         tutorialMode={tutorialMode}
         knownBlueprintIds={knownBlueprintIds}
       />
+      <aside className="battle-toolbag-hint" aria-label="도구 주머니">
+        <strong>도구 주머니</strong>
+        <span>
+          드래그해 배치<br />
+          드래그 중 R로 회전
+          {developerMode && <><br />Z로 최근 일반 블록 색상 변경</>}
+        </span>
+      </aside>
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>

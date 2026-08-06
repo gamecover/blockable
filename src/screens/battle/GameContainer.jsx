@@ -43,7 +43,7 @@ export function GameContainer({
   }, [playerStatuses, targetStatuses])
 
   return (
-    <div className="game-canvas" ref={mountRef} data-tutorial-target="forge" aria-label="블록 배치 퍼즐판">
+    <div className="game-canvas formwork-stage" ref={mountRef} data-tutorial-target="forge" aria-label="블록 배치 퍼즐판">
       <span className="game-canvas__tutorial-board" data-tutorial-target="forge-board" aria-hidden="true" />
     </div>
   )

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
+import { BOARD_CELLS, BOARD_CELL_GAP, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../systems/blockEffectSystem.js'
 import { findMatchingCombinations } from '../../systems/blockCombinationSystem.js'
 import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
-import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
+import { getBlockAnchorOffset, getBlockVisualBounds, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
 import { resolveCombatFormulaPreview } from '../../systems/combatFormulaPreviewSystem.js'
 import curseTexture from '../../../assets/sprites/blocks/block_curse.png'
@@ -19,22 +19,28 @@ import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
 import specialTexture from '../../../assets/sprites/blocks/block_special.png'
 import steelTexture from '../../../assets/sprites/blocks/block_steel.png'
 import waterTexture from '../../../assets/sprites/blocks/block_water.png'
-import anvilTexture from '../../../screens/battle/assets/pictures/anvil_alpha.png'
 import formworkTexture from '../../../screens/battle/assets/pictures/formwork_alpha.png'
 
-const BOARD_METRICS = { originX: 326, originY: 128, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
-const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
-const BATTLE_STAGE_WIDTH = 820
-const HAND_HORIZONTAL_GAP = HAND_BLOCK_CELL_SIZE * 1.5
-const ANVIL_CENTER_Y = 637
-const ANVIL_DISPLAY_HEIGHT = 383
-const FORMWORK_GRID_SIZE = 5
+const FORMWORK_DISPLAY_SIZE = 800
 const FORMWORK_TEXTURE_SIZE = 700
 const FORMWORK_TEXTURE_CELL_PITCH = 110
-const FORMWORK_DISPLAY_SIZE = FORMWORK_TEXTURE_SIZE * BOARD_CELL_SIZE / FORMWORK_TEXTURE_CELL_PITCH
+const FORMWORK_SCALE = FORMWORK_DISPLAY_SIZE / FORMWORK_TEXTURE_SIZE
+const BOARD_METRICS = {
+  originX: 10 + 240 * FORMWORK_SCALE,
+  originY: 10 + 240 * FORMWORK_SCALE,
+  cellSize: FORMWORK_TEXTURE_CELL_PITCH * FORMWORK_SCALE,
+  gap: BOARD_CELL_GAP * FORMWORK_SCALE,
+}
+const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
+const BATTLE_STAGE_WIDTH = 820
+const ANVIL_SLOT_X_RATIOS = [195 / 670, 295 / 670, 400 / 670, 505 / 670, 610 / 670]
+const ANVIL_SLOT_Y_RATIO = 97 / 161
+const ANVIL_CENTER_Y = 1142
+const ANVIL_DISPLAY_HEIGHT = 390
+const FORMWORK_GRID_SIZE = 5
 const BOARD_CENTER = gridToWorld(1, 1, BOARD_METRICS)
-const EFFECT_SUMMARY_X = BOARD_CENTER.x + FORMWORK_DISPLAY_SIZE / 2 + 4
-const EFFECT_SUMMARY_BOTTOM = BOARD_CENTER.y + FORMWORK_DISPLAY_SIZE / 2
+const EFFECT_SUMMARY_X = 560
+const EFFECT_SUMMARY_BOTTOM = 805
 const EFFECT_SUMMARY_WIDTH = BATTLE_STAGE_WIDTH - EFFECT_SUMMARY_X - 8
 const ANVIL_TOP_Y = ANVIL_CENTER_Y - ANVIL_DISPLAY_HEIGHT / 2
 const HAND_SURFACE_Y = ANVIL_TOP_Y - 8
@@ -135,7 +141,10 @@ export class BattleScene extends Phaser.Scene {
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
-    this.handSlots = layoutBlocksInCenteredRow(this.hand, HAND_METRICS, BATTLE_STAGE_WIDTH, HAND_HORIZONTAL_GAP)
+    this.handSlots = this.hand.map((block, index) => ({
+      x: 0,
+      bounds: getBlockVisualBounds(layoutBlockForHand(block, 0, HAND_METRICS)),
+    }))
     this.selected = null
     this.placementOrder = 0
     this.unsubReset = null
@@ -177,7 +186,6 @@ export class BattleScene extends Phaser.Scene {
 
   preload() {
     Object.values(BLOCK_TEXTURES).forEach(({ key, url }) => this.load.image(key, url))
-    this.load.image('battle-anvil', anvilTexture)
     this.load.image('battle-formwork', formworkTexture)
   }
 
@@ -185,21 +193,18 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
     this.createEffectSummary()
-    this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'DNF Forged Blade Medium', fontSize: '17px', color: '#ecd9b7' })
-    const controlsText = this.developerMode
-      ? '드래그해 배치\n드래그 중 R로 회전\nZ로 최근 일반 블록 색상 변경'
-      : '드래그해 배치\n드래그 중 R로 회전'
-    this.add.text(24, HAND_SURFACE_Y - 30, controlsText, {
-      fontFamily: 'DNF Forged Blade Medium',
-      fontSize: '11px',
-      lineSpacing: 2,
-      color: '#9c8b75',
-    })
+    this.handContainer = this.add.container(0, 0).setDepth(1)
     this.hand.forEach((block, index) => this.createPiece(block, index))
+    this.refreshHandSlotPositions()
     window.addEventListener('keydown', this.handleWindowKeyDown)
     this.input.on('pointerdown', this.selectPieceAtPointer, this)
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
+    this.input.on('pointerupoutside', this.releaseSelectedOutside, this)
+    this.handleWindowPointerUp = this.handleWindowPointerUp.bind(this)
+    this.refreshHandSlotPositions = this.refreshHandSlotPositions.bind(this)
+    window.addEventListener('pointerup', this.handleWindowPointerUp)
+    window.addEventListener('resize', this.refreshHandSlotPositions)
     this.unsubReset = gameBridge.on(GAME_EVENTS.RESET_BOARD, () => this.resetBoard())
     this.unsubHealthChanged = gameBridge.on(
       GAME_EVENTS.BOARD_HEALTH_CHANGED,
@@ -233,6 +238,9 @@ export class BattleScene extends Phaser.Scene {
       this.input.off('pointerdown', this.selectPieceAtPointer, this)
       this.input.off('pointermove', this.moveSelected, this)
       this.input.off('pointerup', this.releaseSelected, this)
+      this.input.off('pointerupoutside', this.releaseSelectedOutside, this)
+      window.removeEventListener('pointerup', this.handleWindowPointerUp)
+      window.removeEventListener('resize', this.refreshHandSlotPositions)
       this.unsubReset?.()
       this.unsubInput?.()
       this.unsubQuickCombination?.()
@@ -248,12 +256,6 @@ export class BattleScene extends Phaser.Scene {
     this.activeCellKeys = new Set(this.activeCells.map(cellKey))
     this.boardCellBackgrounds = new Map()
     const hasFormworkTexture = this.textures.exists('battle-formwork')
-    if (this.textures.exists('battle-anvil')) {
-      this.add.image(410, ANVIL_CENTER_Y, 'battle-anvil')
-        .setDisplaySize(760, ANVIL_DISPLAY_HEIGHT)
-        .setFlipX(true)
-        .setDepth(-3)
-    }
     if (hasFormworkTexture) {
       this.add.image(BOARD_CENTER.x, BOARD_CENTER.y, 'battle-formwork')
         .setDisplaySize(FORMWORK_DISPLAY_SIZE, FORMWORK_DISPLAY_SIZE)
@@ -625,11 +627,35 @@ export class BattleScene extends Phaser.Scene {
 
   createPiece(block, index) {
     const { x, bounds: homeBounds } = this.handSlots[index]
-    const y = HAND_SURFACE_Y - (homeBounds.y + homeBounds.height)
+    const y = HAND_SURFACE_Y - (homeBounds.y + homeBounds.height / 2)
     const container = this.add.container(x, y)
-    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null }
+    this.handContainer.add(container)
+    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null, dragOrigin: null }
     this.layoutPieceForHand(piece)
     this.pieces.push(piece)
+  }
+
+  refreshHandSlotPositions() {
+    const anvilFrame = document.querySelector('.battle-center-ui__anvil-frame')
+    const canvasBounds = this.game.canvas.getBoundingClientRect()
+    if (!anvilFrame || !canvasBounds.width || !canvasBounds.height) return
+    const frameBounds = anvilFrame.getBoundingClientRect()
+    if (!frameBounds.width || !frameBounds.height) return
+    this.handSlots.forEach((slot, index) => {
+      const clientX = frameBounds.left + frameBounds.width * (ANVIL_SLOT_X_RATIOS[index] ?? ANVIL_SLOT_X_RATIOS.at(-1))
+      const clientY = frameBounds.top + frameBounds.height * ANVIL_SLOT_Y_RATIO
+      slot.x = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
+      slot.y = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
+    })
+    this.pieces.forEach((piece, index) => {
+      if (piece.placed || this.selected === piece) return
+      const slot = this.handSlots[index]
+      if (!slot) return
+      const bounds = getBlockVisualBounds(layoutBlockForHand(piece.block, piece.rotation, HAND_METRICS))
+      piece.homeX = slot.x
+      piece.homeY = slot.y - (bounds.y + bounds.height / 2)
+      piece.container.setPosition(piece.homeX, piece.homeY)
+    })
   }
 
   isPointerOverPiece(pointer, piece) {
@@ -647,8 +673,18 @@ export class BattleScene extends Phaser.Scene {
   selectPiece(piece, pointer) {
     if (this.selected) return
     this.selected = piece
+    piece.dragOrigin = {
+      rotation: piece.rotation,
+      depth: piece.container.depth,
+      scaleX: piece.container.scaleX,
+      scaleY: piece.container.scaleY,
+    }
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-drag-started' })
     if (piece.placed) this.removeOccupancy(piece)
+    if (piece.container.parentContainer === this.handContainer) {
+      this.handContainer.remove(piece.container)
+      this.children.add(piece.container)
+    }
     piece.container.setPosition(pointer.worldX, pointer.worldY)
     piece.container.setAlpha(DRAG_ALPHA)
     piece.container.setDepth(20)
@@ -661,13 +697,39 @@ export class BattleScene extends Phaser.Scene {
     this.previewPieceLayout(this.selected)
   }
 
-  releaseSelected() {
+  releaseSelected(forceInvalid = false) {
     if (!this.selected) return
     const piece = this.selected
     piece.container.setAlpha(1)
     piece.container.setDepth(1)
-    this.tryPlace(piece)
+    const placed = !forceInvalid && this.tryPlace(piece)
+    if (!placed) this.restorePieceToHand(piece)
+    piece.dragOrigin = null
     this.selected = null
+  }
+
+  releaseSelectedOutside() {
+    this.releaseSelected(true)
+  }
+
+  handleWindowPointerUp(event) {
+    if (!this.selected) return
+    const bounds = this.game.canvas.getBoundingClientRect()
+    const outsideCanvas = event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom
+    this.releaseSelected(outsideCanvas)
+  }
+
+  restorePieceToHand(piece) {
+    piece.placed = false
+    piece.rotation = piece.dragOrigin?.rotation ?? piece.rotation
+    piece.container.setScale(piece.dragOrigin?.scaleX ?? 1, piece.dragOrigin?.scaleY ?? 1)
+    piece.container.setPosition(piece.homeX, piece.homeY)
+    this.handContainer.add(piece.container)
+    this.layoutPieceForHand(piece, COLORS.invalid)
+    piece.container.setDepth(piece.dragOrigin?.depth ?? 1)
+    this.time.delayedCall(180, () => { if (!piece.placed) this.layoutPieceForHand(piece) })
+    this.emitBoardState()
   }
 
   applyPieceLayout(piece, layout, mode, tint, stroke = STROKES.hand) {
@@ -754,12 +816,7 @@ export class BattleScene extends Phaser.Scene {
   tryPlace(piece) {
     const candidate = this.getPlacementCandidate(piece)
     if (!candidate.valid) {
-      piece.placed = false
-      piece.container.setPosition(piece.homeX, piece.homeY)
-      this.layoutPieceForHand(piece, COLORS.invalid)
-      this.time.delayedCall(180, () => { if (!piece.placed) this.layoutPieceForHand(piece) })
-      this.emitBoardState()
-      return
+      return false
     }
     piece.placed = true
     piece.placedOrder = ++this.placementOrder
@@ -772,6 +829,7 @@ export class BattleScene extends Phaser.Scene {
     this.refreshPlacedHighlights()
     this.emitBoardState()
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-placed' })
+    return true
   }
 
   removeOccupancy(piece) {
