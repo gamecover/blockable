@@ -29,7 +29,7 @@ describe('blueprint system', () => {
   })
 
   it('assigns distinct real hand blocks to a quick combination', () => {
-    const recipe = BLOCK_RULE_INDEX.combinations.get('base_33_01_steel')
+    const recipe = BLOCK_RULE_INDEX.combinations.get('base_33_01')
     const blocks = [
       createBlock('s001', 'quick-1'),
       createBlock('s002', 'quick-2'),
@@ -47,7 +47,7 @@ describe('blueprint system', () => {
       createBlock('f001', 'quick-fire'),
       createBlock('w002', 'quick-water'),
     ]
-    const plan = getQuickCombinationPlan('base_33_01_steel', blocks)
+    const plan = getQuickCombinationPlan('base_33_01', blocks)
 
     expect(plan).not.toBeNull()
     expect(plan.assignments).toHaveLength(2)
@@ -56,6 +56,6 @@ describe('blueprint system', () => {
   it('does not create a quick plan when required hand blocks are missing', () => {
     const blocks = [createBlock('s003', 'only-one')]
 
-    expect(getQuickCombinationPlan('base_33_01_steel', blocks)).toBeNull()
+    expect(getQuickCombinationPlan('base_33_01', blocks)).toBeNull()
   })
 })

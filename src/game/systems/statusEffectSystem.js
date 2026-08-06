@@ -1,47 +1,46 @@
 export const STATUS_EFFECTS = Object.freeze({
   bleeding: { id: 'bleeding', name: '출혈', icon: '🩸', category: 'damage', categoryName: '상태 이상', timing: 'turnEnd', ignoresArmor: true },
   burn: { id: 'burn', name: '화상', icon: '🔥', category: 'damage', categoryName: '상태 이상', timing: 'turnEnd', ignoresArmor: false },
+  poison: { id: 'poison', name: '중독', icon: '☠', category: 'damage', categoryName: '상태 이상', timing: 'placement', ignoresArmor: true },
   weakness: { id: 'weakness', name: '약화', icon: '↓', category: 'debuff', categoryName: '디버프', timing: 'outgoingDamage', target: 'damage' },
   wound: { id: 'wound', name: '상처', icon: '✚', category: 'debuff', categoryName: '디버프', timing: 'incomingDamage', target: 'damage' },
+  chill: { id: 'chill', name: '오한', icon: '❄', category: 'debuff', categoryName: '디버프', timing: 'armorGain', target: 'armor' },
   stun: { id: 'stun', name: '기절', icon: '★', category: 'control', categoryName: '군중 제어', timing: 'action', target: 'action' },
   rage: { id: 'rage', name: '분노', icon: '↑', category: 'buff', categoryName: '버프', timing: 'outgoingDamage', target: 'damage' },
-  ironclad: { id: 'ironclad', name: '철갑', icon: '◆', category: 'buff', categoryName: '버프', timing: 'immediate', target: 'armor' },
-  double_attack: { id: 'double_attack', name: '연속 공격', icon: '×2', category: 'buff', categoryName: '버프', timing: 'outgoingDamage', target: 'hitCount' },
+  armor: { id: 'armor', name: '철갑', icon: '◆', category: 'buff', categoryName: '버프', timing: 'armorGain', target: 'armor' },
 })
 
 const COMMON_STATUS_IDS = Object.freeze({
-  ATTACK_REDUCTION: 'weakness',
-  DAMAGE_TAKEN_INCREASE: 'wound',
-  BLEEDING: 'bleeding',
+  WEAKNESS: 'weakness',
+  WOUND: 'wound',
+  CHILL: 'chill',
+  BLEED: 'bleeding',
   BURN: 'burn',
+  POISON: 'poison',
   STUN: 'stun',
   RAGE: 'rage',
+  ARMOR: 'armor',
 })
 
-const normalizeRate = (value) => Math.abs(value) >= 1 ? value / 100 : value
 const layerStacks = (layers = []) => layers.reduce((sum, layer) => sum + layer.intensify, 0)
 const effectAmount = (status, fallbackRate = 0) => status.layers?.length
   ? status.layers.reduce((sum, layer) => sum + layer.value * layer.intensify, 0)
   : fallbackRate * (status.stacks ?? 0)
-const nextRemainingTurns = (remainingTurns) =>
-  remainingTurns === null ? null : remainingTurns - 1
-const hasRemainingDuration = (remainingTurns) =>
-  remainingTurns === null || remainingTurns > 0
 
 export const createStatusUpdateFromEffect = (effect) => {
   const sourceId = effect?.parameters?.id
   const id = COMMON_STATUS_IDS[sourceId]
   if (!id) return null
   const value = Number(effect.value ?? 0)
-  const intensify = Number(effect.parameters?.intensify ?? 0)
+  const stacks = sourceId === 'STUN' ? 1 : Math.max(0, Number(effect.value ?? 0))
   return {
     id,
     sourceId,
     // 현재 출혈·화상 전용 처리기는 강도를 상태 스택으로 계산한다.
-    stacks: sourceId === 'STUN' ? 1 : intensify,
+    stacks,
     value,
     duration: Number(effect.parameters?.duration ?? 0),
-    intensify: sourceId === 'STUN' ? 1 : intensify,
+    intensify: stacks,
   }
 }
 
@@ -59,7 +58,7 @@ export const addStatus = (statuses, statusId, stacks = 1, newlyApplied = false) 
       ? {
           ...status,
           stacks: statusId === 'stun' ? 1 : status.stacks + nextStacks,
-          ...(newlyApplied && ['weakness', 'wound'].includes(statusId)
+          ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(statusId)
             ? { newlyAppliedStacks: (status.newlyAppliedStacks ?? 0) + nextStacks }
             : {}),
         }
@@ -67,7 +66,7 @@ export const addStatus = (statuses, statusId, stacks = 1, newlyApplied = false) 
     : [...statuses, {
         id: statusId,
         stacks: nextStacks,
-        ...(newlyApplied && ['weakness', 'wound'].includes(statusId)
+        ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(statusId)
           ? { newlyAppliedStacks: nextStacks }
           : {}),
       }]
@@ -77,22 +76,11 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
   if (!update || !STATUS_EFFECTS[update.id]) return statuses
   if (update.id === 'stun' && statuses.some(({ id }) => id === 'stun')) return statuses
   if (!Number.isFinite(update.intensify) || update.intensify <= 0) return statuses
-  const normalizedValue = ['weakness', 'wound'].includes(update.id)
-    ? normalizeRate(update.value)
-    : update.value
+  const normalizedValue = update.value
   const layer = {
     value: normalizedValue,
     intensify: ['stun', 'double_attack'].includes(update.id) ? 1 : update.intensify,
-    remainingTurns: update.id === 'burn'
-      ? null
-      : update.id === 'stun'
-      ? 1
-      : [-1, -2].includes(update.duration)
-        ? null
-        : update.duration > 0 ? update.duration : 1,
-    ...([-1, -2].includes(update.duration)
-      ? { durationMode: update.duration === -2 ? 'permanent' : 'battle' }
-      : {}),
+    remainingTurns: null,
     ...(newlyApplied ? { newlyApplied: true } : {}),
   }
   const existing = statuses.find(({ id }) => id === update.id)
@@ -101,7 +89,7 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
       id: update.id,
       stacks: layer.intensify,
       layers: [layer],
-      ...(newlyApplied && ['weakness', 'wound'].includes(update.id)
+      ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(update.id)
         ? { newlyAppliedStacks: layer.intensify }
         : {}),
     }]
@@ -111,7 +99,7 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
         ...status,
         layers: [...(status.layers ?? []), layer],
         stacks: status.stacks + layer.intensify,
-        ...(newlyApplied && ['weakness', 'wound'].includes(update.id)
+        ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(update.id)
           ? { newlyAppliedStacks: (status.newlyAppliedStacks ?? 0) + layer.intensify }
           : {}),
       }
@@ -123,13 +111,13 @@ export const getStatusStacks = (statuses, statusId) =>
 
 export const getWoundMultiplier = (statuses) => {
   const wound = statuses.find(({ id }) => id === 'wound')
-  return 1 + (wound ? effectAmount(wound, 0.1) : 0)
+  return 1 + (wound?.stacks ?? 0) * 0.1
 }
 
 export const getAttackPowerMultiplier = () => 1
 export const getAttackReductionMultiplier = (statuses) => {
   const weakness = statuses.find(({ id }) => id === 'weakness')
-  return weakness ? Math.max(0, 1 - effectAmount(weakness, 0.1)) : 1
+  return weakness ? Math.max(0, 1 - weakness.stacks * 0.1) : 1
 }
 
 export const calculateGeneralDamage = ({
@@ -143,9 +131,26 @@ export const calculateGeneralDamage = ({
   * getWoundMultiplier(defenderStatuses),
 ))
 
+const getActiveStacks = (status) => status?.layers?.length
+  ? status.layers
+    .filter(({ newlyApplied }) => !newlyApplied)
+    .reduce((sum, layer) => sum + layer.intensify, 0)
+  : status?.stacks ?? 0
+
 export const getBuffDamageBonus = (statuses) => {
   const rage = statuses.find(({ id }) => id === 'rage')
-  return rage ? effectAmount(rage, 1) : 0
+  return getActiveStacks(rage)
+}
+
+export const getArmorGainBonus = (statuses) => Math.max(0,
+  getActiveStacks(statuses.find(({ id }) => id === 'armor'))
+  - getActiveStacks(statuses.find(({ id }) => id === 'chill')),
+)
+
+export const getPoisonPlacementDamage = (statuses, placedBlockCount = 1) => {
+  const stacks = getActiveStacks(statuses.find(({ id }) => id === 'poison'))
+  if (stacks <= 0 || placedBlockCount <= 0) return 0
+  return Math.max(1, Math.floor(stacks * 0.5)) * placedBlockCount
 }
 
 export const getHitCountBonus = (statuses) => {
@@ -160,41 +165,38 @@ export const resolveTurnEndStatuses = ({
   health,
   armor = 0,
   statuses,
-  placedBlockCount,
   playerPlacedBlockCount,
+  owner = Number.isFinite(playerPlacedBlockCount) ? 'player' : 'monster',
 }) => {
   const bleeding = statuses.find(({ id }) => id === 'bleeding')
   const burn = statuses.find(({ id }) => id === 'burn')
+  const poison = statuses.find(({ id }) => id === 'poison')
   const bleedingDamage = bleeding
-    ? Number.isFinite(playerPlacedBlockCount)
+    ? owner === 'player'
       ? Math.max(0, playerPlacedBlockCount) * (bleeding.stacks ?? 0)
-      : (bleeding.layers ?? []).reduce((sum, layer) => {
-          const baseValue = layer.value === 0 && Number.isFinite(placedBlockCount)
-            ? Math.max(0, placedBlockCount)
-            : layer.value
-          return sum + baseValue * layer.intensify
-        }, 0)
+      : (bleeding.stacks ?? 0) * 3
     : 0
   const healthAfterBleeding = Math.max(0, health - bleedingDamage)
   const survivedBleeding = healthAfterBleeding > 0
   const rawBurnDamage = burn?.stacks ?? 0
   const absorbedBurn = survivedBleeding ? Math.min(armor, rawBurnDamage) : 0
   const burnDamage = survivedBleeding ? rawBurnDamage - absorbedBurn : 0
+  const poisonDamage = owner === 'monster' && survivedBleeding
+    ? getActiveStacks(poison) * 3
+    : 0
   return {
-    health: Math.max(0, healthAfterBleeding - burnDamage),
+    health: Math.max(0, healthAfterBleeding - burnDamage - poisonDamage),
     armor: armor - absorbedBurn,
-    damage: bleedingDamage + burnDamage,
+    damage: bleedingDamage + burnDamage + poisonDamage,
     statuses: statuses
       .map((status) => {
         if (status.id === 'bleeding') {
           const layers = (status.layers ?? [])
             .map((layer) => ({
               ...layer,
-              remainingTurns: nextRemainingTurns(layer.remainingTurns),
               intensify: Math.max(0, layer.intensify - 1),
             }))
-            .filter(({ remainingTurns, intensify }) =>
-              hasRemainingDuration(remainingTurns) && intensify > 0)
+            .filter(({ intensify }) => intensify > 0)
           return { ...status, layers, stacks: layerStacks(layers) }
         }
         if (status.id === 'burn') {
@@ -207,8 +209,16 @@ export const resolveTurnEndStatuses = ({
             .filter(({ intensify }) => intensify > 0)
           return { ...status, layers, stacks: layerStacks(layers) }
         }
+        if (status.id === 'poison') {
+          const layers = (status.layers ?? [])
+            .map((layer) => layer.newlyApplied
+              ? { ...layer, newlyApplied: false }
+              : { ...layer, intensify: Math.floor(layer.intensify / 2) })
+            .filter(({ intensify }) => intensify > 0)
+          return { ...status, layers, stacks: layerStacks(layers) }
+        }
         if (!survivedBleeding) return status
-        if (['weakness', 'wound'].includes(status.id)) {
+        if (['weakness', 'wound', 'chill'].includes(status.id)) {
           const layers = status.layers?.map((layer) => ({
             ...layer,
             newlyApplied: false,
@@ -223,16 +233,10 @@ export const resolveTurnEndStatuses = ({
             stacks: Math.max(0, status.stacks - newlyAppliedStacks - 1) + newlyAppliedStacks,
           }
         }
-        if (['rage', 'ironclad'].includes(status.id) && status.layers) {
+        if (['rage', 'armor'].includes(status.id) && status.layers) {
           const layers = status.layers
-            .map((layer) => ({
-              ...layer,
-              newlyApplied: false,
-              remainingTurns: layer.newlyApplied
-                ? layer.remainingTurns
-                : nextRemainingTurns(layer.remainingTurns),
-            }))
-            .filter(({ remainingTurns }) => hasRemainingDuration(remainingTurns))
+            .filter(({ newlyApplied }) => newlyApplied)
+            .map((layer) => ({ ...layer, newlyApplied: false }))
           return { ...status, layers, stacks: layerStacks(layers) }
         }
         return status

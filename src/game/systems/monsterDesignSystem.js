@@ -4,9 +4,11 @@ import {
   hasMonsterImageAsset,
 } from '../../objects/monsters/monsterImageAssets.js'
 import { createStatusUpdateFromEffect } from './statusEffectSystem.js'
+import { normalizeCombatEffectsV054 } from './combatEffectSchemaSystem.js'
 
 export const MONSTER_DESIGN_SOURCE_PATH = 'docs/references/designs/blockable_monster_design.json'
 export const SUPPORTED_MONSTER_SCHEMA_VERSION = '1.0.0'
+export const SUPPORTED_COMBAT_EFFECT_SPEC_VERSION = '0.5.4'
 
 const GRADE_ADAPTER = Object.freeze({
   NORMAL: 'normal',
@@ -17,30 +19,31 @@ const GRADE_ADAPTER = Object.freeze({
 const SUPPORTED_GRADES = new Set(Object.keys(GRADE_ADAPTER))
 const SUPPORTED_EFFECT_TYPES = new Set([
   'BASE_DAMAGE',
-  'BASE_HIT_COUNT',
   'INDEPENDENT_DAMAGE',
   'BLOCK',
   'RECOVERY',
-  'STATUS_DAMAGE',
+  'DAMAGE_OVER_TIME',
   'DEBUFF',
   'CROWD_CONTROL',
   'BUFF',
-  'EXTRA_TURN',
-  'DECK_CAPACITY',
-  'DRAW',
-  'PLACEMENT_COUNT',
+  'EXTRA',
 ])
 const SUPPORTED_PARAMETER_IDS = new Set([
-  'CURRENT_ACTION',
-  'ATTACK_REDUCTION',
-  'DAMAGE_TAKEN_INCREASE',
-  'BLEEDING',
+  'NONE',
   'BURN',
   'STUN',
-  // 구형 디자이너 파일의 삭제 효과를 진단한 뒤 실행에서 제외하기 위해 허용한다.
   'HIT_COUNT',
   'RAGE',
-  'DAMAGE_BONUS',
+  'WEAKNESS',
+  'WOUND',
+  'CHILL',
+  'BLEED',
+  'POISON',
+  'ARMOR',
+  'DRAW',
+  'ATTACK_RANGE',
+  'TURN',
+  'PLACEMENT',
 ])
 const PARAMETER_OPTIONAL_EFFECT_TYPES = new Set([
   'BASE_DAMAGE',
@@ -90,7 +93,7 @@ const validateEffect = (effect, location, errors) => {
   if (!SUPPORTED_TARGET.test(effect?.target ?? '')) {
     errors.push(`${location}.target: 지원하지 않는 대상 ${effect?.target ?? '없음'}`)
   }
-  const type = effect?.type?.toUpperCase()
+  const type = effect?.type
   if (!SUPPORTED_EFFECT_TYPES.has(type)) {
     errors.push(`${location}.type: 지원하지 않는 효과 타입 ${effect?.type ?? '없음'}`)
   }
@@ -101,7 +104,7 @@ const validateEffect = (effect, location, errors) => {
     return
   }
   const hasOptionalParameterId = PARAMETER_OPTIONAL_EFFECT_TYPES.has(type)
-    && ['', 'NONE', 'CURRENT_ACTION'].includes(parameters.id)
+    && parameters.id === 'NONE'
   if (!hasOptionalParameterId && !SUPPORTED_PARAMETER_IDS.has(parameters.id)) {
     errors.push(`${location}.parameters.id: 런타임 처리기가 없는 변수 ${parameters.id ?? '없음'}`)
   }
@@ -111,11 +114,9 @@ const validateEffect = (effect, location, errors) => {
   if (!Number.isInteger(parameters.intensify) || parameters.intensify < 0) {
     errors.push(`${location}.parameters.intensify: 0 이상의 정수가 필요합니다.`)
   }
-  if (type === 'BASE_HIT_COUNT'
-    && (parameters.id !== 'CURRENT_ACTION'
-      || parameters.duration !== 0
-      || parameters.intensify < 1)) {
-    errors.push(`${location}: BASE_HIT_COUNT는 CURRENT_ACTION / duration 0 / intensify 1+가 필요합니다.`)
+  if (type === 'EXTRA'
+    && !['DRAW', 'HIT_COUNT', 'ATTACK_RANGE', 'TURN', 'PLACEMENT'].includes(parameters.id)) {
+    errors.push(`${location}.parameters.id: EXTRA에서 지원하지 않는 추가 효과 ${parameters.id}`)
   }
 }
 
@@ -130,6 +131,9 @@ export const validateMonsterDesign = (design) => {
   }
   if (design.data_type !== 'blockable_monster_design') {
     errors.push(`data_type: ${design.data_type ?? '없음'} (필요: blockable_monster_design)`)
+  }
+  if (design.metadata?.combat_effect_spec_version !== SUPPORTED_COMBAT_EFFECT_SPEC_VERSION) {
+    errors.push(`metadata.combat_effect_spec_version: ${design.metadata?.combat_effect_spec_version ?? '없음'} (지원: ${SUPPORTED_COMBAT_EFFECT_SPEC_VERSION})`)
   }
   if (design.metadata?.validation_status === 'invalid') {
     errors.push('metadata.validation_status: invalid')
@@ -180,16 +184,6 @@ export const validateMonsterDesign = (design) => {
           .forEach((id) => errors.push(`${skillLocation}.effects: 중복 effect_id ${id}`))
         skill.effects.forEach((effect, effectIndex) =>
           validateEffect(effect, `${skillLocation}.effects[${effectIndex}]`, errors))
-        skill.effects
-          .filter((effect) => effect.type === 'BUFF' && effect.parameters?.id === 'HIT_COUNT')
-          .forEach(() => warnings.push(
-            `${skillLocation}: 삭제된 BUFF + HIT_COUNT 효과를 실행에서 제외합니다.`,
-          ))
-        skill.effects
-          .filter((effect) => effect.type === 'BUFF' && effect.parameters?.id === 'DAMAGE_BONUS')
-          .forEach(() => warnings.push(
-            `${skillLocation}: 미적용 BUFF + DAMAGE_BONUS 효과를 실행에서 제외합니다.`,
-          ))
       }
     })
 
@@ -294,25 +288,25 @@ const normalizeEffect = (effect, order) => ({
   order,
 })
 
-const normalizeSkill = (skill) => ({
-  id: skill.skill_id,
-  display_name: skill.skill_name,
-  description: skill.description,
-  effects: skill.effects
-    .filter((effect) => !(effect.type === 'BUFF'
-      && ['HIT_COUNT', 'DAMAGE_BONUS'].includes(effect.parameters?.id)))
-    .map(normalizeEffect),
-  cooldown_turns: 0,
-  availability_condition: null,
-  intent: {
-    type: skill.effects.some(({ type }) =>
-      ['BASE_DAMAGE', 'BASE_HIT_COUNT', 'INDEPENDENT_DAMAGE', 'STATUS_DAMAGE'].includes(type))
-      ? 'attack'
-      : skill.effects.some(({ type }) => type === 'BLOCK')
-        ? 'defend'
-        : 'special',
-  },
-})
+const normalizeSkill = (skill) => {
+  const effects = normalizeCombatEffectsV054(skill.effects)
+  return {
+    id: skill.skill_id,
+    display_name: skill.skill_name,
+    description: skill.description,
+    effects: effects.map(normalizeEffect),
+    cooldown_turns: 0,
+    availability_condition: null,
+    intent: {
+      type: effects.some(({ type }) =>
+        ['BASE_DAMAGE', 'INDEPENDENT_DAMAGE', 'DAMAGE_OVER_TIME'].includes(type))
+        ? 'attack'
+        : effects.some(({ type }) => type === 'BLOCK')
+          ? 'defend'
+          : 'special',
+    },
+  }
+}
 
 const normalizeTrigger = (trigger) => ({
   ...trigger,
@@ -517,17 +511,19 @@ export const resolveMonsterAbility = (ability) => {
     selfBaseHitAttacks: [],
     selfHealing: 0,
     selfArmor: 0,
+    hitCountBonus: 0,
     extraTurns: 0,
     ignoredBlockResourceEffects: [],
     playerStatuses: [],
     selfStatuses: [],
     unsupportedStatuses: [],
   }
-  for (const effect of [...(ability?.effects ?? [])].sort((a, b) => a.order - b.order)) {
+  const effects = normalizeCombatEffectsV054(ability?.effects ?? [])
+  for (const effect of [...effects].sort((a, b) => a.order - b.order)) {
     const type = effect.type?.toUpperCase()
     const target = effect.target
     const value = Number(effect.value)
-    const intensify = Number(effect.parameters?.intensify ?? 0)
+    const parameterId = effect.parameters?.id
     const targetPrefix = target === 'self' ? 'self' : 'player'
     if (type === 'BASE_DAMAGE') {
       result[`${targetPrefix}BaseDamage`] += value
@@ -537,21 +533,16 @@ export const resolveMonsterAbility = (ability) => {
       result[`${targetPrefix}IndependentDamage`] += value
       result[`${targetPrefix}Damage`] += value
     }
-    if (type === 'BASE_HIT_COUNT') {
-      result[`${targetPrefix}BaseHitAttacks`].push({
-        value,
-        hitCount: intensify,
-        target,
-      })
-      result[`${targetPrefix}Damage`] += value * intensify
-    }
     if (type === 'RECOVERY' && target === 'self') result.selfHealing += value
     if (type === 'BLOCK' && target === 'self') result.selfArmor += value
-    if (type === 'EXTRA_TURN') result.extraTurns += Math.max(0, value)
-    if (['DECK_CAPACITY', 'DRAW', 'PLACEMENT_COUNT'].includes(type)) {
-      result.ignoredBlockResourceEffects.push(type)
+    if (type === 'EXTRA' && parameterId === 'HIT_COUNT') {
+      result.hitCountBonus += Math.max(0, value)
     }
-    if (['STATUS_DAMAGE', 'DEBUFF', 'CROWD_CONTROL', 'BUFF'].includes(type)) {
+    if (type === 'EXTRA' && parameterId === 'TURN') result.extraTurns += Math.max(0, value)
+    if (type === 'EXTRA' && ['DRAW', 'PLACEMENT'].includes(parameterId)) {
+      result.ignoredBlockResourceEffects.push(parameterId)
+    }
+    if (['DAMAGE_OVER_TIME', 'DEBUFF', 'CROWD_CONTROL', 'BUFF'].includes(type)) {
       const status = createStatusUpdateFromEffect(effect)
       if (!status) result.unsupportedStatuses.push(effect.parameters.id)
       else result[target === 'self' ? 'selfStatuses' : 'playerStatuses'].push(status)
