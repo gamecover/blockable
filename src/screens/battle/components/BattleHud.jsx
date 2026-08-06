@@ -1,13 +1,40 @@
 import { StatusEffectList } from './StatusEffectList.jsx'
 import { GoldAmount } from '../../../components/ui/GoldAmount.jsx'
+import playerHudFrame from '../assets/pictures/main_bar_left.png'
+import turnHudFrame from '../assets/pictures/main_bar_middle.png'
+import monsterHudFrame from '../assets/pictures/main_bar_right.png'
 
-export function BattleHud({ health, maxHealth, armor, gold, floor, turn, monster, placedCount, placementLimit = 3, playerStatuses }) {
+export function BattleHud({ health, maxHealth, armor, gold, floor, turn, battleType, dungeonName, placedCount, placementLimit = 3, playerStatuses }) {
   return (
     <div className="battle-hud">
       <div className="battle-hud__status">
-        <div className="hud-card player"><span>대장장이</span><strong>♥ {health}/{maxHealth}</strong><small>방어도 {armor} · <em><GoldAmount amount={gold} /></em></small><StatusEffectList statuses={playerStatuses} ownerName="대장장이" /></div>
-        <div className="turn-plaque"><span>FLOOR {floor}</span><strong>TURN {turn}</strong><small>{placedCount}/{placementLimit} 블록 배치</small></div>
-        <div className="hud-card monster"><span>{monster.name}</span><strong>♥ {monster.currentHealth}/{monster.health}</strong><small>다음 행동: {monster.intent.icon} {monster.intent.label}{monster.intent.amount ? ` · ${monster.intent.amount}` : ''}{monster.armor ? ` · 방어도 ${monster.armor}` : ''}</small></div>
+        <div className="battle-hud__panel battle-hud__floor">
+          <img className="battle-hud__frame" src={playerHudFrame} alt="" />
+          <div className="battle-hud__panel-content">
+            <span>{battleType === 'boss' ? 'BOSS FLOOR' : `FLOOR ${floor}`}</span>
+            <strong>{turn} TURN</strong>
+            <small>{placedCount}/{placementLimit} 블록 배치</small>
+          </div>
+        </div>
+        <div className="battle-hud__panel battle-hud__dungeon-name">
+          <img className="battle-hud__frame" src={turnHudFrame} alt="" />
+          <div className="battle-hud__panel-content">
+            <strong>{dungeonName}</strong>
+          </div>
+        </div>
+        <div className="battle-hud__panel battle-hud__utility">
+          <img className="battle-hud__frame" src={monsterHudFrame} alt="" />
+          <div className="battle-hud__panel-content">
+            <GoldAmount amount={gold} />
+            <span>Gold</span>
+            <div className="battle-hud__menu-slot" aria-label="전투 메뉴" />
+          </div>
+        </div>
+      </div>
+      <div className="battle-health-summary" aria-label={`대장장이 체력 ${health}/${maxHealth}`}>
+        <strong>♥ {health}/{maxHealth}</strong>
+        <small>방어도 {armor}</small>
+        <StatusEffectList statuses={playerStatuses} ownerName="대장장이" />
       </div>
     </div>
   )

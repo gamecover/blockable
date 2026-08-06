@@ -119,6 +119,7 @@ export function BattleScreen({
     armor,
     gold,
     floor,
+    map,
     combat,
     battlePiles,
     damagePlayer,
@@ -457,7 +458,6 @@ export function BattleScreen({
     }, 450)
   }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
 
-  const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
   const previewEffects = useMemo(() => resolvePlayerTurn(board), [board])
   const previewTargetSlotIds = useMemo(() => getPlayerTargetSlotIds({
@@ -522,7 +522,8 @@ export function BattleScreen({
         gold={gold}
         floor={floor}
         turn={turn}
-        monster={{ ...displayMonster, intent }}
+        battleType={battleType}
+        dungeonName={map?.dungeonName ?? '던전'}
         placedCount={board.placedCount}
         placementLimit={board.placementLimit}
         playerStatuses={combat.player.statuses}

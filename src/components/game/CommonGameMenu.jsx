@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import blueprintClosedIcon from '../../assets/pictures/ui/icons/icon_blueprints_alpha.png'
 import blueprintOpenIcon from '../../assets/pictures/ui/icons/icon_blueprints_click_alpha.png'
 import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
@@ -166,7 +167,14 @@ export function CommonGameMenu({
   onMainMenu,
 }) {
   const [modal, setModal] = useState(null)
+  const [battleHudTarget, setBattleHudTarget] = useState(null)
   const saveStatus = useSyncExternalStore(saveStatusStore.subscribe, saveStatusStore.getSnapshot)
+
+  useEffect(() => {
+    setBattleHudTarget(currentScreen === 'battle'
+      ? document.querySelector('.battle-hud__menu-slot')
+      : null)
+  }, [currentScreen])
 
   useEffect(() => {
     gameBridge.emit(GAME_EVENTS.SET_INPUT_ENABLED, !modal)
@@ -180,10 +188,9 @@ export function CommonGameMenu({
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [modal])
 
-  return (
-    <>
-      <aside className={`common-game-menu common-game-menu--${currentScreen}`} aria-label="공통 게임 메뉴">
-        <strong className="common-game-menu__floor" aria-label={currentScreen === 'worldMap' ? '전체 지도' : `현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{currentScreen === 'worldMap' ? 'WORLD' : `${floor}/${MAX_FLOOR}F`}</strong>
+  const menu = (
+    <aside className={`common-game-menu common-game-menu--${currentScreen}`} aria-label="공통 게임 메뉴">
+      {currentScreen !== 'battle' && <strong className="common-game-menu__floor" aria-label={currentScreen === 'worldMap' ? '전체 지도' : `현재 ${floor}층, 전체 ${MAX_FLOOR}층`}>{currentScreen === 'worldMap' ? 'WORLD' : `${floor}/${MAX_FLOOR}F`}</strong>}
         {!['map', 'worldMap'].includes(currentScreen) && <IconButton label="지도 확인" icon="⌘" onClick={() => setModal('map')} />}
         {activeDungeonId && <IconButton label="전체 지도 확인" icon="◎" onClick={() => setModal('worldMap')} />}
         {currentScreen !== 'battle' && <IconButton label="현재 덱 확인" icon="▦" onClick={() => setModal('deck')} />}
@@ -194,7 +201,14 @@ export function CommonGameMenu({
         />
         <IconButton label="설정 열기" icon="⚙" onClick={() => setModal('settings')} />
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
-      </aside>
+    </aside>
+  )
+
+  return (
+    <>
+      {currentScreen === 'battle' && battleHudTarget
+        ? createPortal(menu, battleHudTarget)
+        : menu}
       {modal && <div className={`common-modal${modal === 'settings' ? ' common-modal--settings' : ''}`} onMouseDown={(event) => { if (event.target === event.currentTarget && modal !== 'main') setModal(null) }}>
         {modal === 'map' && <RunMapModal map={map} floor={floor} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} onClose={() => setModal(null)} />}
         {modal === 'worldMap' && <WorldMapModal worldMap={worldMap} activeDungeonId={activeDungeonId} onClose={() => setModal(null)} />}
