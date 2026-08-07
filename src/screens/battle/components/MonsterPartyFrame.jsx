@@ -53,7 +53,10 @@ export function MonsterPartyFrame({
         type="button"
         key={slotId}
         className={`monster-party-frame__slot slot-${slotId}${selected ? ' selected' : ''}${inRange ? ' in-range' : ''}${acting ? ' acting' : ''}`}
-        style={{ '--monster-slot-image': monster.imageUrl ? `url(${monster.imageUrl})` : 'none' }}
+        style={{
+          '--monster-slot-image': monster.imageUrl ? `url(${monster.imageUrl})` : 'none',
+          '--monster-card-frame': `url(${countFrame})`,
+        }}
         disabled={!canSelect}
         onClick={() => onSelect(monster.instanceId)}
         aria-label={`${slotId}번 ${monster.name}, 체력 ${monster.currentHealth}/${monster.health}${selected ? ', 현재 중심 대상' : inRange ? ', 범위 대상' : ''}`}
@@ -72,10 +75,11 @@ export function MonsterPartyFrame({
     <div className="monster-party-frame" aria-label="몬스터 고정 슬롯 정보">
       <section className="monster-party-frame__count" aria-label="참여 적 목록">
         <img className="monster-party-frame__frame" src={monsterCountFrame} alt="" aria-hidden="true" />
-        <img className="monster-party-frame__count-layout" src={countFrame} alt="" aria-hidden="true" />
         <div className="monster-party-frame__count-content">
           <strong>적 정보</strong>
-          <div className={`monster-party-frame__normal monster-party-frame__normal--${combatants.length <= 2 ? 'half' : 'quarter'}`}>
+          <div
+            className={`monster-party-frame__normal monster-party-frame__normal--${combatants.length <= 2 ? 'half' : 'quarter'}`}
+          >
             {combatants
               .filter(({ currentHealth }) => currentHealth > 0)
               .sort((left, right) => left.slotId - right.slotId)
