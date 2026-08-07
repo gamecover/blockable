@@ -593,6 +593,7 @@ export function BattleScreen({
         targetSlotIds={previewTargetSlotIds}
         canSelect={machineState.matches('playerInput')}
         onSelect={setSelectedMonsterId}
+        battleType={battleType}
       />
       <div className="battle-left-center-cluster">
         {machineState.matches('playerInput') && (
