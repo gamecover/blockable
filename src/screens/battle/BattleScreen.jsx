@@ -8,6 +8,7 @@ import { StatusEffectList } from './components/StatusEffectList.jsx'
 import { BattlePileModal } from './components/BattlePileModal.jsx'
 import { MonsterPartyFrame } from './components/MonsterPartyFrame.jsx'
 import { BattleCenterOverlay } from './components/BattleCenterOverlay.jsx'
+import { CombinationEffectPanel } from './components/CombinationEffectPanel.jsx'
 import { TutorialOverlay } from '../tutorial/TutorialOverlay.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
@@ -41,6 +42,9 @@ import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { useRunStore, useRunStoreApi } from '../../game/state/runStoreContext.js'
 import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
 import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
+import discardIcon from '../../assets/pictures/ui/icon_discard.png'
+import turnEndButtonFrame from '../../assets/pictures/ui/button_turn_end_base.png'
+import blockPack from '../../assets/pictures/ui/block_pack.png'
 
 const prepareMonsterTurn = (monster, runtime, turn, health) => {
   const context = { turn, monster_hp_ratio: health / monster.health }
@@ -635,6 +639,11 @@ export function BattleScreen({
         tutorialMode={tutorialMode}
         knownBlueprintIds={knownBlueprintIds}
       />
+      <button className="remaining-blocks-button" type="button" onClick={() => setOpenPile('remaining')} aria-label={`남은 블록 ${battlePiles.drawPile.length}`}>
+        <img src={blockPack} alt="" aria-hidden="true" />
+        <span>남은 블록 <b>{battlePiles.drawPile.length}</b></span>
+      </button>
+      <CombinationEffectPanel effects={previewEffects} />
       <aside className="battle-toolbag-hint" aria-label="도구 주머니">
         <strong>도구 주머니</strong>
         <span>
@@ -646,13 +655,21 @@ export function BattleScreen({
       {developerMode && <BattleDebugPanel entries={debugEntries} />}
       <div className="battle-controls">
         <button className="text-button" onClick={onAbandon}>전투 포기</button>
-        <div data-tutorial-target="piles"><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.drawPile.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
+        <div className="battle-discard-control">
+          <button className="battle-discard-button" type="button" onClick={() => setOpenPile('discard')} aria-label="버린 블록">
+            <img src={discardIcon} alt="" aria-hidden="true" />
+          </button>
+          <span>버린 블록 <b>{battlePiles.discardPile.length}</b></span>
+        </div>
         <div className="battle-action-buttons">
           {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
           <button data-tutorial-target="end-turn" className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={() => {
             if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'turn-ended' })
             endTurn()
-          }}>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'} <span>→</span></button>
+          }}>
+            <img src={turnEndButtonFrame} alt="" aria-hidden="true" />
+            <span>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'}</span>
+          </button>
         </div>
       </div>
       {openPile && <BattlePileModal

@@ -192,7 +192,6 @@ export class BattleScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
-    this.createEffectSummary()
     this.handContainer = this.add.container(0, 0).setDepth(1)
     this.hand.forEach((block, index) => this.createPiece(block, index))
     this.refreshHandSlotPositions()
@@ -946,12 +945,6 @@ export class BattleScene extends Phaser.Scene {
     const combatFormulaLines = this.developerMode
       ? combatFormula.lines
       : []
-    this.renderEffectSummary(
-      disclosedEffectValues,
-      combinationDetails,
-      effects.colorSynergy.labels,
-      combatFormulaLines,
-    )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
       placementLimit: this.getPlacementLimit(),

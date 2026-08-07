@@ -33,6 +33,10 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
     .filter(({ plan }) => plan)
 
   const stopListDrag = () => {
+    const drag = dragRef.current
+    if (drag?.captured && drag.captureTarget?.hasPointerCapture(drag.pointerId)) {
+      drag.captureTarget.releasePointerCapture(drag.pointerId)
+    }
     dragRef.current = null
     setIsListDragging(false)
     setDragPreview(null)
@@ -49,11 +53,16 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
     if (listRef.current) updateScrollIndicators(listRef.current)
   }, [blueprints.length])
 
+  useEffect(() => {
+    window.addEventListener('blur', stopListDrag)
+    return () => window.removeEventListener('blur', stopListDrag)
+  }, [])
+
   return (
     <section className="battle-left-ui" aria-label="전투 왼쪽 UI">
-      <img className="battle-left-ui__icon" src={blueprintIcon} alt="" />
-      <aside className="quick-blueprints" data-tutorial-target="blueprint" aria-label="퀵 조합 청사진">
-        <img className="quick-blueprints__frame" src={blueprintRecipeBase} alt="" />
+      <img className="battle-left-ui__icon" src={blueprintIcon} alt="" draggable={false} />
+      <aside className="quick-blueprints" data-tutorial-target="blueprint" aria-label="퀵 조합 청사진" onDragStart={(event) => event.preventDefault()}>
+        <img className="quick-blueprints__frame" src={blueprintRecipeBase} alt="" draggable={false} />
         <header><strong>청사진</strong></header>
         {scrollIndicators.top && <span className="quick-blueprints__scroll-indicator quick-blueprints__scroll-indicator--top" aria-hidden="true">▲</span>}
         <div
@@ -62,9 +71,21 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
           onPointerDown={(event) => {
             if (event.button !== 0) return
             const item = event.target.closest('.quick-blueprints__item')
+            if (!item || !event.currentTarget.contains(item)) return
+            const dragSource = event.target.closest('[data-blueprint-drag-source="true"]')
             const combination = blueprints.find(({ combination: candidate }) => candidate.id === item?.dataset.combinationId)?.combination
-            dragRef.current = { pointerId: event.pointerId, combination, startX: event.clientX, startY: event.clientY, startScrollTop: event.currentTarget.scrollTop, mode: null }
-            event.currentTarget.setPointerCapture(event.pointerId)
+            const canStartBlockDrag = Boolean(dragSource && item === dragSource && combination)
+            dragRef.current = {
+              pointerId: event.pointerId,
+              combination: canStartBlockDrag ? combination : null,
+              canStartBlockDrag,
+              startX: event.clientX,
+              startY: event.clientY,
+              startScrollTop: event.currentTarget.scrollTop,
+              mode: null,
+              captured: false,
+              captureTarget: event.currentTarget,
+            }
           }}
           onPointerMove={(event) => {
             const drag = dragRef.current
@@ -72,7 +93,18 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
             const deltaX = event.clientX - drag.startX
             const deltaY = event.clientY - drag.startY
             if (!drag.mode && Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) return
-            if (!drag.mode) drag.mode = Math.abs(deltaY) > Math.abs(deltaX) ? 'scroll' : 'block'
+            if (!drag.mode) {
+              drag.mode = Math.abs(deltaY) > Math.abs(deltaX) ? 'scroll' : 'block'
+              if (drag.mode === 'block' && !drag.canStartBlockDrag) {
+                stopListDrag()
+                event.preventDefault()
+                return
+              }
+              if (drag.mode === 'block') {
+                event.currentTarget.setPointerCapture(event.pointerId)
+                drag.captured = true
+              }
+            }
             if (drag.mode === 'scroll') {
               event.currentTarget.scrollTop = drag.startScrollTop - deltaY
               updateScrollIndicators(event.currentTarget)
@@ -84,12 +116,19 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
           }}
           onPointerUp={(event) => {
             const drag = dragRef.current
+            if (!drag || drag.pointerId !== event.pointerId) return
             if (drag?.mode === 'block' && drag.combination) {
               gameBridge.emit(GAME_EVENTS.QUICK_COMBINATION_DROP, { combinationId: drag.combination.id, clientX: event.clientX, clientY: event.clientY })
             }
             stopListDrag()
           }}
           onPointerCancel={stopListDrag}
+          onLostPointerCapture={stopListDrag}
+          onDragEnd={stopListDrag}
+          onDrop={stopListDrag}
+          onPointerLeave={() => {
+            if (dragRef.current?.mode === 'scroll') stopListDrag()
+          }}
           onScroll={(event) => updateScrollIndicators(event.currentTarget)}
         >
           {blueprints.length === 0
@@ -99,10 +138,11 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
                 type="button"
                 className="quick-blueprints__item available"
                 data-combination-id={combination.id}
+                data-blueprint-drag-source="true"
                 title={`${combination.display_name} 퀵 조합`}
                 key={combination.id}
               >
-                <img className="quick-blueprints__detail-frame" src={blueprintRecipeDetail} alt="" />
+                <img className="quick-blueprints__detail-frame" src={blueprintRecipeDetail} alt="" draggable={false} />
                 <BlueprintRecipe combination={combination} />
                 <span className="quick-blueprints__drag-image" aria-hidden="true">
                   <BlueprintRecipe combination={combination} compact />
@@ -113,7 +153,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
         {scrollIndicators.bottom && <span className="quick-blueprints__scroll-indicator quick-blueprints__scroll-indicator--bottom" aria-hidden="true">▼</span>}
       </aside>
       <section className="quick-item-box" aria-label="아이템 상자">
-        <img className="quick-item-box__frame" src={itemBox} alt="" />
+        <img className="quick-item-box__frame" src={itemBox} alt="" draggable={false} />
         <strong>아이템 상자</strong>
       </section>
       {dragPreview && createPortal(

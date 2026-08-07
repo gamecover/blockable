@@ -1,3 +1,7 @@
+import { StatusEffectList } from './StatusEffectList.jsx'
+import monsterCountFrame from '../../../assets/pictures/ui/monster_count_base.png'
+import monsterDetailFrame from '../../../assets/pictures/ui/monster_detail.png'
+
 const SLOTS = [1, 2, 3, 4, 5]
 
 export function MonsterPartyFrame({
@@ -9,6 +13,7 @@ export function MonsterPartyFrame({
   onSelect,
 }) {
   const bySlot = new Map(combatants.map((entry) => [entry.slotId, entry]))
+  const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
   const renderSlot = (slotId) => {
     const monster = bySlot.get(slotId)
     if (!monster) return <span className={`monster-party-frame__placeholder slot-${slotId}`} key={slotId} aria-hidden="true" />
@@ -50,8 +55,27 @@ export function MonsterPartyFrame({
 
   return (
     <div className="monster-party-frame" aria-label="몬스터 고정 슬롯 정보">
-      {bySlot.has(5) && <div className="monster-party-frame__boss">{renderSlot(5)}</div>}
-      <div className="monster-party-frame__normal">{SLOTS.slice(0, 4).map(renderSlot)}</div>
+      <section className="monster-party-frame__count" aria-label="참여 적 목록">
+        <img className="monster-party-frame__frame" src={monsterCountFrame} alt="" aria-hidden="true" />
+        <div className="monster-party-frame__count-content">
+          <strong>적 정보 {combatants.length}</strong>
+          <div className="monster-party-frame__normal">{SLOTS.map(renderSlot)}</div>
+        </div>
+      </section>
+      <section className="monster-party-frame__detail" aria-label="선택된 적 정보">
+        <img className="monster-party-frame__frame" src={monsterDetailFrame} alt="" aria-hidden="true" />
+        {selectedMonster && (
+          <div className="monster-party-frame__detail-content">
+            <span className="monster-party-frame__detail-label">적 상세 정보</span>
+            <strong>{selectedMonster.name}</strong>
+            <span className="monster-party-frame__health">
+              <i style={{ width: `${Math.max(0, selectedMonster.currentHealth / selectedMonster.health) * 100}%` }} />
+            </span>
+            <small>{selectedMonster.currentHealth}/{selectedMonster.health}</small>
+            <StatusEffectList statuses={selectedMonster.statuses} ownerName={selectedMonster.name} />
+          </div>
+        )}
+      </section>
     </div>
   )
 }
