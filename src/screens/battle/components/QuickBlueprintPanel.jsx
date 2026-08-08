@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { GAME_EVENTS, gameBridge } from '../../../game/events/gameEvents.js'
 import {
-  getKnownBlueprints,
+  getBlueprintCatalog,
   getQuickCombinationPlan,
 } from '../../../game/systems/blueprintSystem.js'
 import { PLACEMENTS_PER_TURN } from '../../../game/constants/gameConfig.js'
@@ -22,7 +22,8 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
   const availableBlocks = hand.filter(({ id }) => !placedIds.has(id))
   const remainingPlacements = PLACEMENTS_PER_TURN - placedBlocks.length
   const allowedIds = allowedCombinationIds ? new Set(allowedCombinationIds) : null
-  const blueprints = getKnownBlueprints(discoveredBlueprintIds)
+  const discoveredIds = new Set(discoveredBlueprintIds)
+  const blueprints = getBlueprintCatalog()
     .filter(({ id }) => !allowedIds || allowedIds.has(id))
     .map((combination) => ({
       combination,
@@ -40,6 +41,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
     dragRef.current = null
     setIsListDragging(false)
     setDragPreview(null)
+    gameBridge.emit(GAME_EVENTS.QUICK_COMBINATION_PREVIEW_CLEAR)
   }
 
   const updateScrollIndicators = (target) => {
@@ -73,8 +75,9 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
             const item = event.target.closest('.quick-blueprints__item')
             if (!item || !event.currentTarget.contains(item)) return
             const dragSource = event.target.closest('[data-blueprint-drag-source="true"]')
-            const combination = blueprints.find(({ combination: candidate }) => candidate.id === item?.dataset.combinationId)?.combination
-            const canStartBlockDrag = Boolean(dragSource && item === dragSource && combination)
+            const blueprint = blueprints.find(({ combination: candidate }) => candidate.id === item?.dataset.combinationId)
+            const combination = blueprint?.combination
+            const canStartBlockDrag = Boolean(dragSource && item === dragSource && combination && blueprint.plan)
             dragRef.current = {
               pointerId: event.pointerId,
               combination: canStartBlockDrag ? combination : null,
@@ -112,7 +115,10 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
               setIsListDragging(true)
               return
             }
-            if (drag.combination) setDragPreview({ combination: drag.combination, x: event.clientX, y: event.clientY })
+            if (drag.combination) {
+              setDragPreview({ combination: drag.combination, x: event.clientX, y: event.clientY })
+              gameBridge.emit(GAME_EVENTS.QUICK_COMBINATION_PREVIEW, { combinationId: drag.combination.id, clientX: event.clientX, clientY: event.clientY })
+            }
           }}
           onPointerUp={(event) => {
             const drag = dragRef.current
@@ -143,7 +149,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
                 key={combination.id}
               >
                 <img className="quick-blueprints__detail-frame" src={blueprintRecipeDetail} alt="" draggable={false} />
-                <BlueprintRecipe combination={combination} />
+                <BlueprintRecipe combination={combination} isDiscovered={discoveredIds.has(combination.id)} />
                 <span className="quick-blueprints__drag-image" aria-hidden="true">
                   <BlueprintRecipe combination={combination} compact />
                 </span>

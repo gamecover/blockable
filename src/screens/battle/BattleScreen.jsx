@@ -28,7 +28,7 @@ import {
   resolvePlayerAction,
 } from '../../game/systems/playerAttackSystem.js'
 import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
-import { getKnownBlueprints, isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
+import { isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
 import {
   applyMonsterEvent,
   applyMonsterTurnTriggers,
@@ -143,10 +143,7 @@ export function BattleScreen({
   } = useRunStore()
   const playerStunned = combat.player.statuses.some(({ id, stacks }) =>
     id === 'stun' && stacks > 0)
-  const knownBlueprintIds = useMemo(
-    () => getKnownBlueprints(discoveredBlueprintIds).map(({ id }) => id),
-    [discoveredBlueprintIds],
-  )
+  const knownBlueprintIds = useMemo(() => discoveredBlueprintIds, [discoveredBlueprintIds])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
     const addedBlocks = Math.max(0, nextBoard.placedCount - previousPlacedCount.current)
@@ -166,7 +163,7 @@ export function BattleScreen({
     previousPlacedCount.current = nextBoard.placedCount
     setBoard(nextBoard)
     addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
-  }), [addLog, damagePlayerIgnoringArmor, developerMode, onLose, runStore, send])
+  }), [addLog, damagePlayerIgnoringArmor, onLose, runStore, send])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.TUTORIAL_ACTION, ({ type }) => {
     if (!tutorialMode || type !== 'free-combat-started') return
@@ -201,7 +198,7 @@ export function BattleScreen({
       return
     }
     onWin()
-  }, [addLog, developerMode, onWin, send, tutorialMode])
+  }, [addLog, onWin, send, tutorialMode])
 
   const endTurn = useCallback(() => {
     const currentPlayerStatuses = runStore.getState().combat.player.statuses
@@ -217,19 +214,6 @@ export function BattleScreen({
     if (stunned) {
       consumeCombatStatus('player', 'stun')
       addLog('플레이어 · 기절로 행동 취소')
-    }
-    if (rawResult.combinations.length) {
-      const previouslyDiscovered = new Set(discoveredBlueprintIds)
-      const newlyDiscovered = rawResult.combinations
-        .map((id) => BLOCK_RULE_INDEX.combinations.get(id))
-        .filter((combination) =>
-          combination
-          && !isStarterBlueprint(combination)
-          && !previouslyDiscovered.has(combination.id))
-      if (newlyDiscovered.length) {
-        setBlueprintNotice(newlyDiscovered.map(({ display_name: name }) => name))
-      }
-      discoverBlueprints(rawResult.combinations)
     }
     const playerAction = resolvePlayerAction({
       combatants,
@@ -250,6 +234,16 @@ export function BattleScreen({
       applyCombatStatus('player', status, undefined, true)
     })
     setCombatants(afterPlayerAction)
+    const discovered = new Set(runStore.getState().discoveredBlueprintIds)
+    const newRecipeIds = [...new Set(rawResult.combinations ?? [])]
+      .filter((id) => {
+        const combination = BLOCK_RULE_INDEX.combinations.get(id)
+        return combination && !isStarterBlueprint(combination) && !discovered.has(id)
+      })
+    if (newRecipeIds.length) {
+      setBlueprintNotice(newRecipeIds.map((id) => BLOCK_RULE_INDEX.combinations.get(id).display_name))
+      discoverBlueprints(newRecipeIds)
+    }
     const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
     addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
 
@@ -457,7 +451,7 @@ export function BattleScreen({
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
+  }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, discoverBlueprints, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
 
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
   const previewEffects = useMemo(() => resolvePlayerTurn(board), [board])
@@ -609,7 +603,7 @@ export function BattleScreen({
       </div>
       {blueprintNotice.length > 0 && (
         <div className="blueprint-discovery" role="status" aria-live="polite">
-          <b>새로운 조합 발견</b>
+          <b>새로운 조합식을 알아냈습니다.</b>
           <strong>{blueprintNotice.join(', ')}</strong>
           <span>이제 청사진에서 확인할 수 있습니다.</span>
           <button type="button" onClick={() => setBlueprintNotice([])} aria-label="조합 발견 알림 닫기">×</button>
@@ -641,7 +635,10 @@ export function BattleScreen({
         <img src={blockPack} alt="" aria-hidden="true" />
         <span>남은 블록 <b>{battlePiles.drawPile.length}</b></span>
       </button>
-      <CombinationEffectPanel effects={previewEffects} />
+      <CombinationEffectPanel
+        effects={previewEffects}
+        discoveredBlueprintIds={discoveredBlueprintIds}
+      />
       <aside className="battle-formwork-hint" aria-label="거푸집 사용법">
         <strong>거푸집</strong>
         <span>

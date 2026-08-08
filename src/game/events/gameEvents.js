@@ -6,6 +6,8 @@ export const GAME_EVENTS = {
   BOARD_ARMOR_CHANGED: 'board:armor-changed',
   BOARD_COMBAT_CONTEXT_CHANGED: 'board:combat-context-changed',
   QUICK_COMBINATION_DROP: 'quick-combination:drop',
+  QUICK_COMBINATION_PREVIEW: 'quick-combination:preview',
+  QUICK_COMBINATION_PREVIEW_CLEAR: 'quick-combination:preview-clear',
   SET_INPUT_ENABLED: 'input:set-enabled',
   TUTORIAL_ACTION: 'tutorial:action',
 }

@@ -81,6 +81,18 @@ const FORMWORK_AURA_COLORS = {
 
 const boundaryPointKey = ({ x, y }) => `${x},${y}`
 
+const rotateQuickCell = ({ x, y }, width, height, turns) => {
+  switch (turns % 4) {
+    case 1: return { x: height - 1 - y, y: x }
+    case 2: return { x: width - 1 - x, y: height - 1 - y }
+    case 3: return { x: y, y: width - 1 - x }
+    default: return { x, y }
+  }
+}
+
+const getRotatedQuickLayoutSize = ({ width, height }, turns) =>
+  turns % 2 ? { width: height, height: width } : { width, height }
+
 const getClockwiseBoundaryLoops = (cells) => {
   const cellKeys = new Set(cells.map(({ x, y }) => `${x},${y}`))
   const segments = cells.flatMap(({ x, y }) => [
@@ -146,17 +158,23 @@ export class BattleScene extends Phaser.Scene {
       bounds: getBlockVisualBounds(layoutBlockForHand(block, 0, HAND_METRICS)),
     }))
     this.selected = null
+    this.quickCombinationPreview = null
     this.placementOrder = 0
     this.unsubReset = null
     this.unsubInput = null
     this.unsubQuickCombination = null
+    this.unsubQuickCombinationPreview = null
+    this.unsubQuickCombinationPreviewClear = null
     this.unsubHealthChanged = null
     this.unsubArmorChanged = null
     this.unsubCombatContextChanged = null
     this.inputEnabled = true
     this.handleWindowKeyDown = (event) => {
       if (!this.inputEnabled) return
-      if (event.code === 'KeyR' && this.selected) {
+      if (event.code === 'KeyR' && this.quickCombinationPreview) {
+        event.preventDefault()
+        this.rotateQuickCombinationPreview()
+      } else if (event.code === 'KeyR' && this.selected) {
         event.preventDefault()
         this.rotateSelected()
       }
@@ -193,6 +211,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
     this.handContainer = this.add.container(0, 0).setDepth(1)
+    this.quickCombinationGhost = this.add.container(0, 0).setDepth(19).setVisible(false)
     this.hand.forEach((block, index) => this.createPiece(block, index))
     this.refreshHandSlotPositions()
     window.addEventListener('keydown', this.handleWindowKeyDown)
@@ -227,6 +246,14 @@ export class BattleScene extends Phaser.Scene {
       GAME_EVENTS.QUICK_COMBINATION_DROP,
       (payload) => this.placeQuickCombination(payload),
     )
+    this.unsubQuickCombinationPreview = gameBridge.on(
+      GAME_EVENTS.QUICK_COMBINATION_PREVIEW,
+      (payload) => this.previewQuickCombination(payload),
+    )
+    this.unsubQuickCombinationPreviewClear = gameBridge.on(
+      GAME_EVENTS.QUICK_COMBINATION_PREVIEW_CLEAR,
+      () => this.clearQuickCombinationPreview(),
+    )
     this.unsubInput = gameBridge.on(GAME_EVENTS.SET_INPUT_ENABLED, (enabled) => {
       this.inputEnabled = enabled
       this.input.enabled = enabled
@@ -243,6 +270,8 @@ export class BattleScene extends Phaser.Scene {
       this.unsubReset?.()
       this.unsubInput?.()
       this.unsubQuickCombination?.()
+      this.unsubQuickCombinationPreview?.()
+      this.unsubQuickCombinationPreviewClear?.()
       this.unsubHealthChanged?.()
       this.unsubArmorChanged?.()
       this.unsubCombatContextChanged?.()
@@ -826,7 +855,7 @@ export class BattleScene extends Phaser.Scene {
     const anchor = getBlockAnchorOffset(layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS))
     piece.container.setPosition(world.x + anchor.x, world.y + anchor.y)
     this.refreshPlacedHighlights()
-    this.emitBoardState()
+    this.emitBoardState({ placementCommitted: true })
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-placed' })
     return true
   }
@@ -839,57 +868,125 @@ export class BattleScene extends Phaser.Scene {
     this.emitBoardState()
   }
 
-  placeQuickCombination({ combinationId, clientX, clientY }) {
+  getQuickCombinationPlacementState({ combinationId, clientX, clientY, rotation = 0 }) {
     const canvasBounds = this.game.canvas.getBoundingClientRect()
     if (clientX < canvasBounds.left || clientX > canvasBounds.right
-      || clientY < canvasBounds.top || clientY > canvasBounds.bottom) return
+      || clientY < canvasBounds.top || clientY > canvasBounds.bottom) return { insideFormwork: false }
+
     const unplacedPieces = this.pieces.filter(({ placed }) => !placed)
-    const plan = getQuickCombinationPlan(
-      combinationId,
-      unplacedPieces.map(({ block }) => block),
-    )
-    const placedCount = this.pieces.filter(({ placed }) => placed).length
-    if (!plan || placedCount + plan.assignments.length > this.getPlacementLimit()) return
+    const plan = getQuickCombinationPlan(combinationId, unplacedPieces.map(({ block }) => block))
+    if (!plan) return { insideFormwork: false }
 
     const worldX = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
     const worldY = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
-    const topLeftX = worldX - ((plan.layout.width - 1) * BOARD_METRICS.cellSize) / 2
-    const topLeftY = worldY - ((plan.layout.height - 1) * BOARD_METRICS.cellSize) / 2
+    const pointerCell = worldToGrid(worldX, worldY, BOARD_METRICS)
+    if (pointerCell.column < 0 || pointerCell.column >= FORMWORK_GRID_SIZE
+      || pointerCell.row < 0 || pointerCell.row >= FORMWORK_GRID_SIZE) {
+      return { insideFormwork: false }
+    }
+
+    const turns = plan.combination.match_options.allow_recipe_rotation ? rotation % 4 : 0
+    const layout = getRotatedQuickLayoutSize(plan.layout, turns)
+    const topLeftX = worldX - ((layout.width - 1) * BOARD_METRICS.cellSize) / 2
+    const topLeftY = worldY - ((layout.height - 1) * BOARD_METRICS.cellSize) / 2
     const anchor = worldToGrid(topLeftX, topLeftY, BOARD_METRICS)
     const occupiedKeys = new Set(this.occupied.keys())
+    const hasCapacity = this.pieces.filter(({ placed }) => placed).length + plan.assignments.length <= this.getPlacementLimit()
+    let valid = hasCapacity
     const placements = []
 
     for (const assignment of plan.assignments) {
       const piece = unplacedPieces.find(({ block }) => block.id === assignment.blockId)
-      if (!piece) return
-      const rotation = assignment.rotation / 90
-      const column = anchor.column + assignment.origin.x
-      const row = anchor.row + assignment.origin.y
-      const cells = getPlacedCells(piece.block.cells, rotation, column, row)
-      if (!canPlaceBlock({
-        cells,
-        activeCellKeys: this.activeCellKeys,
-        occupiedCellKeys: occupiedKeys,
-      })) return
+      if (!piece) return { insideFormwork: false }
+      const baseRotation = assignment.rotation / 90
+      const recipeCells = getPlacedCells(piece.block.cells, baseRotation, assignment.origin.x, assignment.origin.y)
+        .map(([x, y]) => rotateQuickCell({ x, y }, plan.layout.width, plan.layout.height, turns))
+      const column = anchor.column + Math.min(...recipeCells.map(({ x }) => x))
+      const row = anchor.row + Math.min(...recipeCells.map(({ y }) => y))
+      const pieceRotation = (baseRotation + turns) % 4
+      const cells = getPlacedCells(piece.block.cells, pieceRotation, column, row)
+      if (!canPlaceBlock({ cells, activeCellKeys: this.activeCellKeys, occupiedCellKeys: occupiedKeys })) valid = false
       cells.forEach((cell) => occupiedKeys.add(cellKey(cell)))
-      placements.push({ piece, rotation, column, row, cells })
+      placements.push({ piece, rotation: pieceRotation, column, row, cells })
     }
 
-    placements.forEach(({ piece, rotation, column, row, cells }) => {
-      piece.rotation = rotation
+    return { insideFormwork: true, valid, placements }
+  }
+
+  renderQuickCombinationGhost({ valid, placements }) {
+    this.quickCombinationGhost.removeAll(true)
+    const color = valid ? COLORS.valid : 0xd96b63
+    placements.forEach(({ piece, cells }) => {
+      const texture = BLOCK_TEXTURES[piece.block.color] ?? BLOCK_TEXTURES.steel
+      cells.forEach(([column, row]) => {
+        const world = gridToWorld(row, column, BOARD_METRICS)
+        const image = this.add.image(world.x, world.y, texture.key)
+          .setDisplaySize(BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap)
+          .setTint(color)
+          .setAlpha(.42)
+        const outline = this.add.rectangle(
+          world.x,
+          world.y,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          color,
+          0,
+        ).setStrokeStyle(3, color, .9)
+        this.quickCombinationGhost.add([image, outline])
+      })
+    })
+    this.quickCombinationGhost.setVisible(true)
+  }
+
+  previewQuickCombination(payload) {
+    const rotation = this.quickCombinationPreview?.combinationId === payload.combinationId
+      ? this.quickCombinationPreview.rotation
+      : 0
+    this.quickCombinationPreview = { ...payload, rotation }
+    const state = this.getQuickCombinationPlacementState(this.quickCombinationPreview)
+    if (!state.insideFormwork) {
+      this.quickCombinationGhost.removeAll(true)
+      this.quickCombinationGhost.setVisible(false)
+      return
+    }
+    this.renderQuickCombinationGhost(state)
+  }
+
+  rotateQuickCombinationPreview() {
+    if (!this.quickCombinationPreview) return
+    this.quickCombinationPreview.rotation = (this.quickCombinationPreview.rotation + 1) % 4
+    const state = this.getQuickCombinationPlacementState(this.quickCombinationPreview)
+    if (!state.insideFormwork) return
+    this.renderQuickCombinationGhost(state)
+  }
+
+  clearQuickCombinationPreview() {
+    this.quickCombinationPreview = null
+    this.quickCombinationGhost?.removeAll(true)
+    this.quickCombinationGhost?.setVisible(false)
+  }
+
+  placeQuickCombination(payload) {
+    const rotation = this.quickCombinationPreview?.combinationId === payload.combinationId
+      ? this.quickCombinationPreview.rotation
+      : 0
+    const state = this.getQuickCombinationPlacementState({ ...payload, rotation })
+    this.clearQuickCombinationPreview()
+    if (!state.insideFormwork || !state.valid) return
+
+    state.placements.forEach(({ piece, rotation: pieceRotation, column, row, cells }) => {
+      piece.rotation = pieceRotation
       piece.placed = true
       piece.placedOrder = ++this.placementOrder
       piece.boardX = column
       piece.boardY = row
       cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
       const world = gridToWorld(row, column, BOARD_METRICS)
-      const blockAnchor = getBlockAnchorOffset(
-        layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS),
-      )
+      const blockAnchor = getBlockAnchorOffset(layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS))
       piece.container.setPosition(world.x + blockAnchor.x, world.y + blockAnchor.y)
     })
     this.refreshPlacedHighlights()
-    this.emitBoardState()
+    this.emitBoardState({ placementCommitted: true })
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'quick-combination-placed' })
   }
 
@@ -905,7 +1002,7 @@ export class BattleScene extends Phaser.Scene {
     this.emitBoardState()
   }
 
-  emitBoardState() {
+  emitBoardState({ placementCommitted = false } = {}) {
     const placedBlocks = this.pieces.filter((piece) => piece.placed).map((piece) => ({
       block: piece.block,
       origin: { x: piece.boardX, y: piece.boardY },
@@ -951,6 +1048,7 @@ export class BattleScene extends Phaser.Scene {
       occupiedCells: this.occupied.size,
       totalBoardCells: this.activeCellCount,
       placedBlocks,
+      combinationIds: placementCommitted ? effects.combinationDetails.map(({ id }) => id) : [],
     })
   }
 }

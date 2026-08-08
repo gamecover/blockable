@@ -27,6 +27,9 @@ import { isValidSave } from '../../security/validation/saveValidation.js'
 import { discardHand, drawHand, startBattleDeck } from '../systems/deckSystem.js'
 import { trackedLocalStorage } from './trackedStorage.js'
 import { completeWorldDungeon, createWorldMapState } from '../systems/worldMapSystem.js'
+import { getDefaultDiscoveredBlueprintIds } from '../systems/blueprintSystem.js'
+
+const INITIAL_DISCOVERED_BLUEPRINT_IDS = getDefaultDiscoveredBlueprintIds()
 
 const initialRun = (developerMode = false) => ({
   health: STARTING_MAX_HEALTH,
@@ -46,7 +49,7 @@ const initialRun = (developerMode = false) => ({
   runStarted: false,
   uniqueBlockId: null,
   uniqueBlockChoiceIds: [],
-  discoveredBlueprintIds: [],
+  discoveredBlueprintIds: [...INITIAL_DISCOVERED_BLUEPRINT_IDS],
   developerMode,
   developerDifficulty: 1,
   battlePiles: { drawPile: [], hand: [], discardPile: [] },
@@ -98,7 +101,7 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
   startTutorialRun: () => set((state) => {
     Object.assign(state, initialRun(false))
     state.deck = createTutorialDeck()
-    state.discoveredBlueprintIds = ['base_33_01']
+    state.discoveredBlueprintIds = [...INITIAL_DISCOVERED_BLUEPRINT_IDS]
     state.runStarted = true
     state.tutorialMode = true
   }),
@@ -369,9 +372,10 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
       uniqueBlockChoiceIds: uniqueBlockId ? [] : (persisted.uniqueBlockChoiceIds?.length
         ? persisted.uniqueBlockChoiceIds
         : createUniqueBlockChoiceIds()),
-      discoveredBlueprintIds: Array.isArray(persisted.discoveredBlueprintIds)
-        ? [...new Set(persisted.discoveredBlueprintIds)]
-        : [],
+      discoveredBlueprintIds: [...new Set([
+        ...INITIAL_DISCOVERED_BLUEPRINT_IDS,
+        ...(Array.isArray(persisted.discoveredBlueprintIds) ? persisted.discoveredBlueprintIds : []),
+      ])],
     }
   },
   }))

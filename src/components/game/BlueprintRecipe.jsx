@@ -1,7 +1,7 @@
 import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
 import { getBlueprintLayout } from '../../game/systems/blueprintSystem.js'
 
-export function BlueprintRecipe({ combination, compact = false }) {
+export function BlueprintRecipe({ combination, compact = false, isDiscovered = true }) {
   const layout = getBlueprintLayout(combination)
   return (
     <div className={`blueprint-recipe${compact ? ' blueprint-recipe--compact' : ''}`}>
@@ -26,7 +26,7 @@ export function BlueprintRecipe({ combination, compact = false }) {
       </div>
       <div className="blueprint-recipe__copy">
         <strong>{combination.display_name}</strong>
-        {!compact && <small>{combination.description || `${combination.instances.length}개 블록 조합`}</small>}
+        {!compact && <small>{isDiscovered ? (combination.description || `${combination.instances.length}개 블록 조합`) : '???'}</small>}
       </div>
     </div>
   )

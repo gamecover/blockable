@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createBlock } from '../../../objects/blocks/blockData.js'
 import {
   getBlueprintLayout,
+  getBlueprintCatalog,
+  getDefaultDiscoveredBlueprintIds,
   getKnownBlueprints,
   getQuickCombinationPlan,
   isStarterBlueprint,
@@ -9,18 +11,20 @@ import {
 import { BLOCK_RULE_INDEX, BLOCK_RULES } from '../blockRulesSystem.js'
 
 describe('blueprint system', () => {
-  it('reveals every recipe whose normalized footprint fits within 3 by 3', () => {
+  it('reveals every normal-block recipe that fits within a 3 by 3 area by default', () => {
+    const catalog = getBlueprintCatalog()
+    const defaultIds = getDefaultDiscoveredBlueprintIds()
     const known = getKnownBlueprints([])
 
-    expect(known.length).toBeGreaterThan(0)
-    expect(known.every(isStarterBlueprint)).toBe(true)
+    expect(catalog.length).toBe(BLOCK_RULES.combinations.length)
+    expect(known.map(({ id }) => id)).toEqual(defaultIds)
     expect(known.every((combination) => {
       const layout = getBlueprintLayout(combination)
-      return layout.width <= 3 && layout.height <= 3
+      return isStarterBlueprint(combination) && layout.width <= 3 && layout.height <= 3
     })).toBe(true)
   })
 
-  it('reveals a larger recipe only after its id is discovered', () => {
+  it('keeps non-standard-block or 4 by 4 recipes hidden until discovered', () => {
     const hidden = BLOCK_RULES.combinations.find((combination) => !isStarterBlueprint(combination))
 
     expect(hidden).toBeDefined()
