@@ -15,6 +15,8 @@ export function MonsterPartyFrame({
   combatants,
   selectedMonsterId,
   activeMonsterId,
+  presentationMonsterId = null,
+  presentationMotion = null,
   targetSlotIds,
   canSelect,
   onSelect,
@@ -22,18 +24,20 @@ export function MonsterPartyFrame({
 }) {
   const bySlot = new Map(combatants.map((entry) => [entry.slotId, entry]))
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
+  const detailMonster = combatants.find(({ instanceId }) => instanceId === presentationMonsterId)
+    ?? selectedMonster
   const healthSegments = Array.from({ length: 20 }, (_, index) => index)
   const selectedMonsterGrade = battleType === 'boss'
     ? 'boss'
-    : (selectedMonster?.gradeId === 'named' || selectedMonster?.grade === 'named' ? 'elite' : 'normal')
+    : (detailMonster?.gradeId === 'named' || detailMonster?.grade === 'named' ? 'elite' : 'normal')
   const healthFrame = { normal: monsterHpNormal, elite: monsterHpElite, boss: monsterHpBoss }[selectedMonsterGrade]
-  const filledHealthSegmentCount = selectedMonster?.currentHealth > 0
-    ? Math.max(1, Math.ceil(selectedMonster.currentHealth / selectedMonster.health * healthSegments.length))
+  const filledHealthSegmentCount = detailMonster?.currentHealth > 0
+    ? Math.max(1, Math.ceil(detailMonster.currentHealth / detailMonster.health * healthSegments.length))
     : 0
   const monsterStatusList = (
     <StatusEffectList
-      statuses={selectedMonster?.statuses}
-      ownerName={selectedMonster?.name}
+      statuses={detailMonster?.statuses}
+      ownerName={detailMonster?.name}
       className="monster-party-frame__status-list"
       style={selectedMonsterGrade === 'boss' ? { '--monster-status-anchor': '40.88%' } : undefined}
     />
@@ -89,7 +93,7 @@ export function MonsterPartyFrame({
 
   return (
     <div className="monster-party-frame" aria-label="몬스터 고정 슬롯 정보">
-      <section className="monster-party-frame__count" aria-label="참여 적 목록">
+      <section className="monster-party-frame__count" data-tutorial-target="monsters" aria-label="참여 적 목록">
         <img className="monster-party-frame__frame" src={monsterCountFrame} alt="" aria-hidden="true" />
         <strong className="monster-party-frame__count-title">적 정보</strong>
         <div className="monster-party-frame__count-content">
@@ -106,14 +110,16 @@ export function MonsterPartyFrame({
       </section>
       <section className="monster-party-frame__detail" aria-label="선택된 적 정보">
         <img className="monster-party-frame__frame" src={monsterDetailFrame} alt="" aria-hidden="true" />
-        {selectedMonster && (
+        {detailMonster && (
           <div className="monster-party-frame__detail-content">
             <span className="monster-party-frame__detail-label">적 상세 정보</span>
-            <strong className="monster-party-frame__selected-name" style={{ left: '13%', right: 'auto', top: '6%', width: '46%', height: '12%', justifyContent: 'start', textAlign: 'left' }}><span className="monster-party-frame__selected-name-text">{selectedMonster.name}</span></strong>
+            <strong className="monster-party-frame__selected-name" style={{ left: '13%', right: 'auto', top: '6%', width: '46%', height: '12%', justifyContent: 'start', textAlign: 'left' }}><span className="monster-party-frame__selected-name-text">{detailMonster.name}</span></strong>
             <span className="monster-party-frame__portrait" style={{ gridRow: 3, alignSelf: 'center', justifySelf: 'stretch', height: '100%', paddingTop: '7%', boxSizing: 'border-box' }}>
-              {selectedMonster.imageUrl
-                ? <img src={selectedMonster.imageUrl} alt="" />
-                : <i aria-hidden="true">{selectedMonster.glyph}</i>}
+              <span className={`monster-party-frame__portrait-motion${presentationMotion?.monsterId === detailMonster.instanceId ? ` is-${presentationMotion.type}` : ''}`}>
+                {detailMonster.imageUrl
+                  ? <img src={detailMonster.imageUrl} alt="" />
+                  : <i aria-hidden="true">{detailMonster.glyph}</i>}
+              </span>
             </span>
             {selectedMonsterGrade === 'boss' && monsterStatusList}
             <span className={`monster-party-frame__health monster-party-frame__health--${selectedMonsterGrade}`} style={{ gridRow: 5, alignSelf: 'end', justifySelf: 'stretch' }}>
@@ -124,7 +130,7 @@ export function MonsterPartyFrame({
               {healthSegments.map((index) => (
                 <img className={index < filledHealthSegmentCount ? 'is-filled' : 'is-empty'} key={index} src={index < filledHealthSegmentCount ? monsterHpBlock : monsterHpEmpty} alt="" />
               ))}
-              <small className="monster-party-frame__health-value">{selectedMonster.currentHealth}/{selectedMonster.health}</small>
+              <small className="monster-party-frame__health-value">{detailMonster.currentHealth}/{detailMonster.health}</small>
             </span>
           </div>
         )}

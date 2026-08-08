@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
-import { rollGoldChest } from '../../game/systems/eventSystem.js'
+import {
+  createShopOffers,
+  getShopPurchaseCost,
+  MAX_SHOP_TRANSACTIONS,
+  rollGoldChest,
+  SHOP_CLEANUP_COST,
+} from '../../game/systems/eventSystem.js'
 import { BlockPreview } from '../../components/ui/BlockPreview.jsx'
 import {
   changeBlockShape,
@@ -11,21 +17,46 @@ import {
   STANDARD_BLOCK_SHAPES,
 } from '../../game/systems/blockModificationSystem.js'
 import eventFrame from './assets/pictures/event_base_innerframe.png'
+import oldMoleImage from '../../../Assets/Event/old_mole.png'
+import randomChestImage from '../../../Assets/Event/random_chest.png'
+import relexHpImage from '../../../Assets/Event/relex_hp.png'
+import shopMerchantImage from '../../../Assets/Event/shop_merchant.png'
 
 const colorLabels = { nature: '자연', water: '물', fire: '불', steel: '강철' }
 const shapeLabels = { '001': 'I형', '002': 'L형', '003': 'O형' }
 const EventBaseFrame = () => <img className="event-card__base-frame" src={eventFrame} alt="" aria-hidden="true" />
+const eventIllustrations = Object.freeze({
+  rest: oldMoleImage,
+  chest: randomChestImage,
+  spring: relexHpImage,
+  shop: shopMerchantImage,
+})
 
-export function EventScreen({ event, gold, health, maxHealth, deck, onResolve, onDefer }) {
+function EventIllustration({ event, fallback }) {
+  const image = eventIllustrations[event]
+
+  return (
+    <div className="event-illustration">
+      {image ? <img className="event-illustration__image" src={image} alt="" /> : fallback}
+    </div>
+  )
+}
+
+export function EventScreen({ event, gold, health, maxHealth, deck, dungeonId, onResolve, onShopTransaction, onDefer }) {
   const [chestResult, setChestResult] = useState(null)
   const [restAction, setRestAction] = useState(null)
   const [restBlockId, setRestBlockId] = useState(null)
+  const [shopView, setShopView] = useState('main')
+  const [shopTransactionCount, setShopTransactionCount] = useState(0)
+  const [shopPurchaseCount, setShopPurchaseCount] = useState(0)
+  const [shopCurrentPurchasePrice, setShopCurrentPurchasePrice] = useState(null)
+  const [shopOffers, setShopOffers] = useState([])
   const modifiableBlocks = deck.filter(isModifiableStandardBlock)
   const restBlock = modifiableBlocks.find(({ id }) => id === restBlockId)
 
   if (event === 'rest') return (
-    <ScreenFrame title="용광로의 쉼터" subtitle="REST">
-      <div className="event-card rest"><EventBaseFrame /><div className="event-illustration">♥</div><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>몸을 회복하거나, 불씨를 이용해 일반 블록 하나를 다시 벼릴 수 있습니다. 한 가지 작업만 선택할 수 있습니다.</p>
+    <ScreenFrame title="용광로의 쉼터" subtitle="REST" dungeonId={dungeonId}>
+      <div className="event-card rest"><EventBaseFrame /><EventIllustration event={event} fallback="♥" /><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>몸을 회복하거나, 불씨를 이용해 일반 블록 하나를 다시 벼릴 수 있습니다. 한 가지 작업만 선택할 수 있습니다.</p>
         {!restAction && <div className="event-options rest-options">
           <button className="primary-button" onClick={() => setRestAction('color')}>속성 주입</button>
           <button className="primary-button" onClick={() => onResolve({ heal: 20 })}>체력 +20</button>
@@ -67,27 +98,81 @@ export function EventScreen({ event, gold, health, maxHealth, deck, onResolve, o
   )
 
   if (event === 'spring') return (
-    <ScreenFrame title="생명의 샘" subtitle="RARE ENCOUNTER">
-      <div className="event-card spring"><EventBaseFrame /><div className="event-illustration">♨</div><article><p className="eyebrow">희귀 이벤트</p><h3>돌 틈에서 푸른 불꽃이 솟는다.</h3><p>불꽃에 손을 담그자 오래된 상처가 아물고, 몸 안에 새로운 힘이 차오릅니다.</p><div className="choice-preview">최대 체력 +25 · 체력 완전 회복</div><button className="primary-button" onClick={() => onResolve({ maxHealth: 25 })}>불꽃을 받아들인다</button></article></div>
+    <ScreenFrame title="생명의 샘" subtitle="RARE ENCOUNTER" dungeonId={dungeonId}>
+      <div className="event-card spring"><EventBaseFrame /><EventIllustration event={event} fallback="♨" /><article><p className="eyebrow">희귀 이벤트</p><h3>돌 틈에서 푸른 불꽃이 솟는다.</h3><p>불꽃에 손을 담그자 오래된 상처가 아물고, 몸 안에 새로운 힘이 차오릅니다.</p><div className="choice-preview">최대 체력 +25 · 체력 완전 회복</div><button className="primary-button" onClick={() => onResolve({ maxHealth: 25 })}>불꽃을 받아들인다</button></article></div>
     </ScreenFrame>
   )
 
   if (event === 'chest' && chestResult) return (
-    <ScreenFrame title="보물 상자 결과" subtitle="ENCOUNTER RESULT">
-      <div className="event-card chest-result"><EventBaseFrame /><div className="event-illustration">◆</div><article><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result"><GoldAmount amount={chestResult.gold} suffix=" 골드" /></div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></article></div>
+    <ScreenFrame title="보물 상자 결과" subtitle="ENCOUNTER RESULT" dungeonId={dungeonId}>
+      <div className="event-card chest-result"><EventBaseFrame /><EventIllustration event={event} fallback="◆" /><article><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result"><GoldAmount amount={chestResult.gold} suffix=" 골드" /></div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></article></div>
     </ScreenFrame>
   )
 
   if (event === 'chest') return (
-    <ScreenFrame title="봉인된 보물 상자" subtitle="ENCOUNTER">
-      <div className="event-card chest"><EventBaseFrame /><div className="event-illustration">▣</div><article><p className="eyebrow">수상한 발견</p><h3>쇠사슬이 끊어진 상자가 놓여 있다.</h3><p>뚜껑 틈으로 금빛이 새어 나옵니다. 함정일 수도 있지만, 원정에는 골드가 필요합니다.</p><div className="event-options"><button className="primary-button" onClick={() => setChestResult(rollGoldChest())}>상자를 연다</button><button className="secondary-button" onClick={() => onResolve({})}>지나친다</button></div></article></div>
+    <ScreenFrame title="봉인된 보물 상자" subtitle="ENCOUNTER" dungeonId={dungeonId}>
+      <div className="event-card chest"><EventBaseFrame /><EventIllustration event={event} fallback="▣" /><article><p className="eyebrow">수상한 발견</p><h3>쇠사슬이 끊어진 상자가 놓여 있다.</h3><p>뚜껑 틈으로 금빛이 새어 나옵니다. 함정일 수도 있지만, 원정에는 골드가 필요합니다.</p><div className="event-options"><button className="primary-button" onClick={() => setChestResult(rollGoldChest())}>상자를 연다</button><button className="secondary-button" onClick={() => onResolve({})}>지나친다</button></div></article></div>
     </ScreenFrame>
   )
 
-  const cost = 50
+  const purchaseCost = shopCurrentPurchasePrice ?? getShopPurchaseCost(shopPurchaseCount)
+  const shopIsExhausted = shopTransactionCount >= MAX_SHOP_TRANSACTIONS
+  const openShopPurchase = () => {
+    if (shopIsExhausted) return
+    setShopCurrentPurchasePrice(getShopPurchaseCost(shopPurchaseCount))
+    setShopPurchaseCount((count) => count + 1)
+    setShopTransactionCount((count) => count + 1)
+    setShopOffers(createShopOffers())
+    setShopView('purchase')
+  }
+  const openShopCleanup = () => {
+    if (shopIsExhausted) return
+    setShopTransactionCount((count) => count + 1)
+    setShopView('cleanup')
+  }
+  const buyShopOffer = (block) => {
+    if (gold < purchaseCost) return
+    onShopTransaction({ gold: -purchaseCost, addBlock: block })
+    setShopCurrentPurchasePrice(null)
+    setShopOffers([])
+    setShopView('main')
+  }
+  const removeShopBlock = (blockId) => {
+    if (gold < SHOP_CLEANUP_COST || deck.length <= 5) return
+    onShopTransaction({ gold: -SHOP_CLEANUP_COST, remove: blockId })
+    setShopView('main')
+  }
+
   return (
-    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
-      <div className="event-card shop"><EventBaseFrame /><div className="event-illustration">⚒</div><article><p className="eyebrow">상점</p><h3>불씨를 빌려 도구를 정비할 수 있다.</h3><p>가장 거슬리는 블록 하나를 녹여 주머니를 가볍게 만드세요. 블록 삭제 비용은 <GoldAmount amount={cost} />입니다.</p><div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>{deck.map((block) => <button aria-label={`${block.name} 삭제 · ${cost} 골드`} disabled={gold < cost || deck.length <= 5} key={block.id} onClick={() => onResolve({ remove: block.id, gold: -cost })}><BlockPreview block={block} compact /></button>)}</div><button className="text-button" onClick={() => onResolve({})}>아무것도 하지 않고 떠난다</button></article></div>
+    <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" dungeonId={dungeonId} actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
+      <div className="event-card shop"><EventBaseFrame /><EventIllustration event={event} fallback="⚒" /><article><p className="eyebrow">상점 · 거래 {shopTransactionCount}/{MAX_SHOP_TRANSACTIONS}</p>
+        {shopView === 'main' && <>
+          <h3>불씨를 빌려 도구를 정비할 수 있다.</h3>
+          <p>일반 블록을 구매하거나, 덱에서 블록 하나를 영구적으로 정리할 수 있습니다.</p>
+          {shopIsExhausted && <div className="choice-preview">이번 방문에서 가능한 거래를 모두 마쳤습니다.</div>}
+          <div className="event-options shop-options">
+            <button className="primary-button" disabled={shopIsExhausted} onClick={openShopPurchase}>블록 구매 · <GoldAmount amount={purchaseCost} /></button>
+            <button className="primary-button" disabled={shopIsExhausted} onClick={openShopCleanup}>블록 정리 · <GoldAmount amount={SHOP_CLEANUP_COST} /></button>
+            <button className="secondary-button" onClick={() => onResolve({})}>상점 나가기</button>
+          </div>
+        </>}
+        {shopView === 'purchase' && <>
+          <h3>일반 블록을 고르세요.</h3>
+          <p>이번 구매 가격은 <GoldAmount amount={purchaseCost} />입니다.</p>
+          <div className="event-options rest-image-options shop-offers" aria-label="구매 가능한 블록">
+            {shopOffers.map((block) => <button className="secondary-button" key={block.id} disabled={gold < purchaseCost} onClick={() => buyShopOffer(block)} aria-label={`${block.name} 구매 · ${purchaseCost} 골드`}><BlockPreview block={block} compact /><span>{colorLabels[block.color]}</span><small>{purchaseCost} Gold</small></button>)}
+          </div>
+          <button className="text-button" onClick={() => { setShopCurrentPurchasePrice(null); setShopOffers([]); setShopView('main') }}>구매를 취소한다</button>
+        </>}
+        {shopView === 'cleanup' && <>
+          <h3>정리할 블록을 고르세요.</h3>
+          <p>선택한 블록은 덱에서 영구적으로 제거됩니다. 비용은 <GoldAmount amount={SHOP_CLEANUP_COST} />입니다.</p>
+          <div className="deck-strip" aria-label={`보유 블록 ${deck.length}개`}>
+            {deck.map((block) => <button aria-label={`${block.name} 정리 · ${SHOP_CLEANUP_COST} 골드`} disabled={gold < SHOP_CLEANUP_COST || deck.length <= 5} key={block.id} onClick={() => removeShopBlock(block.id)}><BlockPreview block={block} compact /></button>)}
+          </div>
+          <button className="text-button" onClick={() => setShopView('main')}>정리를 취소한다</button>
+        </>}
+      </article></div>
     </ScreenFrame>
   )
 }

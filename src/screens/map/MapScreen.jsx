@@ -267,7 +267,7 @@ export function MapScreen({
           <span><i className="dot complete" /> 완료</span>
           <span><i className="dot risk" /> 위험 가지</span>
         </div>
-        <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>
+        {developerMode && <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>}
         {developerMode && (
           <div className="developer-map-tools">
             <strong>DEV · seed {map.seed} · {map.generatorVersion}</strong>

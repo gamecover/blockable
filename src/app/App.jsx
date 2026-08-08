@@ -345,6 +345,12 @@ export function App() {
     send({ type: 'DONE' })
   }
 
+  const resolveShopTransaction = (result) => {
+    if (result.gold) run.addGold(result.gold)
+    if (result.addBlock) run.addBlock(result.addBlock)
+    if (result.remove) run.removeBlock(result.remove)
+  }
+
   const chooseStartingBlock = (block) => {
     run.chooseUniqueBlock(block)
     send({ type: run.activeDungeonId ? 'DONE_DUNGEON' : 'DONE' })
@@ -412,22 +418,38 @@ export function App() {
     onTutorialSkip={finishTutorial}
   />
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
-  if (current === 'event') screen = <EventScreen event={encounter?.event} {...run} onResolve={resolveEvent} onDefer={() => send({ type: 'DONE' })} />
+  if (current === 'event') screen = <EventScreen event={encounter?.event} dungeonId={run.activeDungeonId} {...run} onResolve={resolveEvent} onShopTransaction={resolveShopTransaction} onDefer={() => send({ type: 'DONE' })} />
   if (current === 'dungeonConquest') screen = <DungeonConquestScreen dungeonName={conqueredDungeonName} onContinue={() => send({ type: 'CONTINUE' })} />
   if (current === 'gameover') screen = <ResultScreen floor={resultFloor} onMenu={backToMenu} />
   if (current === 'ending') screen = <ResultScreen victory floor={resultFloor} onMenu={backToMenu} />
 
+  const commonMenuTitles = {
+    prologue: '프롤로그',
+    worldMap: '전체 지도',
+    map: run.map?.dungeonName ?? '던전 지도',
+    startChoice: '원정 준비',
+    reward: '전리품을 선택하세요',
+    event: '인카운터',
+    dungeonConquest: conqueredDungeonName || '던전 정복',
+    gameover: '원정 실패',
+    ending: '던전 정복',
+  }
+
   return <RunStoreProvider store={activeStore}>
     {screen}
-    {current !== 'tutorial' && <CommonGameMenu
+    {current !== 'battle' && <CommonGameMenu
         floor={run.floor}
         map={run.map}
         worldMap={run.worldMap}
         deck={run.deck}
+        gold={run.gold}
         activeDungeonId={run.activeDungeonId}
         discoveredBlueprintIds={run.discoveredBlueprintIds}
         currentNodeId={run.currentNodeId}
         currentScreen={current}
+        title={commonMenuTitles[current]}
+        showLeft={current !== 'startChoice'}
+        developerMode={developerMode}
         onMainMenu={backToMenu}
       />}
   </RunStoreProvider>

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { rollGoldChest } from '../eventSystem.js'
+import {
+  createShopOffers,
+  getShopPurchaseCost,
+  MAX_SHOP_TRANSACTIONS,
+  rollGoldChest,
+  SHOP_CLEANUP_COST,
+} from '../eventSystem.js'
+import { STANDARD_BLOCK_TYPE_IDS } from '../blockRulesSystem.js'
 
 describe('treasure chest result', () => {
   it('returns the normal gold result', () => {
@@ -8,5 +15,23 @@ describe('treasure chest result', () => {
 
   it('returns the doubled gold result', () => {
     expect(rollGoldChest(() => 0.01)).toEqual({ type: 'gold', gold: 300, doubled: true })
+  })
+})
+
+describe('shop offers', () => {
+  it('uses the purchase count for the escalating price while cleanup remains fixed', () => {
+    expect(getShopPurchaseCost(0)).toBe(50)
+    expect(getShopPurchaseCost(1)).toBe(75)
+    expect(getShopPurchaseCost(2)).toBe(100)
+    expect(MAX_SHOP_TRANSACTIONS).toBe(3)
+    expect(SHOP_CLEANUP_COST).toBe(50)
+  })
+
+  it('creates four distinct standard-block offers', () => {
+    const offers = createShopOffers(4, () => 0.5)
+
+    expect(offers).toHaveLength(4)
+    expect(new Set(offers.map(({ definitionId }) => definitionId)).size).toBe(4)
+    expect(offers.every(({ typeId }) => STANDARD_BLOCK_TYPE_IDS.includes(typeId))).toBe(true)
   })
 })

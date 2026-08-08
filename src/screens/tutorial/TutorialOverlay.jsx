@@ -5,52 +5,53 @@ const STEPS = [
   {
     target: 'forge',
     event: 'block-drag-started',
-    title: '도구 주머니',
-    body: '도구 주머니의 블록을 마우스로 잡아 거푸집 쪽으로 드래그하세요. 블록은 일반적으로 한 턴에 최대 3회까지 거푸집 위에 배치할 수 있습니다.',
+    title: '모루의 대기 블록',
+    body: '모루에 준비된 블록을 마우스로 잡아 거푸집 쪽으로 드래그하세요. 블록은 일반적으로 한 턴에 최대 3회까지 거푸집 위에 배치할 수 있습니다.',
   },
   {
     target: 'forge',
     event: 'block-rotated',
     title: '블록 회전',
-    body: '블록을 잡은 상태에서 R 키를 눌러 방향을 회전하세요.',
+    body: '블록을 드래그한 상태에서 R 키를 눌러 방향을 회전할 수 있습니다.',
   },
   {
     target: 'forge',
     event: 'block-placed',
     title: '거푸집 배치',
-    body: '밝게 표시된 거푸집의 유효한 칸에 블록을 놓으세요.',
+    body: '거푸집 위로 블록을 옮기면 배치될 위치가 미리 표시됩니다. 밝게 표시된 유효한 칸에 블록을 놓으세요.',
   },
   {
     target: 'forge',
     secondaryTarget: 'blueprint',
+    targets: ['forge', 'blueprint'],
     event: 'quick-combination-placed',
     resetBoard: true,
-    title: '의자 퀵 조합',
-    body: '연습 배치를 초기화했습니다. 의자 청사진을 거푸집으로 드래그해 바로 배치하고, 거푸집 옆 예상 효과에서 조합 결과를 확인하세요.',
+    title: '청사진 퀵 조합',
+    body: '연습 배치를 초기화했습니다. 청사진의 조합식을 거푸집으로 드래그해 바로 배치하세요. 드래그 중 실제 배치 위치와 조합 효과를 확인할 수 있습니다.',
   },
   {
     target: 'monsters',
     event: 'monster-selected',
     title: '공격 대상',
-    body: '잉걸불 슬라임을 선택해 중심 공격 대상으로 지정하세요.',
+    body: '공격할 잉걸불 슬라임을 선택해 중심 공격 대상으로 지정하세요.',
   },
   {
     target: 'piles',
     title: '남은 블록과 버린 블록',
-    body: '두 버튼을 누르면 주머니에 남은 블록과 이번 전투에서 버린 블록을 확인할 수 있습니다.',
+    body: '남은 블록과 이번 전투에서 버려진 블록의 수를 확인할 수 있습니다.',
   },
   {
     target: 'end-turn',
     event: 'turn-ended',
     title: '턴 종료',
-    body: '턴 종료 후 블록 효과가 먼저 처리되고, 살아남은 몬스터가 예고한 행동을 실행합니다.',
+    body: '배치를 마쳤다면 턴을 종료하세요. 블록 효과가 먼저 처리되고, 살아남은 몬스터가 예고한 행동을 실행합니다.',
   },
   {
     target: 'forge-board',
     event: 'tutorial-board-shrunk',
     waitForEventThenNext: true,
     title: '피해와 거푸집',
-    body: '슬라임의 공격을 지켜보세요. 체력이 감소하면 사용할 수 있는 거푸집 칸도 줄어듭니다.',
+    body: '몬스터의 공격으로 거푸집이 피해를 받으면 사용할 수 있는 공간이 줄어들 수 있습니다.',
     completedBody: '공격을 받아 거푸집의 사용 가능 칸이 줄었습니다. 비활성화된 칸에는 다음 블록을 배치할 수 없습니다.',
   },
 ]
@@ -62,6 +63,32 @@ const hasSameBounds = (current, next) => current
   && current.top === next.top
   && current.right === next.right
   && current.bottom === next.bottom
+
+const getMultiTargetMasks = (targets) => {
+  const horizontalEdges = [...new Set([0, window.innerWidth, ...targets.flatMap(({ left, right }) => [left, right])])]
+    .sort((left, right) => left - right)
+  const verticalEdges = [...new Set([0, window.innerHeight, ...targets.flatMap(({ top, bottom }) => [top, bottom])])]
+    .sort((top, bottom) => top - bottom)
+  const masks = []
+
+  for (let row = 0; row < verticalEdges.length - 1; row += 1) {
+    for (let column = 0; column < horizontalEdges.length - 1; column += 1) {
+      const left = horizontalEdges[column]
+      const top = verticalEdges[row]
+      const right = horizontalEdges[column + 1]
+      const bottom = verticalEdges[row + 1]
+      const centerX = (left + right) / 2
+      const centerY = (top + bottom) / 2
+      const isInsideTarget = targets.some((target) => (
+        centerX >= target.left && centerX <= target.right
+        && centerY >= target.top && centerY <= target.bottom
+      ))
+      if (!isInsideTarget) masks.push({ left, top, width: right - left, height: bottom - top })
+    }
+  }
+
+  return masks
+}
 
 export function TutorialOverlay() {
   const [stepIndex, setStepIndex] = useState(0)
@@ -205,12 +232,20 @@ export function TutorialOverlay() {
   if (!rect) return null
   const width = rect.right - rect.left
   const height = rect.bottom - rect.top
+  const multipleInteractiveTargets = step.targets?.length > 1 && secondaryRect
+  const multiTargetMasks = multipleInteractiveTargets
+    ? getMultiTargetMasks([rect, secondaryRect])
+    : null
   return (
     <div className="tutorial-overlay" aria-live="polite">
-      <div className="tutorial-mask tutorial-mask--top" style={{ height: rect.top }} />
-      <div className="tutorial-mask tutorial-mask--left" style={{ top: rect.top, width: rect.left, height }} />
-      <div className="tutorial-mask tutorial-mask--right" style={{ top: rect.top, left: rect.right, height }} />
-      <div className="tutorial-mask tutorial-mask--bottom" style={{ top: rect.bottom }} />
+      {multiTargetMasks
+        ? multiTargetMasks.map((mask, index) => <div className="tutorial-mask" style={mask} key={`${mask.left}-${mask.top}-${index}`} />)
+        : <>
+            <div className="tutorial-mask tutorial-mask--top" style={{ height: rect.top }} />
+            <div className="tutorial-mask tutorial-mask--left" style={{ top: rect.top, width: rect.left, height }} />
+            <div className="tutorial-mask tutorial-mask--right" style={{ top: rect.top, left: rect.right, height }} />
+            <div className="tutorial-mask tutorial-mask--bottom" style={{ top: rect.bottom }} />
+          </>}
       {curtainRect && <div
         className="tutorial-blueprint-curtain"
         style={{
