@@ -165,7 +165,7 @@ export function BattleScreen({
     }
     previousPlacedCount.current = nextBoard.placedCount
     setBoard(nextBoard)
-    if (developerMode) addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
+    addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
   }), [addLog, damagePlayerIgnoringArmor, developerMode, onLose, runStore, send])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.TUTORIAL_ACTION, ({ type }) => {
@@ -194,7 +194,7 @@ export function BattleScreen({
       setCombatants((current) => current.map((entry) => ({ ...entry, currentHealth: 0 })))
     }
     send({ type: source === 'developer' ? 'DEBUG_WIN' : 'MONSTER_DEFEATED' })
-    if (developerMode) addLog(source === 'developer' ? '자동 승리 실행' : '전투 승리')
+    addLog(source === 'developer' ? '자동 승리 실행' : '전투 승리')
     if (tutorialMode) {
       setTutorialVictory(true)
       tutorialVictoryTimer.current = window.setTimeout(onWin, 2800)
@@ -216,7 +216,7 @@ export function BattleScreen({
       : resolvePlayerTurn({ ...board, currentArmor: armor })
     if (stunned) {
       consumeCombatStatus('player', 'stun')
-      if (developerMode) addLog('플레이어 · 기절로 행동 취소')
+      addLog('플레이어 · 기절로 행동 취소')
     }
     if (rawResult.combinations.length) {
       const previouslyDiscovered = new Set(discoveredBlueprintIds)
@@ -250,10 +250,8 @@ export function BattleScreen({
       applyCombatStatus('player', status, undefined, true)
     })
     setCombatants(afterPlayerAction)
-    if (developerMode) {
-      const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
-      addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
-    }
+    const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
+    addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
 
     window.setTimeout(() => {
       if (isCombatVictory(battleType, afterPlayerAction)) {
@@ -301,7 +299,7 @@ export function BattleScreen({
             })
             await waitForPresentation(stun.skipAction ? 400 : 300)
             if (stun.skipAction) {
-              if (developerMode) addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
+              addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
               afterPlayerAction = afterPlayerAction.map((candidate) =>
                 candidate.instanceId === entry.instanceId
                   ? { ...candidate, statuses: stun.statuses }
@@ -346,9 +344,7 @@ export function BattleScreen({
                 applyCombatStatus('player', status, undefined, true))
             }
             const after = runStore.getState()
-            if (developerMode) {
-              addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
-            }
+            addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
             playerDefeated = after.health <= 0
             const selfBaseDamage = (action.selfBaseDamage + monsterRageBonus)
               * monsterHitCount * monsterActionCount
@@ -607,6 +603,7 @@ export function BattleScreen({
         <BattleCenterOverlay
           health={health}
           maxHealth={maxHealth}
+          armor={armor}
           playerStatuses={combat.player.statuses}
         />
       </div>
@@ -645,17 +642,16 @@ export function BattleScreen({
         <span>남은 블록 <b>{battlePiles.drawPile.length}</b></span>
       </button>
       <CombinationEffectPanel effects={previewEffects} />
-      <aside className="battle-toolbag-hint" aria-label="도구 주머니">
-        <strong>도구 주머니</strong>
+      <aside className="battle-formwork-hint" aria-label="거푸집 사용법">
+        <strong>거푸집</strong>
         <span>
-          드래그해 배치<br />
+          모루에서 블럭을 드래그해 배치<br />
           드래그 중 R로 회전
           {developerMode && <><br />Z로 최근 일반 블록 색상 변경</>}
         </span>
       </aside>
-      {developerMode && <BattleDebugPanel entries={debugEntries} />}
+      <BattleDebugPanel entries={debugEntries} />
       <div className="battle-controls">
-        <button className="text-button" onClick={onAbandon}>전투 포기</button>
         <div className="battle-discard-control">
           <button className="battle-discard-button" type="button" onClick={() => setOpenPile('discard')} aria-label="버린 블록">
             <img src={discardIcon} alt="" aria-hidden="true" />
@@ -663,7 +659,10 @@ export function BattleScreen({
           <span>버린 블록 <b>{battlePiles.discardPile.length}</b></span>
         </div>
         <div className="battle-action-buttons">
-          {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
+          {developerMode && <div className="battle-developer-controls">
+            <button className="developer-exit-battle" type="button" onClick={onAbandon}>전투 나가기</button>
+            <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>
+          </div>}
           <button data-tutorial-target="end-turn" className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={() => {
             if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'turn-ended' })
             endTurn()

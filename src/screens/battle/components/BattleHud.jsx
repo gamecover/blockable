@@ -1,10 +1,9 @@
-import { StatusEffectList } from './StatusEffectList.jsx'
 import { GoldAmount } from '../../../components/ui/GoldAmount.jsx'
 import playerHudFrame from '../assets/pictures/main_bar_left.png'
 import turnHudFrame from '../assets/pictures/main_bar_middle.png'
 import monsterHudFrame from '../assets/pictures/main_bar_right.png'
 
-export function BattleHud({ health, maxHealth, armor, gold, floor, turn, battleType, dungeonName, placedCount, placementLimit = 3, playerStatuses }) {
+export function BattleHud({ gold, floor, turn, battleType, dungeonName, placedCount, placementLimit = 3 }) {
   return (
     <div className="battle-hud">
       <div className="battle-hud__status">
@@ -30,11 +29,6 @@ export function BattleHud({ health, maxHealth, armor, gold, floor, turn, battleT
             <div className="battle-hud__menu-slot" aria-label="전투 메뉴" />
           </div>
         </div>
-      </div>
-      <div className="battle-health-summary" aria-label={`대장장이 체력 ${health}/${maxHealth}`}>
-        <strong>♥ {health}/{maxHealth}</strong>
-        <small>방어도 {armor}</small>
-        <StatusEffectList statuses={playerStatuses} ownerName="대장장이" />
       </div>
     </div>
   )

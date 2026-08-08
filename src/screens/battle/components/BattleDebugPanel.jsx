@@ -7,9 +7,9 @@ export function BattleDebugPanel({ entries }) {
     .reverse()
 
   return (
-    <aside className={`battle-debug-panel${open ? ' open' : ''}`} aria-label="전투 디버그 로그">
+    <aside className={`battle-debug-panel${open ? ' open' : ''}`} aria-label="전투 로그">
       <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <strong>DEV LOG</strong>
+        <strong>전투 로그</strong>
         <span>{open ? '접기' : `펼치기 (${visibleEntries.length})`}</span>
       </button>
       {open && (
