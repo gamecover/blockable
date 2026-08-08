@@ -30,6 +30,14 @@ export function MonsterPartyFrame({
   const filledHealthSegmentCount = selectedMonster?.currentHealth > 0
     ? Math.max(1, Math.ceil(selectedMonster.currentHealth / selectedMonster.health * healthSegments.length))
     : 0
+  const monsterStatusList = (
+    <StatusEffectList
+      statuses={selectedMonster?.statuses}
+      ownerName={selectedMonster?.name}
+      className="monster-party-frame__status-list"
+      style={selectedMonsterGrade === 'boss' ? { '--monster-status-anchor': '40.88%' } : undefined}
+    />
+  )
   const countFrame = combatants.length <= 2 ? monsterInfoHalfFrame : monsterInfoQuarterFrame
   const renderSlot = (slotId) => {
     const monster = bySlot.get(slotId)
@@ -107,14 +115,10 @@ export function MonsterPartyFrame({
                 ? <img src={selectedMonster.imageUrl} alt="" />
                 : <i aria-hidden="true">{selectedMonster.glyph}</i>}
             </span>
-            <StatusEffectList
-              statuses={selectedMonster.statuses}
-              ownerName={selectedMonster.name}
-              className="monster-party-frame__status-list"
-              style={{ '--monster-status-anchor': selectedMonsterGrade === 'boss' ? '40.88%' : selectedMonsterGrade === 'elite' ? '34.04%' : '33.28%' }}
-            />
+            {selectedMonsterGrade === 'boss' && monsterStatusList}
             <span className={`monster-party-frame__health monster-party-frame__health--${selectedMonsterGrade}`} style={{ gridRow: 5, alignSelf: 'end', justifySelf: 'stretch' }}>
               <img className="monster-party-frame__health-frame" src={healthFrame} alt="" />
+              {selectedMonsterGrade !== 'boss' && monsterStatusList}
             </span>
             <span className={`monster-party-frame__health-segments monster-party-frame__health-segments--${selectedMonsterGrade}`}>
               {healthSegments.map((index) => (
