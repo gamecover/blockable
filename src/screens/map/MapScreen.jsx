@@ -265,7 +265,7 @@ export function MapScreen({
         <div className="map-legend">
           <span><i className="dot available" /> 이동 가능</span>
           <span><i className="dot complete" /> 완료</span>
-          <span><i className="dot risk" /> 위험 가지</span>
+          <span><i className="dot risk" /> 위험</span>
         </div>
         {developerMode && <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>}
         {developerMode && (
@@ -355,7 +355,7 @@ export function MapScreen({
                   onClick={() => onSelect(node)}
                   aria-label={mystery
                     ? `${floor}층 미확인 방`
-                    : `${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
+                    : `${floor}층 ${labels[node.type]} 방${['battle', 'elite', 'boss'].includes(node.type) ? ' 위험' : ''}`}
                 >
                   <img className="room-node__icon" src={roomIcon} alt="" />
                   <small className="room-node__label">{mystery ? '미확인' : labels[node.type]}</small>

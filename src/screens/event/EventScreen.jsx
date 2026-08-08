@@ -36,8 +36,19 @@ function EventIllustration({ event, fallback }) {
   const image = eventIllustrations[event]
 
   return (
-    <div className="event-illustration">
+    <div className="event-illustration event-illustration-slot">
       {image ? <img className="event-illustration__image" src={image} alt="" /> : fallback}
+    </div>
+  )
+}
+
+function EventLayout({ event, fallback, title, children }) {
+  return (
+    <div className="event-card">
+      <EventBaseFrame />
+      <header className="event-card__header-slot"><h2>{title}</h2></header>
+      <EventIllustration event={event} fallback={fallback} />
+      <article>{children}</article>
     </div>
   )
 }
@@ -56,7 +67,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, dungeonId, o
 
   if (event === 'rest') return (
     <ScreenFrame title="용광로의 쉼터" subtitle="REST" dungeonId={dungeonId}>
-      <div className="event-card rest"><EventBaseFrame /><EventIllustration event={event} fallback="♥" /><article><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>몸을 회복하거나, 불씨를 이용해 일반 블록 하나를 다시 벼릴 수 있습니다. 한 가지 작업만 선택할 수 있습니다.</p>
+      <EventLayout event={event} fallback="♥" title="용광로의 쉼터"><p className="eyebrow">휴식 지점</p><h3>열기가 잦아든 작업장이 길가에 남아 있다.</h3><p>몸을 회복하거나, 불씨를 이용해 일반 블록 하나를 다시 벼릴 수 있습니다. 한 가지 작업만 선택할 수 있습니다.</p>
         {!restAction && <div className="event-options rest-options">
           <button className="primary-button" onClick={() => setRestAction('color')}>속성 주입</button>
           <button className="primary-button" onClick={() => onResolve({ heal: 20 })}>체력 +20</button>
@@ -93,25 +104,25 @@ export function EventScreen({ event, gold, health, maxHealth, deck, dungeonId, o
           <button className="text-button" onClick={() => setRestBlockId(null)}>다른 블록 선택</button>
           <button className="text-button" onClick={onDefer}>나중에 다시 온다</button>
         </>}
-      </article></div>
+      </EventLayout>
     </ScreenFrame>
   )
 
   if (event === 'spring') return (
     <ScreenFrame title="생명의 샘" subtitle="RARE ENCOUNTER" dungeonId={dungeonId}>
-      <div className="event-card spring"><EventBaseFrame /><EventIllustration event={event} fallback="♨" /><article><p className="eyebrow">희귀 이벤트</p><h3>돌 틈에서 푸른 불꽃이 솟는다.</h3><p>불꽃에 손을 담그자 오래된 상처가 아물고, 몸 안에 새로운 힘이 차오릅니다.</p><div className="choice-preview">최대 체력 +25 · 체력 완전 회복</div><button className="primary-button" onClick={() => onResolve({ maxHealth: 25 })}>불꽃을 받아들인다</button></article></div>
+      <EventLayout event={event} fallback="♨" title="생명의 샘"><p className="eyebrow">희귀 이벤트</p><h3>돌 틈에서 푸른 불꽃이 솟는다.</h3><p>불꽃에 손을 담그자 오래된 상처가 아물고, 몸 안에 새로운 힘이 차오릅니다.</p><div className="choice-preview">최대 체력 +25 · 체력 완전 회복</div><button className="primary-button" onClick={() => onResolve({ maxHealth: 25 })}>불꽃을 받아들인다</button></EventLayout>
     </ScreenFrame>
   )
 
   if (event === 'chest' && chestResult) return (
     <ScreenFrame title="보물 상자 결과" subtitle="ENCOUNTER RESULT" dungeonId={dungeonId}>
-      <div className="event-card chest-result"><EventBaseFrame /><EventIllustration event={event} fallback="◆" /><article><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result"><GoldAmount amount={chestResult.gold} suffix=" 골드" /></div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></article></div>
+      <EventLayout event={event} fallback="◆" title="보물 상자 결과"><p className="eyebrow">획득 결과</p><h3>{chestResult.doubled ? '상자 깊은 곳에서 황금빛이 폭발했다!' : '상자 안에 골드가 가득하다.'}</h3><div className="chest-gold-result"><GoldAmount amount={chestResult.gold} suffix=" 골드" /></div><p>획득한 골드는 이번 원정에 즉시 추가됩니다.</p><button className="primary-button" onClick={() => onResolve({ gold: chestResult.gold })}>결과 확인</button></EventLayout>
     </ScreenFrame>
   )
 
   if (event === 'chest') return (
     <ScreenFrame title="봉인된 보물 상자" subtitle="ENCOUNTER" dungeonId={dungeonId}>
-      <div className="event-card chest"><EventBaseFrame /><EventIllustration event={event} fallback="▣" /><article><p className="eyebrow">수상한 발견</p><h3>쇠사슬이 끊어진 상자가 놓여 있다.</h3><p>뚜껑 틈으로 금빛이 새어 나옵니다. 함정일 수도 있지만, 원정에는 골드가 필요합니다.</p><div className="event-options"><button className="primary-button" onClick={() => setChestResult(rollGoldChest())}>상자를 연다</button><button className="secondary-button" onClick={() => onResolve({})}>지나친다</button></div></article></div>
+      <EventLayout event={event} fallback="▣" title="봉인된 보물 상자"><p className="eyebrow">수상한 발견</p><h3>쇠사슬이 끊어진 상자가 놓여 있다.</h3><p>뚜껑 틈으로 금빛이 새어 나옵니다. 함정일 수도 있지만, 원정에는 골드가 필요합니다.</p><div className="event-options"><button className="primary-button" onClick={() => setChestResult(rollGoldChest())}>상자를 연다</button><button className="secondary-button" onClick={() => onResolve({})}>지나친다</button></div></EventLayout>
     </ScreenFrame>
   )
 
@@ -145,7 +156,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, dungeonId, o
 
   return (
     <ScreenFrame title="떠돌이 대장간" subtitle="ENCOUNTER" dungeonId={dungeonId} actions={<div className="resource-bar event-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
-      <div className="event-card shop"><EventBaseFrame /><EventIllustration event={event} fallback="⚒" /><article><p className="eyebrow">상점 · 거래 {shopTransactionCount}/{MAX_SHOP_TRANSACTIONS}</p>
+      <EventLayout event={event} fallback="⚒" title="떠돌이 대장장이"><p className="eyebrow">상점 · 거래 {shopTransactionCount}/{MAX_SHOP_TRANSACTIONS}</p>
         {shopView === 'main' && <>
           <h3>불씨를 빌려 도구를 정비할 수 있다.</h3>
           <p>일반 블록을 구매하거나, 덱에서 블록 하나를 영구적으로 정리할 수 있습니다.</p>
@@ -172,7 +183,7 @@ export function EventScreen({ event, gold, health, maxHealth, deck, dungeonId, o
           </div>
           <button className="text-button" onClick={() => setShopView('main')}>정리를 취소한다</button>
         </>}
-      </article></div>
+      </EventLayout>
     </ScreenFrame>
   )
 }
