@@ -9,7 +9,10 @@ import {
   getMapNodePosition,
   getMapNodes,
 } from '../../game/systems/mapGenerationSystem.js'
-import mapBase from './assets/pictures/map_base_alpha.png'
+import mapVolcanoA from './assets/pictures/map_volcano_a.png'
+import mapVolcanoB from './assets/pictures/map_volcano_b.png'
+import mapVolcanoC from './assets/pictures/map_volcano_c.png'
+import backgroundTexture from './assets/pictures/background_texture.png'
 import roomBattle from './assets/pictures/rooms/room_battle.png'
 import roomBoss from './assets/pictures/rooms/room_boss.png'
 import roomElite from './assets/pictures/rooms/room_elite.png'
@@ -24,13 +27,24 @@ import stairsC from './assets/pictures/stairs/stairs_c.png'
 import stairsD from './assets/pictures/stairs/stairs_d.png'
 import stairsE from './assets/pictures/stairs/stairs_e.png'
 
-const MAP_CANVAS_WIDTH = 2600
-const MAP_CANVAS_HEIGHT = Math.round(MAP_CANVAS_WIDTH * 1066 / 3110)
+const MAP_CANVAS_WIDTH = 1582
+const MAP_CANVAS_HEIGHT = 994
 const DEFAULT_MAP_ZOOM = 0.72
 const MIN_MAP_ZOOM = 0.55
 const MAX_MAP_ZOOM = 1.25
 const MAP_ZOOM_STEP = 0.1
 const MAP_EDGE_PADDING = 48
+const mapBackgrounds = Object.freeze([mapVolcanoA, mapVolcanoB, mapVolcanoC])
+
+const getFloorMapBackground = (seed, floor) => {
+  const source = `${seed ?? ''}:${floor}`
+  let hash = 2166136261
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return mapBackgrounds[(hash >>> 0) % mapBackgrounds.length]
+}
 
 const roomIcons = Object.freeze({
   battle: roomBattle,
@@ -94,6 +108,7 @@ export function MapScreen({
   onLeaveDungeon,
   onSelect,
 }) {
+  const mapBackground = useMemo(() => getFloorMapBackground(map.seed, floor), [floor, map.seed])
   const [developerMapRevealed, setDeveloperMapRevealed] = useState(false)
   const [mapView, setMapView] = useState({
     x: 0,
@@ -144,6 +159,16 @@ export function MapScreen({
     }
   }, [])
 
+  const fitMapToViewport = useCallback(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const zoom = Math.min(
+      viewport.clientWidth / MAP_CANVAS_WIDTH,
+      viewport.clientHeight / MAP_CANVAS_HEIGHT,
+    )
+    setMapView(clampMapView({ x: 0, y: 0, zoom }))
+  }, [clampMapView])
+
   const centerCurrentNode = useCallback((zoom = DEFAULT_MAP_ZOOM) => {
     const viewport = viewportRef.current
     const position = positions.get(currentNodeId)
@@ -156,14 +181,14 @@ export function MapScreen({
   }, [clampMapView, currentNodeId, positions])
 
   useEffect(() => {
-    const frameId = requestAnimationFrame(() => centerCurrentNode())
+    const frameId = requestAnimationFrame(fitMapToViewport)
     const handleResize = () => setMapView((current) => clampMapView(current))
     window.addEventListener('resize', handleResize)
     return () => {
       cancelAnimationFrame(frameId)
       window.removeEventListener('resize', handleResize)
     }
-  }, [centerCurrentNode, clampMapView, floor])
+  }, [fitMapToViewport, clampMapView, floor])
 
   const handleMapPointerDown = (event) => {
     if (event.button !== 0 || event.target.closest('button')) return
@@ -235,13 +260,14 @@ export function MapScreen({
 
   return (
     <ScreenFrame title={map.dungeonName} subtitle={`${floor}층 · 난이도 ${map.difficulty}`} barVariant="dungeon" actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}>
+      <div className="map-layout" style={{ backgroundImage: `url(${backgroundTexture})` }}>
       <div className="map-toolbar">
         <div className="map-legend">
           <span><i className="dot available" /> 이동 가능</span>
           <span><i className="dot complete" /> 완료</span>
-          <span><i className="dot risk" /> 위험 가지</span>
+          <span><i className="dot risk" /> 위험</span>
         </div>
-        <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>
+        {developerMode && <button type="button" className="text-button map-exit-button" onClick={onLeaveDungeon}>전체 지도</button>}
         {developerMode && (
           <div className="developer-map-tools">
             <strong>DEV · seed {map.seed} · {map.generatorVersion}</strong>
@@ -274,7 +300,7 @@ export function MapScreen({
         <div
           className="dungeon-map dungeon-map--rooms"
           style={{
-            backgroundImage: `url(${mapBase})`,
+            backgroundImage: `url(${mapBackground})`,
             width: MAP_CANVAS_WIDTH,
             height: MAP_CANVAS_HEIGHT,
             transform: `translate3d(${mapView.x}px, ${mapView.y}px, 0) scale(${mapView.zoom})`,
@@ -329,7 +355,7 @@ export function MapScreen({
                   onClick={() => onSelect(node)}
                   aria-label={mystery
                     ? `${floor}층 미확인 방`
-                    : `${floor}층 ${labels[node.type]} 방${node.pathRole === 'risk' ? ' 위험 가지' : ''}`}
+                    : `${floor}층 ${labels[node.type]} 방${['battle', 'elite', 'boss'].includes(node.type) ? ' 위험' : ''}`}
                 >
                   <img className="room-node__icon" src={roomIcon} alt="" />
                   <small className="room-node__label">{mystery ? '미확인' : labels[node.type]}</small>
@@ -365,6 +391,7 @@ export function MapScreen({
         </div>
       </div>
       <p className="map-hint">통로로 연결된 방을 탐험하고, 막다른 가지를 돌아 나온 뒤 계단 또는 보스로 향할 수 있습니다.</p>
+      </div>
     </ScreenFrame>
   )
 }

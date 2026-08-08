@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { BOARD_CELLS, BOARD_CELL_GAP, BOARD_CELL_SIZE, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
+import { BOARD_CELLS, BOARD_CELL_GAP, HAND_BLOCK_CELL_GAP, HAND_BLOCK_CELL_SIZE, PLACEMENTS_PER_TURN } from '../../constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../events/gameEvents.js'
 import { canPlaceAnotherBlock, canPlaceBlock, cellKey, getActiveBoardCellCount, getPlacedCells } from '../../systems/boardPlacementSystem.js'
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../systems/blockEffectSystem.js'
 import { findMatchingCombinations } from '../../systems/blockCombinationSystem.js'
 import { getQuickCombinationPlan } from '../../systems/blueprintSystem.js'
-import { getBlockAnchorOffset, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, layoutBlocksInCenteredRow, worldToGrid } from '../layout/blockLayout.js'
+import { getBlockAnchorOffset, getBlockVisualBounds, gridToWorld, isPointInsideBlock, layoutBlockForBoard, layoutBlockForHand, worldToGrid } from '../layout/blockLayout.js'
 import { cycleStandardBlockColor } from '../../../objects/blocks/blockData.js'
 import { resolveCombatFormulaPreview } from '../../systems/combatFormulaPreviewSystem.js'
 import curseTexture from '../../../assets/sprites/blocks/block_curse.png'
@@ -19,22 +19,28 @@ import natureTexture from '../../../assets/sprites/blocks/block_nature.png'
 import specialTexture from '../../../assets/sprites/blocks/block_special.png'
 import steelTexture from '../../../assets/sprites/blocks/block_steel.png'
 import waterTexture from '../../../assets/sprites/blocks/block_water.png'
-import anvilTexture from '../../../screens/battle/assets/pictures/anvil_alpha.png'
 import formworkTexture from '../../../screens/battle/assets/pictures/formwork_alpha.png'
 
-const BOARD_METRICS = { originX: 326, originY: 128, cellSize: BOARD_CELL_SIZE, gap: BOARD_CELL_GAP }
-const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
-const BATTLE_STAGE_WIDTH = 820
-const HAND_HORIZONTAL_GAP = HAND_BLOCK_CELL_SIZE * 1.5
-const ANVIL_CENTER_Y = 637
-const ANVIL_DISPLAY_HEIGHT = 383
-const FORMWORK_GRID_SIZE = 5
+const FORMWORK_DISPLAY_SIZE = 800
 const FORMWORK_TEXTURE_SIZE = 700
 const FORMWORK_TEXTURE_CELL_PITCH = 110
-const FORMWORK_DISPLAY_SIZE = FORMWORK_TEXTURE_SIZE * BOARD_CELL_SIZE / FORMWORK_TEXTURE_CELL_PITCH
+const FORMWORK_SCALE = FORMWORK_DISPLAY_SIZE / FORMWORK_TEXTURE_SIZE
+const BOARD_METRICS = {
+  originX: 10 + 240 * FORMWORK_SCALE,
+  originY: 10 + 240 * FORMWORK_SCALE,
+  cellSize: FORMWORK_TEXTURE_CELL_PITCH * FORMWORK_SCALE,
+  gap: BOARD_CELL_GAP * FORMWORK_SCALE,
+}
+const HAND_METRICS = { cellSize: HAND_BLOCK_CELL_SIZE, gap: HAND_BLOCK_CELL_GAP }
+const BATTLE_STAGE_WIDTH = 820
+const ANVIL_SLOT_X_RATIOS = [195 / 670, 295 / 670, 400 / 670, 505 / 670, 610 / 670]
+const ANVIL_SLOT_Y_RATIO = 97 / 161
+const ANVIL_CENTER_Y = 1142
+const ANVIL_DISPLAY_HEIGHT = 390
+const FORMWORK_GRID_SIZE = 5
 const BOARD_CENTER = gridToWorld(1, 1, BOARD_METRICS)
-const EFFECT_SUMMARY_X = BOARD_CENTER.x + FORMWORK_DISPLAY_SIZE / 2 + 4
-const EFFECT_SUMMARY_BOTTOM = BOARD_CENTER.y + FORMWORK_DISPLAY_SIZE / 2
+const EFFECT_SUMMARY_X = 560
+const EFFECT_SUMMARY_BOTTOM = 805
 const EFFECT_SUMMARY_WIDTH = BATTLE_STAGE_WIDTH - EFFECT_SUMMARY_X - 8
 const ANVIL_TOP_Y = ANVIL_CENTER_Y - ANVIL_DISPLAY_HEIGHT / 2
 const HAND_SURFACE_Y = ANVIL_TOP_Y - 8
@@ -74,6 +80,18 @@ const FORMWORK_AURA_COLORS = {
 }
 
 const boundaryPointKey = ({ x, y }) => `${x},${y}`
+
+const rotateQuickCell = ({ x, y }, width, height, turns) => {
+  switch (turns % 4) {
+    case 1: return { x: height - 1 - y, y: x }
+    case 2: return { x: width - 1 - x, y: height - 1 - y }
+    case 3: return { x: y, y: width - 1 - x }
+    default: return { x, y }
+  }
+}
+
+const getRotatedQuickLayoutSize = ({ width, height }, turns) =>
+  turns % 2 ? { width: height, height: width } : { width, height }
 
 const getClockwiseBoundaryLoops = (cells) => {
   const cellKeys = new Set(cells.map(({ x, y }) => `${x},${y}`))
@@ -135,19 +153,28 @@ export class BattleScene extends Phaser.Scene {
     this.activeCellCount = getActiveBoardCellCount(data.health ?? 75, BOARD_CELLS.length)
     this.occupied = new Map()
     this.pieces = []
-    this.handSlots = layoutBlocksInCenteredRow(this.hand, HAND_METRICS, BATTLE_STAGE_WIDTH, HAND_HORIZONTAL_GAP)
+    this.handSlots = this.hand.map((block, index) => ({
+      x: 0,
+      bounds: getBlockVisualBounds(layoutBlockForHand(block, 0, HAND_METRICS)),
+    }))
     this.selected = null
+    this.quickCombinationPreview = null
     this.placementOrder = 0
     this.unsubReset = null
     this.unsubInput = null
     this.unsubQuickCombination = null
+    this.unsubQuickCombinationPreview = null
+    this.unsubQuickCombinationPreviewClear = null
     this.unsubHealthChanged = null
     this.unsubArmorChanged = null
     this.unsubCombatContextChanged = null
     this.inputEnabled = true
     this.handleWindowKeyDown = (event) => {
       if (!this.inputEnabled) return
-      if (event.code === 'KeyR' && this.selected) {
+      if (event.code === 'KeyR' && this.quickCombinationPreview) {
+        event.preventDefault()
+        this.rotateQuickCombinationPreview()
+      } else if (event.code === 'KeyR' && this.selected) {
         event.preventDefault()
         this.rotateSelected()
       }
@@ -177,29 +204,25 @@ export class BattleScene extends Phaser.Scene {
 
   preload() {
     Object.values(BLOCK_TEXTURES).forEach(({ key, url }) => this.load.image(key, url))
-    this.load.image('battle-anvil', anvilTexture)
     this.load.image('battle-formwork', formworkTexture)
   }
 
   create() {
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)')
     this.drawBoard()
-    this.createEffectSummary()
-    this.add.text(24, HAND_SURFACE_Y - 53, '도구 주머니', { fontFamily: 'DNF Forged Blade Medium', fontSize: '17px', color: '#ecd9b7' })
-    const controlsText = this.developerMode
-      ? '드래그해 배치\n드래그 중 R로 회전\nZ로 최근 일반 블록 색상 변경'
-      : '드래그해 배치\n드래그 중 R로 회전'
-    this.add.text(24, HAND_SURFACE_Y - 30, controlsText, {
-      fontFamily: 'DNF Forged Blade Medium',
-      fontSize: '11px',
-      lineSpacing: 2,
-      color: '#9c8b75',
-    })
+    this.handContainer = this.add.container(0, 0).setDepth(1)
+    this.quickCombinationGhost = this.add.container(0, 0).setDepth(19).setVisible(false)
     this.hand.forEach((block, index) => this.createPiece(block, index))
+    this.refreshHandSlotPositions()
     window.addEventListener('keydown', this.handleWindowKeyDown)
     this.input.on('pointerdown', this.selectPieceAtPointer, this)
     this.input.on('pointermove', this.moveSelected, this)
     this.input.on('pointerup', this.releaseSelected, this)
+    this.input.on('pointerupoutside', this.releaseSelectedOutside, this)
+    this.handleWindowPointerUp = this.handleWindowPointerUp.bind(this)
+    this.refreshHandSlotPositions = this.refreshHandSlotPositions.bind(this)
+    window.addEventListener('pointerup', this.handleWindowPointerUp)
+    window.addEventListener('resize', this.refreshHandSlotPositions)
     this.unsubReset = gameBridge.on(GAME_EVENTS.RESET_BOARD, () => this.resetBoard())
     this.unsubHealthChanged = gameBridge.on(
       GAME_EVENTS.BOARD_HEALTH_CHANGED,
@@ -223,6 +246,14 @@ export class BattleScene extends Phaser.Scene {
       GAME_EVENTS.QUICK_COMBINATION_DROP,
       (payload) => this.placeQuickCombination(payload),
     )
+    this.unsubQuickCombinationPreview = gameBridge.on(
+      GAME_EVENTS.QUICK_COMBINATION_PREVIEW,
+      (payload) => this.previewQuickCombination(payload),
+    )
+    this.unsubQuickCombinationPreviewClear = gameBridge.on(
+      GAME_EVENTS.QUICK_COMBINATION_PREVIEW_CLEAR,
+      () => this.clearQuickCombinationPreview(),
+    )
     this.unsubInput = gameBridge.on(GAME_EVENTS.SET_INPUT_ENABLED, (enabled) => {
       this.inputEnabled = enabled
       this.input.enabled = enabled
@@ -233,9 +264,14 @@ export class BattleScene extends Phaser.Scene {
       this.input.off('pointerdown', this.selectPieceAtPointer, this)
       this.input.off('pointermove', this.moveSelected, this)
       this.input.off('pointerup', this.releaseSelected, this)
+      this.input.off('pointerupoutside', this.releaseSelectedOutside, this)
+      window.removeEventListener('pointerup', this.handleWindowPointerUp)
+      window.removeEventListener('resize', this.refreshHandSlotPositions)
       this.unsubReset?.()
       this.unsubInput?.()
       this.unsubQuickCombination?.()
+      this.unsubQuickCombinationPreview?.()
+      this.unsubQuickCombinationPreviewClear?.()
       this.unsubHealthChanged?.()
       this.unsubArmorChanged?.()
       this.unsubCombatContextChanged?.()
@@ -248,12 +284,6 @@ export class BattleScene extends Phaser.Scene {
     this.activeCellKeys = new Set(this.activeCells.map(cellKey))
     this.boardCellBackgrounds = new Map()
     const hasFormworkTexture = this.textures.exists('battle-formwork')
-    if (this.textures.exists('battle-anvil')) {
-      this.add.image(410, ANVIL_CENTER_Y, 'battle-anvil')
-        .setDisplaySize(760, ANVIL_DISPLAY_HEIGHT)
-        .setFlipX(true)
-        .setDepth(-3)
-    }
     if (hasFormworkTexture) {
       this.add.image(BOARD_CENTER.x, BOARD_CENTER.y, 'battle-formwork')
         .setDisplaySize(FORMWORK_DISPLAY_SIZE, FORMWORK_DISPLAY_SIZE)
@@ -625,11 +655,35 @@ export class BattleScene extends Phaser.Scene {
 
   createPiece(block, index) {
     const { x, bounds: homeBounds } = this.handSlots[index]
-    const y = HAND_SURFACE_Y - (homeBounds.y + homeBounds.height)
+    const y = HAND_SURFACE_Y - (homeBounds.y + homeBounds.height / 2)
     const container = this.add.container(x, y)
-    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null }
+    this.handContainer.add(container)
+    const piece = { block, container, rotation: 0, placed: false, boardX: null, boardY: null, homeX: x, homeY: y, layoutMode: 'hand', placedOrder: null, dragOrigin: null }
     this.layoutPieceForHand(piece)
     this.pieces.push(piece)
+  }
+
+  refreshHandSlotPositions() {
+    const anvilFrame = document.querySelector('.battle-center-ui__anvil-frame')
+    const canvasBounds = this.game.canvas.getBoundingClientRect()
+    if (!anvilFrame || !canvasBounds.width || !canvasBounds.height) return
+    const frameBounds = anvilFrame.getBoundingClientRect()
+    if (!frameBounds.width || !frameBounds.height) return
+    this.handSlots.forEach((slot, index) => {
+      const clientX = frameBounds.left + frameBounds.width * (ANVIL_SLOT_X_RATIOS[index] ?? ANVIL_SLOT_X_RATIOS.at(-1))
+      const clientY = frameBounds.top + frameBounds.height * ANVIL_SLOT_Y_RATIO
+      slot.x = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
+      slot.y = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
+    })
+    this.pieces.forEach((piece, index) => {
+      if (piece.placed || this.selected === piece) return
+      const slot = this.handSlots[index]
+      if (!slot) return
+      const bounds = getBlockVisualBounds(layoutBlockForHand(piece.block, piece.rotation, HAND_METRICS))
+      piece.homeX = slot.x
+      piece.homeY = slot.y - (bounds.y + bounds.height / 2)
+      piece.container.setPosition(piece.homeX, piece.homeY)
+    })
   }
 
   isPointerOverPiece(pointer, piece) {
@@ -647,8 +701,18 @@ export class BattleScene extends Phaser.Scene {
   selectPiece(piece, pointer) {
     if (this.selected) return
     this.selected = piece
+    piece.dragOrigin = {
+      rotation: piece.rotation,
+      depth: piece.container.depth,
+      scaleX: piece.container.scaleX,
+      scaleY: piece.container.scaleY,
+    }
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-drag-started' })
     if (piece.placed) this.removeOccupancy(piece)
+    if (piece.container.parentContainer === this.handContainer) {
+      this.handContainer.remove(piece.container)
+      this.children.add(piece.container)
+    }
     piece.container.setPosition(pointer.worldX, pointer.worldY)
     piece.container.setAlpha(DRAG_ALPHA)
     piece.container.setDepth(20)
@@ -661,13 +725,39 @@ export class BattleScene extends Phaser.Scene {
     this.previewPieceLayout(this.selected)
   }
 
-  releaseSelected() {
+  releaseSelected(forceInvalid = false) {
     if (!this.selected) return
     const piece = this.selected
     piece.container.setAlpha(1)
     piece.container.setDepth(1)
-    this.tryPlace(piece)
+    const placed = !forceInvalid && this.tryPlace(piece)
+    if (!placed) this.restorePieceToHand(piece)
+    piece.dragOrigin = null
     this.selected = null
+  }
+
+  releaseSelectedOutside() {
+    this.releaseSelected(true)
+  }
+
+  handleWindowPointerUp(event) {
+    if (!this.selected) return
+    const bounds = this.game.canvas.getBoundingClientRect()
+    const outsideCanvas = event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom
+    this.releaseSelected(outsideCanvas)
+  }
+
+  restorePieceToHand(piece) {
+    piece.placed = false
+    piece.rotation = piece.dragOrigin?.rotation ?? piece.rotation
+    piece.container.setScale(piece.dragOrigin?.scaleX ?? 1, piece.dragOrigin?.scaleY ?? 1)
+    piece.container.setPosition(piece.homeX, piece.homeY)
+    this.handContainer.add(piece.container)
+    this.layoutPieceForHand(piece, COLORS.invalid)
+    piece.container.setDepth(piece.dragOrigin?.depth ?? 1)
+    this.time.delayedCall(180, () => { if (!piece.placed) this.layoutPieceForHand(piece) })
+    this.emitBoardState()
   }
 
   applyPieceLayout(piece, layout, mode, tint, stroke = STROKES.hand) {
@@ -754,12 +844,7 @@ export class BattleScene extends Phaser.Scene {
   tryPlace(piece) {
     const candidate = this.getPlacementCandidate(piece)
     if (!candidate.valid) {
-      piece.placed = false
-      piece.container.setPosition(piece.homeX, piece.homeY)
-      this.layoutPieceForHand(piece, COLORS.invalid)
-      this.time.delayedCall(180, () => { if (!piece.placed) this.layoutPieceForHand(piece) })
-      this.emitBoardState()
-      return
+      return false
     }
     piece.placed = true
     piece.placedOrder = ++this.placementOrder
@@ -770,8 +855,9 @@ export class BattleScene extends Phaser.Scene {
     const anchor = getBlockAnchorOffset(layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS))
     piece.container.setPosition(world.x + anchor.x, world.y + anchor.y)
     this.refreshPlacedHighlights()
-    this.emitBoardState()
+    this.emitBoardState({ placementCommitted: true })
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'block-placed' })
+    return true
   }
 
   removeOccupancy(piece) {
@@ -782,57 +868,125 @@ export class BattleScene extends Phaser.Scene {
     this.emitBoardState()
   }
 
-  placeQuickCombination({ combinationId, clientX, clientY }) {
+  getQuickCombinationPlacementState({ combinationId, clientX, clientY, rotation = 0 }) {
     const canvasBounds = this.game.canvas.getBoundingClientRect()
     if (clientX < canvasBounds.left || clientX > canvasBounds.right
-      || clientY < canvasBounds.top || clientY > canvasBounds.bottom) return
+      || clientY < canvasBounds.top || clientY > canvasBounds.bottom) return { insideFormwork: false }
+
     const unplacedPieces = this.pieces.filter(({ placed }) => !placed)
-    const plan = getQuickCombinationPlan(
-      combinationId,
-      unplacedPieces.map(({ block }) => block),
-    )
-    const placedCount = this.pieces.filter(({ placed }) => placed).length
-    if (!plan || placedCount + plan.assignments.length > this.getPlacementLimit()) return
+    const plan = getQuickCombinationPlan(combinationId, unplacedPieces.map(({ block }) => block))
+    if (!plan) return { insideFormwork: false }
 
     const worldX = (clientX - canvasBounds.left) * this.scale.width / canvasBounds.width
     const worldY = (clientY - canvasBounds.top) * this.scale.height / canvasBounds.height
-    const topLeftX = worldX - ((plan.layout.width - 1) * BOARD_METRICS.cellSize) / 2
-    const topLeftY = worldY - ((plan.layout.height - 1) * BOARD_METRICS.cellSize) / 2
+    const pointerCell = worldToGrid(worldX, worldY, BOARD_METRICS)
+    if (pointerCell.column < 0 || pointerCell.column >= FORMWORK_GRID_SIZE
+      || pointerCell.row < 0 || pointerCell.row >= FORMWORK_GRID_SIZE) {
+      return { insideFormwork: false }
+    }
+
+    const turns = plan.combination.match_options.allow_recipe_rotation ? rotation % 4 : 0
+    const layout = getRotatedQuickLayoutSize(plan.layout, turns)
+    const topLeftX = worldX - ((layout.width - 1) * BOARD_METRICS.cellSize) / 2
+    const topLeftY = worldY - ((layout.height - 1) * BOARD_METRICS.cellSize) / 2
     const anchor = worldToGrid(topLeftX, topLeftY, BOARD_METRICS)
     const occupiedKeys = new Set(this.occupied.keys())
+    const hasCapacity = this.pieces.filter(({ placed }) => placed).length + plan.assignments.length <= this.getPlacementLimit()
+    let valid = hasCapacity
     const placements = []
 
     for (const assignment of plan.assignments) {
       const piece = unplacedPieces.find(({ block }) => block.id === assignment.blockId)
-      if (!piece) return
-      const rotation = assignment.rotation / 90
-      const column = anchor.column + assignment.origin.x
-      const row = anchor.row + assignment.origin.y
-      const cells = getPlacedCells(piece.block.cells, rotation, column, row)
-      if (!canPlaceBlock({
-        cells,
-        activeCellKeys: this.activeCellKeys,
-        occupiedCellKeys: occupiedKeys,
-      })) return
+      if (!piece) return { insideFormwork: false }
+      const baseRotation = assignment.rotation / 90
+      const recipeCells = getPlacedCells(piece.block.cells, baseRotation, assignment.origin.x, assignment.origin.y)
+        .map(([x, y]) => rotateQuickCell({ x, y }, plan.layout.width, plan.layout.height, turns))
+      const column = anchor.column + Math.min(...recipeCells.map(({ x }) => x))
+      const row = anchor.row + Math.min(...recipeCells.map(({ y }) => y))
+      const pieceRotation = (baseRotation + turns) % 4
+      const cells = getPlacedCells(piece.block.cells, pieceRotation, column, row)
+      if (!canPlaceBlock({ cells, activeCellKeys: this.activeCellKeys, occupiedCellKeys: occupiedKeys })) valid = false
       cells.forEach((cell) => occupiedKeys.add(cellKey(cell)))
-      placements.push({ piece, rotation, column, row, cells })
+      placements.push({ piece, rotation: pieceRotation, column, row, cells })
     }
 
-    placements.forEach(({ piece, rotation, column, row, cells }) => {
-      piece.rotation = rotation
+    return { insideFormwork: true, valid, placements }
+  }
+
+  renderQuickCombinationGhost({ valid, placements }) {
+    this.quickCombinationGhost.removeAll(true)
+    const color = valid ? COLORS.valid : 0xd96b63
+    placements.forEach(({ piece, cells }) => {
+      const texture = BLOCK_TEXTURES[piece.block.color] ?? BLOCK_TEXTURES.steel
+      cells.forEach(([column, row]) => {
+        const world = gridToWorld(row, column, BOARD_METRICS)
+        const image = this.add.image(world.x, world.y, texture.key)
+          .setDisplaySize(BOARD_METRICS.cellSize - BOARD_METRICS.gap, BOARD_METRICS.cellSize - BOARD_METRICS.gap)
+          .setTint(color)
+          .setAlpha(.42)
+        const outline = this.add.rectangle(
+          world.x,
+          world.y,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          BOARD_METRICS.cellSize - BOARD_METRICS.gap,
+          color,
+          0,
+        ).setStrokeStyle(3, color, .9)
+        this.quickCombinationGhost.add([image, outline])
+      })
+    })
+    this.quickCombinationGhost.setVisible(true)
+  }
+
+  previewQuickCombination(payload) {
+    const rotation = this.quickCombinationPreview?.combinationId === payload.combinationId
+      ? this.quickCombinationPreview.rotation
+      : 0
+    this.quickCombinationPreview = { ...payload, rotation }
+    const state = this.getQuickCombinationPlacementState(this.quickCombinationPreview)
+    if (!state.insideFormwork) {
+      this.quickCombinationGhost.removeAll(true)
+      this.quickCombinationGhost.setVisible(false)
+      return
+    }
+    this.renderQuickCombinationGhost(state)
+  }
+
+  rotateQuickCombinationPreview() {
+    if (!this.quickCombinationPreview) return
+    this.quickCombinationPreview.rotation = (this.quickCombinationPreview.rotation + 1) % 4
+    const state = this.getQuickCombinationPlacementState(this.quickCombinationPreview)
+    if (!state.insideFormwork) return
+    this.renderQuickCombinationGhost(state)
+  }
+
+  clearQuickCombinationPreview() {
+    this.quickCombinationPreview = null
+    this.quickCombinationGhost?.removeAll(true)
+    this.quickCombinationGhost?.setVisible(false)
+  }
+
+  placeQuickCombination(payload) {
+    const rotation = this.quickCombinationPreview?.combinationId === payload.combinationId
+      ? this.quickCombinationPreview.rotation
+      : 0
+    const state = this.getQuickCombinationPlacementState({ ...payload, rotation })
+    this.clearQuickCombinationPreview()
+    if (!state.insideFormwork || !state.valid) return
+
+    state.placements.forEach(({ piece, rotation: pieceRotation, column, row, cells }) => {
+      piece.rotation = pieceRotation
       piece.placed = true
       piece.placedOrder = ++this.placementOrder
       piece.boardX = column
       piece.boardY = row
       cells.forEach((cell) => this.occupied.set(cellKey(cell), piece.block.id))
       const world = gridToWorld(row, column, BOARD_METRICS)
-      const blockAnchor = getBlockAnchorOffset(
-        layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS),
-      )
+      const blockAnchor = getBlockAnchorOffset(layoutBlockForBoard(piece.block, piece.rotation, BOARD_METRICS))
       piece.container.setPosition(world.x + blockAnchor.x, world.y + blockAnchor.y)
     })
     this.refreshPlacedHighlights()
-    this.emitBoardState()
+    this.emitBoardState({ placementCommitted: true })
     gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'quick-combination-placed' })
   }
 
@@ -848,7 +1002,7 @@ export class BattleScene extends Phaser.Scene {
     this.emitBoardState()
   }
 
-  emitBoardState() {
+  emitBoardState({ placementCommitted = false } = {}) {
     const placedBlocks = this.pieces.filter((piece) => piece.placed).map((piece) => ({
       block: piece.block,
       origin: { x: piece.boardX, y: piece.boardY },
@@ -888,18 +1042,13 @@ export class BattleScene extends Phaser.Scene {
     const combatFormulaLines = this.developerMode
       ? combatFormula.lines
       : []
-    this.renderEffectSummary(
-      disclosedEffectValues,
-      combinationDetails,
-      effects.colorSynergy.labels,
-      combatFormulaLines,
-    )
     gameBridge.emit(GAME_EVENTS.BOARD_CHANGED, {
       placedCount: placedBlocks.length,
       placementLimit: this.getPlacementLimit(),
       occupiedCells: this.occupied.size,
       totalBoardCells: this.activeCellCount,
       placedBlocks,
+      combinationIds: placementCommitted ? effects.combinationDetails.map(({ id }) => id) : [],
     })
   }
 }

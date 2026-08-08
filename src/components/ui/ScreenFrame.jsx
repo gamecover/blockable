@@ -3,9 +3,9 @@ import { useRunStore } from '../../game/state/runStoreContext.js'
 import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
 import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
 
-export function ScreenFrame({ children, title, subtitle, compactLogo = true, actions, barVariant = 'alpha' }) {
+export function ScreenFrame({ children, title, subtitle, compactLogo = true, actions, barVariant = 'alpha', showTopbar = false, dungeonId }) {
   const activeDungeonId = useRunStore((state) => state.activeDungeonId)
-  const background = activeDungeonId === 'ashen-forge-west'
+  const background = (dungeonId ?? activeDungeonId) === 'ashen-forge-west'
     ? floodedFoundryBackground
     : ashenFurnaceBackground
 
@@ -14,11 +14,11 @@ export function ScreenFrame({ children, title, subtitle, compactLogo = true, act
       className="screen-frame"
       style={{ '--screen-background-image': `url("${background}")` }}
     >
-      <header className={`topbar topbar--${barVariant}`}>
+      {showTopbar && <header className={`topbar topbar--${barVariant}`}>
         <GameLogo compact={compactLogo} />
         <div className="screen-heading"><span>{subtitle}</span><h2>{title}</h2></div>
         <div className="top-actions">{actions}</div>
-      </header>
+      </header>}
       <section className="screen-content">{children}</section>
     </main>
   )

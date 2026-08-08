@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { GameContainer } from './GameContainer.jsx'
-import { BattleHud } from './components/BattleHud.jsx'
+import { CommonGameMenu } from '../../components/game/CommonGameMenu.jsx'
 import { BattleDebugPanel } from './components/BattleDebugPanel.jsx'
 import { QuickBlueprintPanel } from './components/QuickBlueprintPanel.jsx'
 import { StatusEffectList } from './components/StatusEffectList.jsx'
 import { BattlePileModal } from './components/BattlePileModal.jsx'
 import { MonsterPartyFrame } from './components/MonsterPartyFrame.jsx'
+import { BattleCenterOverlay } from './components/BattleCenterOverlay.jsx'
+import { CombinationEffectPanel } from './components/CombinationEffectPanel.jsx'
 import { TutorialOverlay } from '../tutorial/TutorialOverlay.jsx'
 import { useBattleDebugLog } from './hooks/useBattleDebugLog.js'
 import { battleTurnMachine } from '../../game/machines/battleTurnMachine.js'
@@ -26,7 +28,7 @@ import {
   resolvePlayerAction,
 } from '../../game/systems/playerAttackSystem.js'
 import { BLOCK_RULE_INDEX } from '../../game/systems/blockRulesSystem.js'
-import { getKnownBlueprints, isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
+import { isStarterBlueprint } from '../../game/systems/blueprintSystem.js'
 import {
   applyMonsterEvent,
   applyMonsterTurnTriggers,
@@ -40,6 +42,9 @@ import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { useRunStore, useRunStoreApi } from '../../game/state/runStoreContext.js'
 import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
 import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
+import discardIcon from '../../assets/pictures/ui/icon_discard.png'
+import turnEndButtonFrame from '../../assets/pictures/ui/button_turn_end_base.png'
+import blockPack from '../../assets/pictures/ui/block_pack.png'
 
 const prepareMonsterTurn = (monster, runtime, turn, health) => {
   const context = { turn, monster_hp_ratio: health / monster.health }
@@ -94,6 +99,7 @@ export function BattleScreen({
     return (battleType === 'boss' ? initial.find(({ slotId }) => slotId === 5) : initial[0])?.instanceId
   })
   const [activeMonsterId, setActiveMonsterId] = useState(null)
+  const [monsterPresentation, setMonsterPresentation] = useState(null)
   const [monsterActionNotice, setMonsterActionNotice] = useState(null)
   const [tutorialFreeCombat, setTutorialFreeCombat] = useState(false)
   const [tutorialVictory, setTutorialVictory] = useState(false)
@@ -105,11 +111,22 @@ export function BattleScreen({
   const tutorialVictoryTimer = useRef(null)
   const extraTurnsRemaining = useRef(0)
   const previousPlacedCount = useRef(0)
+  const monsterPresentationTimer = useRef(null)
   const runStore = useRunStoreApi()
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
     ?? combatants.find(({ currentHealth }) => currentHealth > 0)
     ?? combatants[0]
   const displayMonster = combatants.find(({ instanceId }) => instanceId === activeMonsterId) ?? selectedMonster
+  const playMonsterPresentation = useCallback((monsterId, type, duration) => {
+    window.clearTimeout(monsterPresentationTimer.current)
+    const presentation = { monsterId, type }
+    setMonsterPresentation(presentation)
+    monsterPresentationTimer.current = window.setTimeout(() => {
+      setMonsterPresentation((current) => current === presentation ? null : current)
+    }, duration)
+  }, [])
+
+  useEffect(() => () => window.clearTimeout(monsterPresentationTimer.current), [])
   const { entries: debugEntries, addLog } = useBattleDebugLog(
     `전투 시작 · ${combatants.length}마리 · ${combatants.map(({ slotId, name }) => `${slotId}번 ${name}`).join(', ')}`,
   )
@@ -119,6 +136,11 @@ export function BattleScreen({
     armor,
     gold,
     floor,
+    map,
+    worldMap,
+    deck,
+    activeDungeonId,
+    currentNodeId,
     combat,
     battlePiles,
     damagePlayer,
@@ -137,10 +159,7 @@ export function BattleScreen({
   } = useRunStore()
   const playerStunned = combat.player.statuses.some(({ id, stacks }) =>
     id === 'stun' && stacks > 0)
-  const knownBlueprintIds = useMemo(
-    () => getKnownBlueprints(discoveredBlueprintIds).map(({ id }) => id),
-    [discoveredBlueprintIds],
-  )
+  const knownBlueprintIds = useMemo(() => discoveredBlueprintIds, [discoveredBlueprintIds])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.BOARD_CHANGED, (nextBoard) => {
     const addedBlocks = Math.max(0, nextBoard.placedCount - previousPlacedCount.current)
@@ -159,8 +178,8 @@ export function BattleScreen({
     }
     previousPlacedCount.current = nextBoard.placedCount
     setBoard(nextBoard)
-    if (developerMode) addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
-  }), [addLog, damagePlayerIgnoringArmor, developerMode, onLose, runStore, send])
+    addLog(`블록 배치 ${nextBoard.placedCount}/3 · 점유 칸 ${nextBoard.occupiedCells}/${nextBoard.totalBoardCells}`)
+  }), [addLog, damagePlayerIgnoringArmor, onLose, runStore, send])
 
   useEffect(() => gameBridge.on(GAME_EVENTS.TUTORIAL_ACTION, ({ type }) => {
     if (!tutorialMode || type !== 'free-combat-started') return
@@ -188,14 +207,14 @@ export function BattleScreen({
       setCombatants((current) => current.map((entry) => ({ ...entry, currentHealth: 0 })))
     }
     send({ type: source === 'developer' ? 'DEBUG_WIN' : 'MONSTER_DEFEATED' })
-    if (developerMode) addLog(source === 'developer' ? '자동 승리 실행' : '전투 승리')
+    addLog(source === 'developer' ? '자동 승리 실행' : '전투 승리')
     if (tutorialMode) {
       setTutorialVictory(true)
       tutorialVictoryTimer.current = window.setTimeout(onWin, 2800)
       return
     }
     onWin()
-  }, [addLog, developerMode, onWin, send, tutorialMode])
+  }, [addLog, onWin, send, tutorialMode])
 
   const endTurn = useCallback(() => {
     const currentPlayerStatuses = runStore.getState().combat.player.statuses
@@ -210,20 +229,7 @@ export function BattleScreen({
       : resolvePlayerTurn({ ...board, currentArmor: armor })
     if (stunned) {
       consumeCombatStatus('player', 'stun')
-      if (developerMode) addLog('플레이어 · 기절로 행동 취소')
-    }
-    if (rawResult.combinations.length) {
-      const previouslyDiscovered = new Set(discoveredBlueprintIds)
-      const newlyDiscovered = rawResult.combinations
-        .map((id) => BLOCK_RULE_INDEX.combinations.get(id))
-        .filter((combination) =>
-          combination
-          && !isStarterBlueprint(combination)
-          && !previouslyDiscovered.has(combination.id))
-      if (newlyDiscovered.length) {
-        setBlueprintNotice(newlyDiscovered.map(({ display_name: name }) => name))
-      }
-      discoverBlueprints(rawResult.combinations)
+      addLog('플레이어 · 기절로 행동 취소')
     }
     const playerAction = resolvePlayerAction({
       combatants,
@@ -243,11 +249,20 @@ export function BattleScreen({
     rawResult.playerStatuses.forEach((status) => {
       applyCombatStatus('player', status, undefined, true)
     })
+    playMonsterPresentation(selectedMonster.instanceId, 'hit', 230)
     setCombatants(afterPlayerAction)
-    if (developerMode) {
-      const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
-      addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
+    const discovered = new Set(runStore.getState().discoveredBlueprintIds)
+    const newRecipeIds = [...new Set(rawResult.combinations ?? [])]
+      .filter((id) => {
+        const combination = BLOCK_RULE_INDEX.combinations.get(id)
+        return combination && !isStarterBlueprint(combination) && !discovered.has(id)
+      })
+    if (newRecipeIds.length) {
+      setBlueprintNotice(newRecipeIds.map((id) => BLOCK_RULE_INDEX.combinations.get(id).display_name))
+      discoverBlueprints(newRecipeIds)
     }
+    const target = afterPlayerAction.find(({ instanceId }) => instanceId === selectedMonster.instanceId)
+    addLog(`턴 ${turn} · 기본 ${playerAction.baseAttackPerHit}×${playerAction.hitCount} · 독립 ${playerAction.independentDamage} · ${selectedMonster.slotId}번 피해 ${playerAction.damageBySlot.get(selectedMonster.slotId) ?? 0} · HP ${target.currentHealth}/${target.health}`)
 
     window.setTimeout(() => {
       if (isCombatVictory(battleType, afterPlayerAction)) {
@@ -293,9 +308,10 @@ export function BattleScreen({
                 : entry.turnPlan.ability?.display_name ?? '기본 공격',
               cancelled: stun.skipAction,
             })
+            if (!stun.skipAction) playMonsterPresentation(entry.instanceId, 'attack', 300)
             await waitForPresentation(stun.skipAction ? 400 : 300)
             if (stun.skipAction) {
-              if (developerMode) addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
+              addLog(`${entry.slotId}번 ${entry.name} · 기절로 행동 취소`)
               afterPlayerAction = afterPlayerAction.map((candidate) =>
                 candidate.instanceId === entry.instanceId
                   ? { ...candidate, statuses: stun.statuses }
@@ -340,9 +356,7 @@ export function BattleScreen({
                 applyCombatStatus('player', status, undefined, true))
             }
             const after = runStore.getState()
-            if (developerMode) {
-              addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
-            }
+            addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
             playerDefeated = after.health <= 0
             const selfBaseDamage = (action.selfBaseDamage + monsterRageBonus)
               * monsterHitCount * monsterActionCount
@@ -455,9 +469,8 @@ export function BattleScreen({
         window.setTimeout(() => send({ type: 'READY' }), 80)
       }, 550)
     }, 450)
-  }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, developerMode, discoverBlueprints, discoveredBlueprintIds, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
+  }, [addGold, addLog, applyCombatStatus, armor, battleType, board, combatants, consumeCombatStatus, damagePlayer, discoverBlueprints, drawNextHand, finishVictory, gainArmor, heal, machineState, onLose, playMonsterPresentation, resolveArmorTurnEnd, resolvePlayerTurnEndStatuses, retainArmorNextTurn, runStore, selectedMonster, selectedMonsterId, send, turn, tutorialFreeCombat, tutorialMode])
 
-  const intent = describeMonsterAbility(displayMonster?.turnPlan.ability)
   const livingCombatants = useMemo(() => combatants.filter(({ currentHealth }) => currentHealth > 0), [combatants])
   const previewEffects = useMemo(() => resolvePlayerTurn(board), [board])
   const previewTargetSlotIds = useMemo(() => getPlayerTargetSlotIds({
@@ -515,19 +528,21 @@ export function BattleScreen({
       className="battle-screen"
       style={{ '--battle-background-image': `url("${battleBackground}")` }}
     >
-      <BattleHud
-        health={health}
-        maxHealth={maxHealth}
-        armor={armor}
+      {!tutorialMode && <CommonGameMenu
         gold={gold}
         floor={floor}
-        turn={turn}
-        monster={{ ...displayMonster, intent }}
-        placedCount={board.placedCount}
-        placementLimit={board.placementLimit}
-        playerStatuses={combat.player.statuses}
-      />
-      <div data-tutorial-target="monsters" className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
+        map={map}
+        worldMap={worldMap}
+        deck={deck}
+        activeDungeonId={activeDungeonId}
+        currentNodeId={currentNodeId}
+        currentScreen={tutorialMode ? 'tutorial' : 'battle'}
+        title={map?.dungeonName ?? '던전'}
+        leftPrimary={battleType === 'boss' ? 'BOSS FLOOR' : `FLOOR ${floor}`}
+        leftSecondary={`${turn} TURN`}
+        onMainMenu={onAbandon}
+      />}
+      <div className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
         {combatants.map((entry) => {
           const slotIntent = describeMonsterAbility(entry.turnPlan.ability)
           const selected = entry.instanceId === selectedMonsterId
@@ -584,21 +599,35 @@ export function BattleScreen({
         combatants={combatants}
         selectedMonsterId={selectedMonsterId}
         activeMonsterId={activeMonsterId}
+        presentationMonsterId={activeMonsterId ?? monsterPresentation?.monsterId}
+        presentationMotion={monsterPresentation}
         targetSlotIds={previewTargetSlotIds}
         canSelect={machineState.matches('playerInput')}
-        onSelect={setSelectedMonsterId}
+        onSelect={(monsterId) => {
+          if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'monster-selected' })
+          setSelectedMonsterId(monsterId)
+        }}
+        battleType={battleType}
       />
-      {machineState.matches('playerInput') && (
-        <QuickBlueprintPanel
-          hand={battlePiles.hand}
-          placedBlocks={board.placedBlocks}
-          discoveredBlueprintIds={discoveredBlueprintIds}
-          allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
+      <div className="battle-left-center-cluster">
+        {machineState.matches('playerInput') && (
+          <QuickBlueprintPanel
+            hand={battlePiles.hand}
+            placedBlocks={board.placedBlocks}
+            discoveredBlueprintIds={discoveredBlueprintIds}
+            allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
+          />
+        )}
+        <BattleCenterOverlay
+          health={health}
+          maxHealth={maxHealth}
+          armor={armor}
+          playerStatuses={combat.player.statuses}
         />
-      )}
+      </div>
       {blueprintNotice.length > 0 && (
         <div className="blueprint-discovery" role="status" aria-live="polite">
-          <b>새로운 조합 발견</b>
+          <b>새로운 조합식을 알아냈습니다.</b>
           <strong>{blueprintNotice.join(', ')}</strong>
           <span>이제 청사진에서 확인할 수 있습니다.</span>
           <button type="button" onClick={() => setBlueprintNotice([])} aria-label="조합 발견 알림 닫기">×</button>
@@ -626,16 +655,43 @@ export function BattleScreen({
         tutorialMode={tutorialMode}
         knownBlueprintIds={knownBlueprintIds}
       />
-      {developerMode && <BattleDebugPanel entries={debugEntries} />}
+      <span className="tutorial-piles-target" data-tutorial-target="piles" aria-hidden="true" />
+      <button className="remaining-blocks-button" type="button" onClick={() => setOpenPile('remaining')} aria-label={`남은 블록 ${battlePiles.drawPile.length}`}>
+        <img src={blockPack} alt="" aria-hidden="true" />
+        <span>남은 블록 <b>{battlePiles.drawPile.length}</b></span>
+      </button>
+      <CombinationEffectPanel
+        effects={previewEffects}
+        discoveredBlueprintIds={discoveredBlueprintIds}
+      />
+      <aside className="battle-formwork-hint" aria-label="거푸집 사용법">
+        <strong>거푸집</strong>
+        <span>
+          모루에서 블럭을 드래그해 배치<br />
+          드래그 중 R로 회전
+          {developerMode && <><br />Z로 최근 일반 블록 색상 변경</>}
+        </span>
+      </aside>
+      <BattleDebugPanel entries={debugEntries} />
       <div className="battle-controls">
-        <button className="text-button" onClick={onAbandon}>전투 포기</button>
-        <div data-tutorial-target="piles"><button className="pile-button" type="button" onClick={() => setOpenPile('remaining')}>남은 블록 <b>{battlePiles.drawPile.length}</b></button><button className="pile-button" type="button" onClick={() => setOpenPile('discard')}>버린 블록 <b>{battlePiles.discardPile.length}</b></button></div>
+        <div className="battle-discard-control">
+          <button className="battle-discard-button" type="button" onClick={() => setOpenPile('discard')} aria-label="버린 블록">
+            <img src={discardIcon} alt="" aria-hidden="true" />
+          </button>
+          <span>버린 블록 <b>{battlePiles.discardPile.length}</b></span>
+        </div>
         <div className="battle-action-buttons">
-          {developerMode && <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>}
+          {developerMode && <div className="battle-developer-controls">
+            <button className="developer-exit-battle" type="button" onClick={onAbandon}>전투 나가기</button>
+            <button className="developer-auto-win" type="button" disabled={victoryHandled.current || !machineState.matches('playerInput')} onClick={() => finishVictory('developer')}>자동 승리</button>
+          </div>}
           <button data-tutorial-target="end-turn" className="end-turn" disabled={(!board.placedCount && !playerStunned) || !livingCombatants.length || !machineState.matches('playerInput')} onClick={() => {
             if (tutorialMode) gameBridge.emit(GAME_EVENTS.TUTORIAL_ACTION, { type: 'turn-ended' })
             endTurn()
-          }}>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'} <span>→</span></button>
+          }}>
+            <img src={turnEndButtonFrame} alt="" aria-hidden="true" />
+            <span>{machineState.matches('playerInput') ? (playerStunned ? '기절 턴 넘기기' : '턴 종료') : '처리 중…'}</span>
+          </button>
         </div>
       </div>
       {openPile && <BattlePileModal

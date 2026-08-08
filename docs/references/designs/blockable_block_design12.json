@@ -1,0 +1,3086 @@
+{
+  "schema_version": "1.1.0",
+  "data_type": "blockable_block_design",
+  "metadata": {
+    "project_name": "Blockable",
+    "ruleset_name": "prototype",
+    "updated_at": "2026-08-01T02:34:50+09:00",
+    "validation_status": "valid",
+    "validation_error_count": 0,
+    "validation_warning_count": 39,
+    "designer_name": "Blockable Block Designer",
+    "combat_effect_spec_version": "0.5.4"
+  },
+  "blocks": [
+    {
+      "block_id": "s001",
+      "block_name": "강철_I",
+      "description": "강철 I 블록",
+      "block_type": {
+        "type_id": "steel",
+        "type_name": "강철",
+        "grade": "normal",
+        "color": "steel"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 10,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "s002",
+      "block_name": "강철_L",
+      "description": "강철 L 블록",
+      "block_type": {
+        "type_id": "steel",
+        "type_name": "강철",
+        "grade": "normal",
+        "color": "steel"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_2",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 10,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "s003",
+      "block_name": "강철_O",
+      "description": "강철 O 블록",
+      "block_type": {
+        "type_id": "steel",
+        "type_name": "강철",
+        "grade": "normal",
+        "color": "steel"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_3",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 10,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "f001",
+      "block_name": "불_I",
+      "description": "불 I 블록",
+      "block_type": {
+        "type_id": "fire",
+        "type_name": "불",
+        "grade": "normal",
+        "color": "fire"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_4",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 15,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "f002",
+      "block_name": "불_L",
+      "description": "불 L 블록",
+      "block_type": {
+        "type_id": "fire",
+        "type_name": "불",
+        "grade": "normal",
+        "color": "fire"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_5",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 15,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "f003",
+      "block_name": "불_O",
+      "description": "불 O 블록",
+      "block_type": {
+        "type_id": "fire",
+        "type_name": "불",
+        "grade": "normal",
+        "color": "fire"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_6",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 15,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "w001",
+      "block_name": "물_I",
+      "description": "물 I 블록",
+      "block_type": {
+        "type_id": "water",
+        "type_name": "물",
+        "grade": "normal",
+        "color": "water"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_7",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 6,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_defence_block",
+          "effect_name": "기초 방어력",
+          "description": "블록이 가진 기초 방어력",
+          "target": "self",
+          "value": 8,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "w002",
+      "block_name": "물_L",
+      "description": "물 L 블록",
+      "block_type": {
+        "type_id": "water",
+        "type_name": "물",
+        "grade": "normal",
+        "color": "water"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_8",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 6,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_defence_block_2",
+          "effect_name": "기초 방어력",
+          "description": "블록이 가진 기초 방어력",
+          "target": "self",
+          "value": 8,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "w003",
+      "block_name": "물_O",
+      "description": "물 O 블록",
+      "block_type": {
+        "type_id": "water",
+        "type_name": "물",
+        "grade": "normal",
+        "color": "water"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_9",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 6,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_defence_block_3",
+          "effect_name": "기초 방어력",
+          "description": "블록이 가진 기초 방어력",
+          "target": "self",
+          "value": 8,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "n001",
+      "block_name": "자연_I",
+      "description": "자연 I 블록",
+      "block_type": {
+        "type_id": "nature",
+        "type_name": "자연",
+        "grade": "normal",
+        "color": "nature"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_10",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 3,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_heal_block",
+          "effect_name": "기초 회복력",
+          "description": "블록이 가진 기초 회복력",
+          "target": "self",
+          "value": 5,
+          "type": "RECOVERY",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "debuff_weakness",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "n002",
+      "block_name": "자연_L",
+      "description": "자연 L 블록",
+      "block_type": {
+        "type_id": "nature",
+        "type_name": "자연",
+        "grade": "normal",
+        "color": "nature"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_23",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 3,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_heal_block_2",
+          "effect_name": "기초 회복력",
+          "description": "블록이 가진 기초 회복력",
+          "target": "self",
+          "value": 5,
+          "type": "RECOVERY",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "debuff_weakness_3",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "n003",
+      "block_name": "자연_O",
+      "description": "자연 O 블록",
+      "block_type": {
+        "type_id": "nature",
+        "type_name": "자연",
+        "grade": "normal",
+        "color": "nature"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_24",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 3,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_heal_block_3",
+          "effect_name": "기초 회복력",
+          "description": "블록이 가진 기초 회복력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "RECOVERY",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "debuff_weakness_4",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "l001",
+      "block_name": "전설_01",
+      "description": "전설 단일 블록",
+      "block_type": {
+        "type_id": "legend",
+        "type_name": "전설",
+        "grade": "legend",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "l002",
+      "block_name": "전설_02",
+      "description": "전설 + 블록",
+      "block_type": {
+        "type_id": "legend",
+        "type_name": "전설",
+        "grade": "legend",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "l003",
+      "block_name": "전설_03",
+      "description": "전설 + 블록",
+      "block_type": {
+        "type_id": "legend",
+        "type_name": "전설",
+        "grade": "legend",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "l004",
+      "block_name": "전설_04",
+      "description": "전설 + 블록",
+      "block_type": {
+        "type_id": "legend",
+        "type_name": "전설",
+        "grade": "legend",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "a001",
+      "block_name": "특수_01",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_11",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "a002",
+      "block_name": "특수_02",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_12",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "a003",
+      "block_name": "특수_03",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_13",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "a004",
+      "block_name": "특수_04",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_14",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "a005",
+      "block_name": "특수_05",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_15",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "a006",
+      "block_name": "특수_06",
+      "description": "특수 블럭",
+      "block_type": {
+        "type_id": "special",
+        "type_name": "특수",
+        "grade": "special",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_16",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "c001",
+      "block_name": "저주_01",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "c002",
+      "block_name": "저주_02",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 1
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "c003",
+      "block_name": "저주_03",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "c004",
+      "block_name": "저주_04",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "c005",
+      "block_name": "저주_05",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 2
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    },
+    {
+      "block_id": "c006",
+      "block_name": "저주_06",
+      "description": "저주 블록",
+      "block_type": {
+        "type_id": "curse",
+        "type_name": "저주",
+        "grade": "curse",
+        "color": "none"
+      },
+      "shape": {
+        "cells": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": []
+    }
+  ],
+  "combinations": [
+    {
+      "combination_id": "base_33_01",
+      "combination_name": "작은 의자",
+      "description": "어쩌면 당연한 소리지만, 때론 앉아서 쉬는게 필요하다. 아무리  치열한 전투를 치르는 중이더라도!\n체력을 회복한다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 180,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_heal",
+          "effect_name": "효과 회복력",
+          "description": "효과로 독립 회복력을 부여합니다",
+          "target": "self",
+          "value": 2,
+          "type": "RECOVERY",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_34",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_02",
+      "combination_name": "미완성 차크람",
+      "description": "다급하게 만드느라 완성하지 못한 무기. 어떻게든 쓸 순 있겠지만, 무기로써는 불합격점이다.\n적에게 약화 디버프 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 270,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "debuff_weakness_2",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_03",
+      "combination_name": "미완성 폭탄",
+      "description": "다급하게 만드느라 완성하지 못한 폭탄. 어떻게든 쓸 순 있겠지만, 폭발의 효과가 경미하다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_explode",
+          "effect_name": "범위 공격 부여",
+          "description": "공격이 전체 범위 공격효과를 얻습니다.",
+          "target": "all",
+          "value": 15,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_17",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_04",
+      "combination_name": "미완성 방패",
+      "description": "다급하게 만드느라 완성하지 못한 방어구. 어떻게든 쓸 순 있겠지만, 높은 방어효과를 기대하긴 힘들다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_18",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_defence",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 20,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_05",
+      "combination_name": "미완성 권총",
+      "description": "다급하게 만드느라 완성하지 못한 총기. 어떻게든 쓸 순 있겠지만, 발사되는 것이 고작이다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 180,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_attack_per_time:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_19",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -12,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_06",
+      "combination_name": "미완성 단봉",
+      "description": "다급하게 만드느라 완성하지 못한 무기. 어떻게든 쓸 순 있겠지만, 무기로써는 불합격점이다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_attack_per_time_2:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_2:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_20",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -15,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_07",
+      "combination_name": "미완성 도끼",
+      "description": "다급하게 만드느라 완성하지 못한 무기. 어떻게든 쓸 순 있겠지만, 무기로써는 불합격점이다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "debuff_wound",
+          "effect_name": "상처 디버프 부여",
+          "description": "적에게 상처 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WOUND",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_08_a",
+      "combination_name": "미완성 갑옷",
+      "description": "다급하게 만드느라 완성하지 못한 방어구. 어떻게든 쓸 순 있겠지만, 높은 방어효과를 기대하긴 힘들다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 1,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_defence_2",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 20,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_21",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_08_b",
+      "combination_name": "미완성 갑옷",
+      "description": "다급하게 만드느라 완성하지 못한 방어구. 어떻게든 쓸 순 있겠지만, 높은 방어효과를 기대하긴 힘들다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 270,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_defence_3",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 20,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_22",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_09",
+      "combination_name": "미완성 마법봉",
+      "description": "다급하게 만드느라 완성하지 못한 마법봉. 어떻게든 쓸 순 있겠지만, 마력을 담아내기엔 너무 조잡하다.\n공격력 감소, 추가 턴 획득.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 180,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_turn_2",
+          "effect_name": "추가 턴",
+          "description": "추가 턴을 획득합니다",
+          "target": "self",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "TURN",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_29",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -10,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_33_10",
+      "combination_name": "미완성 부적",
+      "description": "다급하게 만드느라 완성하지 못한 토템. 어떻게든 쓸 순 있겠지만, 제대로 효과가 나타나는지 의문이다.\n분노 버프를 획득하고, 추가 턴을 얻는다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 90,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_25",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -20,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "buff_add_rage",
+          "effect_name": "분노 버프 획득",
+          "description": "분노 버프 스택을 획득 합니다",
+          "target": "self",
+          "value": 2,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_turn",
+          "effect_name": "추가 턴",
+          "description": "추가 턴을 획득합니다",
+          "target": "self",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "TURN",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_44_01",
+      "combination_name": "권총",
+      "description": "3연발 사격이 가능한 권총. 날짐승을 잡는데는 이만한게 없다.\n기초 공격력 감소, 추가 공격 횟수 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 3,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s002",
+            "origin": {
+              "x": 3,
+              "y": 2
+            },
+            "rotation": 180,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_attack_per_time_3:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_3:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_26",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -14,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_44_02",
+      "combination_name": "마법봉",
+      "description": "재료의 마력을 담아낼 수 있는 마력봉. 직접 입힐 수 있는 공격력은 턱없이 낮지만, 숨겨진 잠재력은 무궁무진하다.\n추가 턴 획득, 다음 턴에 추가 배치 2 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 3,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "a002",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_turn_3",
+          "effect_name": "추가 턴",
+          "description": "추가 턴을 획득합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "TURN",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "exter_effect_extra_combination",
+          "effect_name": "다음 턴 추가 배치",
+          "description": "다음 턴에 추가 배치 횟수를 획득한다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_30",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -25,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_44_03",
+      "combination_name": "갑옷",
+      "description": "공격으로부터 몸을 방어해주는 장비. 적당한 견고함이 죽음의 공포로부터 조금 무뎌지게 해준다.\n방어도와 철갑 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s003",
+            "origin": {
+              "x": 1,
+              "y": 2
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_defence_5",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 25,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_28",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -30,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "buff_add_armor",
+          "effect_name": "철갑 버프 획득",
+          "description": "철갑 버프 스택을 획득 합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "base_44_04",
+      "combination_name": "자마다르",
+      "description": "재빠른 공격을 가능케하는 단검의 일종. 가벼움으로 부터 오는 민첩한 동작은, 적에게 색다른 종류의 무력감을 선사한다.\n적에게 약화 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 2,
+              "y": 2
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 270,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "debuff_weakness_5",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_damage_3",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 25,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_01",
+      "combination_name": "손도끼",
+      "description": "적에게 치명적인 상처를 입힐 수 있는 한손용 도끼. 가볍고 균형이 좋지만, 그렇다고 함부로 던지는 것은 금물이다.\n적에게 상처 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "a001",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s001",
+            "origin": {
+              "x": 3,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "debuff_wound_3",
+          "effect_name": "상처 디버프 부여",
+          "description": "적에게 상처 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WOUND",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_damage_4",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 30,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_02",
+      "combination_name": "채찍",
+      "description": "가시가 박힌 한 손 채찍. 끔찍하게도, 으레 이런 채찍은 고문에 특화되어 있기 마련이다.\n적에게 출혈 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "a001",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s001",
+            "origin": {
+              "x": 3,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "dot_damage_bleed",
+          "effect_name": "출혈 디버프 부여",
+          "description": "적에게 출혈 디버프를 부여합니다",
+          "target": "SELECTED",
+          "value": 4,
+          "type": "DAMAGE_OVER_TIME",
+          "parameters": {
+            "id": "BLEED",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_damage_5",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 25,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_03",
+      "combination_name": "방패",
+      "description": "몸 전체를 가릴 수 있을 정도로 큰 방패. 굉장한 내구도와 방어 능력을 제공하지만, 공격 용도로의 효과는 미미하다.\n공격력 감소, 방어도 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "a001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s001",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_27",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -25,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_defence_4",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 45,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_04",
+      "combination_name": "건틀릿",
+      "description": "적당한 방어력을 제공하는 튼튼한 장갑. 하지만 이 장비의 진가는 막기보단 무자비하게 공격할 때 드러난다.\n방어도 증가",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "a002",
+            "origin": {
+              "x": 0,
+              "y": 2
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_defence_6",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 15,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_damage_6",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_05",
+      "combination_name": "쌍단봉",
+      "description": "양손으로 휘두를 수 있는 단봉. 이성을 잠깐이라도 놓아버린다면, 상대가 순식간에 곤죽이 되어버릴지도 모른다.\n공격력 감소, 추가 공격 횟수 부여.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "a002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s001",
+            "origin": {
+              "x": 2,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_attack_per_time_4:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 0,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_4:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_32",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": 7,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_06",
+      "combination_name": "폭탄",
+      "description": "던지면 강력한 폭발을 일으키는 폭탄. 던지는 타이밍을 조절하지 못하면 자신도 휩쓸릴 수 있으니 주의가 필요하다.\n적 전체 추가 공격 효과",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "a001",
+            "origin": {
+              "x": 1,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s003",
+            "origin": {
+              "x": 2,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_damage",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "all",
+          "value": 25,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_07",
+      "combination_name": "핸드건",
+      "description": "거대한 탄환을 발사 할 수 있는 핸드건. 한 번의 방아쇠 당김으로 수 많은 적을 일망타진하는 모습은 가히 장관이다.\n적 전체 연속 추가 공격 효과",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 1,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "a001",
+            "origin": {
+              "x": 3,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_attack_per_time_5:base_damage",
+          "effect_name": "추가 공격 횟수 기본 피해",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "all",
+          "value": 8,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_5:hit_count",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "all",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_08",
+      "combination_name": "볼트",
+      "description": "기초적인 마법 화살. 화살 촉에 부여된 속성에 따라 마법의 성질이 변한다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "a006",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_damage_2",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 30,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_09",
+      "combination_name": "터렛",
+      "description": "곁에서 공격을 지원해주는 터렛이다. 조합된 속성에 따라 다른 효과를 지닌다.\n매 턴 특수 효과 부여",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "a003",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 180,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "per_turn_extra_attack",
+          "effect_name": "매 턴 효과 공격",
+          "description": "매 턴 효과 공격력 부여",
+          "target": "SELECTED",
+          "value": 36,
+          "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_10",
+      "combination_name": "정령",
+      "description": "옆에 머무르며 계약자를 지켜주는 정령. 대량의 체력을 회복시켜준다. 미약하게나마 공격도 지원해준다.\n공격력 감소, 체력 회복",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "a005",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 2,
+              "y": 2
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_31",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -15,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_heal_2",
+          "effect_name": "효과 회복력",
+          "description": "효과로 독립 회복력을 부여합니다",
+          "target": "self",
+          "value": 10,
+          "type": "RECOVERY",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    },
+    {
+      "combination_id": "special_44_11",
+      "combination_name": "토템",
+      "description": "기묘하게 생긴 기념물. 들여다보면 내면에서 분노가 끓어오른다. 너무 오래 들여다봐서 이성을 잃지 않도록 하자.\n분노 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 90,
+            "reflected": false
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "a004",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": false
+      },
+      "effects": [
+        {
+          "effect_id": "buff_add_rage_2",
+          "effect_name": "분노 버프 획득",
+          "description": "분노 버프 스택을 획득 합니다",
+          "target": "self",
+          "value": 5,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_turn_4",
+          "effect_name": "추가 턴",
+          "description": "추가 턴을 획득합니다",
+          "target": "self",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "TURN",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_33",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -10,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ]
+    }
+  ]
+}

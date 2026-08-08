@@ -6,7 +6,7 @@ export const createGameConfig = (parent, sceneData) => ({
   banner: false,
   parent,
   width: 820,
-  height: 500,
+  height: 1017,
   backgroundColor: 'rgba(0,0,0,0)',
   transparent: true,
   scene: [],

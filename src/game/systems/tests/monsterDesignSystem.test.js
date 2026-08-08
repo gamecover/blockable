@@ -32,14 +32,14 @@ describe('monster design integration', () => {
     expect(ids).not.toContain('explosive_soul')
   })
 
-  it('monster_id를 실제 에셋 URL에 연결하고 미등록 에셋은 대체 표시로 남긴다', () => {
+  it('monster_id를 실제 에셋 URL에 연결한다', () => {
     const slime = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
       .find(({ id }) => id === 'ember_slime')
     expect(createMonsterEncounter(slime).imageUrl).toContain('ember_slime_alpha.png')
     const knight = monsterDesign.monsters.find(({ id }) => id === 'seething_furnace_knight')
     expect(createMonsterEncounter(knight).imageUrl).toContain('seething_furnace_knight.png')
-    const missingAssetMonster = monsterDesign.monsters.find(({ id }) => id === 'hanging_ashes')
-    expect(createMonsterEncounter(missingAssetMonster).imageUrl).toBeNull()
+    const hangingAshes = monsterDesign.monsters.find(({ id }) => id === 'hanging_ashes')
+    expect(createMonsterEncounter(hangingAshes).imageUrl).toContain('hanging_ashes.png')
   })
 
   it('strict_sequence의 JSON 순서대로 능력을 고른다', () => {
@@ -123,11 +123,9 @@ describe('monster design integration', () => {
     ])
   })
 
-  it('에셋이 없는 monster_id를 정확한 경로 경고로 보고한다', () => {
-    expect(monsterDesignDiagnostics.warnings)
-      .toContain('monsters[4].monster_id: 연결된 이미지 에셋 없음 (hanging_ashes)')
+  it('모든 등록 monster_id의 이미지 에셋을 확인한다', () => {
     expect(monsterDesignDiagnostics.warnings.filter((warning) =>
-      warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(10)
+      warning.includes('연결된 이미지 에셋 없음'))).toHaveLength(0)
     expect(monsterDesignDiagnostics.warnings.some((warning) =>
       warning.includes('DAMAGE_BONUS'))).toBe(false)
   })

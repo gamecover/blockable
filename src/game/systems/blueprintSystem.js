@@ -1,6 +1,7 @@
 import {
   BLOCK_RULE_INDEX,
   BLOCK_RULES,
+  STANDARD_BLOCK_TYPE_IDS,
   blockMatchesRecipeTemplate,
   cellKey,
   normalizeCells,
@@ -58,14 +59,25 @@ export const getBlueprintLayout = (combination) => {
 
 export const isStarterBlueprint = (combination) => {
   const { width, height } = getBlueprintLayout(combination)
-  return width <= 3 && height <= 3
+  const usesOnlyStandardBlocks = combination.instances.every(({ block_id: blockId }) => {
+    const block = BLOCK_RULE_INDEX.blocks.get(blockId)
+    return block && STANDARD_BLOCK_TYPE_IDS.includes(block.type_id)
+  })
+  return usesOnlyStandardBlocks && width <= 3 && height <= 3
 }
 
+export const getDefaultDiscoveredBlueprintIds = () =>
+  BLOCK_RULES.combinations.filter(isStarterBlueprint).map(({ id }) => id)
+
 export const getKnownBlueprints = (discoveredIds = []) => {
-  const discovered = new Set(discoveredIds)
-  return BLOCK_RULES.combinations.filter((combination) =>
-    isStarterBlueprint(combination) || discovered.has(combination.id))
+  const discovered = new Set([
+    ...getDefaultDiscoveredBlueprintIds(),
+    ...discoveredIds,
+  ])
+  return BLOCK_RULES.combinations.filter((combination) => discovered.has(combination.id))
 }
+
+export const getBlueprintCatalog = () => BLOCK_RULES.combinations
 
 export const getQuickCombinationPlan = (combinationId, blocks) => {
   const combination = BLOCK_RULE_INDEX.combinations.get(combinationId)

@@ -28,7 +28,7 @@ const STATUS_DISPLAY_PRIORITY = Object.freeze({
   control: 3,
 })
 
-export function StatusEffectList({ statuses = [], ownerName }) {
+export function StatusEffectList({ statuses = [], ownerName, className = '', style }) {
   const visibleStatuses = statuses
     .map((status) => ({ ...status, definition: STATUS_EFFECTS[status.id] }))
     .filter(({ definition, stacks }) => definition && stacks > 0)
@@ -38,7 +38,7 @@ export function StatusEffectList({ statuses = [], ownerName }) {
   if (!visibleStatuses.length) return null
 
   return (
-    <div className="status-effect-list" aria-label={`${ownerName} 상태 효과`}>
+    <div className={`status-effect-list ${className}`.trim()} style={style} aria-label={`${ownerName} 상태 효과`}>
       {visibleStatuses.map(({ id, stacks, definition }) => (
         <span
           className={`status-effect status-effect--${definition.category}`}
