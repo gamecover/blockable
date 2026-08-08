@@ -116,12 +116,12 @@ export function MonsterPartyFrame({
             <span className={`monster-party-frame__health monster-party-frame__health--${selectedMonsterGrade}`} style={{ gridRow: 5, alignSelf: 'end', justifySelf: 'stretch' }}>
               <img className="monster-party-frame__health-frame" src={healthFrame} alt="" />
             </span>
-            <span className="monster-party-frame__health-segments" aria-hidden="true">
+            <span className={`monster-party-frame__health-segments monster-party-frame__health-segments--${selectedMonsterGrade}`}>
               {healthSegments.map((index) => (
                 <img className={index < filledHealthSegmentCount ? 'is-filled' : 'is-empty'} key={index} src={index < filledHealthSegmentCount ? monsterHpBlock : monsterHpEmpty} alt="" />
               ))}
+              <small className="monster-party-frame__health-value">{selectedMonster.currentHealth}/{selectedMonster.health}</small>
             </span>
-            <small className="monster-party-frame__health-value">{selectedMonster.currentHealth}/{selectedMonster.health}</small>
           </div>
         )}
       </section>
