@@ -29,7 +29,7 @@ describe('combat slots', () => {
     expect(isCombatVictory('boss', monsters)).toBe(true)
   })
 
-  it('fills at most two fixed slots in a normal battle', () => {
+  it('spawns exactly one normal monster in a normal battle', () => {
     const combat = createCombatSlots({
       node: { type: 'battle', grade: 'normal' },
       floor: 1,
@@ -38,18 +38,18 @@ describe('combat slots', () => {
     })
 
     expect(combat.battleType).toBe('normal')
-    expect(combat.monsters.map(({ slotId }) => slotId)).toEqual([1, 2])
+    expect(combat.monsters.map(({ slotId }) => slotId)).toEqual([1])
   })
 
-  it('fills two to three slots in an elite battle', () => {
+  it('spawns two to three normal monsters when no elite is available', () => {
     const minimum = createCombatSlots({
-      node: { type: 'elite', grade: 'named' },
+      node: { type: 'elite', grade: 'elite' },
       floor: 1,
       difficultyTier: 1,
       random: () => 0,
     })
     const maximum = createCombatSlots({
-      node: { type: 'elite', grade: 'named' },
+      node: { type: 'elite', grade: 'elite' },
       floor: 1,
       difficultyTier: 1,
       random: () => 0.999,
@@ -57,6 +57,40 @@ describe('combat slots', () => {
 
     expect(minimum.monsters.map(({ slotId }) => slotId)).toEqual([1, 2])
     expect(maximum.monsters.map(({ slotId }) => slotId)).toEqual([1, 2, 3])
+  })
+
+  it('spawns one elite monster when an elite is available', () => {
+    const combat = createCombatSlots({
+      node: { type: 'elite', grade: 'elite' },
+      floor: 2,
+      difficultyTier: 1,
+      random: () => 0,
+    })
+
+    expect(combat.monsters).toHaveLength(1)
+    expect(combat.monsters[0].grade).toBe('elite')
+  })
+
+  it('spawns only two to three horde monsters in a horde battle', () => {
+    const minimum = createCombatSlots({
+      node: { type: 'battle', grade: 'horde' },
+      floor: 1,
+      difficultyTier: 1,
+      random: () => 0,
+    })
+    const maximum = createCombatSlots({
+      node: { type: 'battle', grade: 'horde' },
+      floor: 1,
+      difficultyTier: 1,
+      random: () => 0.999,
+    })
+
+    expect(minimum.monsters).toHaveLength(2)
+    expect(maximum.monsters).toHaveLength(3)
+    ;[...minimum.monsters, ...maximum.monsters].forEach((monster) => {
+      expect(monster.grade).toBe('horde')
+      expect(['scrap_amalgam', 'burning_worm', 'slag_imp']).toContain(monster.id)
+    })
   })
 
   it('uses only slot five for a boss battle', () => {
@@ -70,5 +104,48 @@ describe('combat slots', () => {
     expect(combat.battleType).toBe('boss')
     expect(combat.monsters).toHaveLength(1)
     expect(combat.monsters[0].slotId).toBe(5)
+  })
+
+  it('prefers an unencountered boss and restarts only after the available pool is exhausted', () => {
+    const first = createCombatSlots({
+      node: { type: 'boss', grade: 'boss' },
+      floor: 2,
+      difficultyTier: 1,
+      bossEncounterHistory: [],
+      random: () => 0,
+    })
+    const second = createCombatSlots({
+      node: { type: 'boss', grade: 'boss' },
+      floor: 2,
+      difficultyTier: 1,
+      bossEncounterHistory: [first.bossEncounterId],
+      random: () => 0,
+    })
+    const reset = createCombatSlots({
+      node: { type: 'boss', grade: 'boss' },
+      floor: 2,
+      difficultyTier: 1,
+      bossEncounterHistory: [first.bossEncounterId, second.bossEncounterId],
+      random: () => 0,
+    })
+
+    expect(second.bossEncounterId).not.toBe(first.bossEncounterId)
+    expect(reset.bossEncounterId).not.toBe(first.bossEncounterId)
+    expect(reset.bossEncounterId).not.toBe(second.bossEncounterId)
+
+    const restarted = createCombatSlots({
+      node: { type: 'boss', grade: 'boss' },
+      floor: 2,
+      difficultyTier: 1,
+      bossEncounterHistory: [
+        first.bossEncounterId,
+        second.bossEncounterId,
+        reset.bossEncounterId,
+      ],
+      random: () => 0,
+    })
+
+    expect(restarted.resetBossEncounterHistory).toBe(true)
+    expect(restarted.bossEncounterId).toBe(first.bossEncounterId)
   })
 })

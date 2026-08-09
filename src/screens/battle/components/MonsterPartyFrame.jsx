@@ -31,7 +31,7 @@ export function MonsterPartyFrame({
   const healthSegments = Array.from({ length: 20 }, (_, index) => index)
   const selectedMonsterGrade = battleType === 'boss'
     ? 'boss'
-    : (detailMonster?.gradeId === 'named' || detailMonster?.grade === 'named' ? 'elite' : 'normal')
+    : (detailMonster?.gradeId === 'elite' || detailMonster?.grade === 'elite' ? 'elite' : 'normal')
   const healthFrame = { normal: monsterHpNormal, elite: monsterHpElite, boss: monsterHpBoss }[selectedMonsterGrade]
   const selectedMonsterAbility = selectedMonster?.currentHealth > 0
     ? describeMonsterAbilityPreview(selectedMonster.turnPlan?.ability, {

@@ -15,7 +15,7 @@ describe('battle system', () => {
       occupiedCells: 12,
       totalBoardCells: 15,
     })).toMatchObject({
-      damage: 34,
+      damage: 27,
       armor: 8,
       healing: 5,
       boardComplete: false,

@@ -33,6 +33,14 @@ describe('monster design integration', () => {
     expect(ids).not.toContain('explosive_soul')
   })
 
+  it('지정된 세 몬스터만 horde 등급으로 읽는다', () => {
+    const hordeIds = monsterDesign.monsters
+      .filter(({ grade_id: gradeId }) => gradeId === 'horde')
+      .map(({ id }) => id)
+
+    expect(hordeIds).toEqual(['scrap_amalgam', 'burning_worm', 'slag_imp'])
+  })
+
   it('monster_id를 실제 에셋 URL에 연결한다', () => {
     const slime = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
       .find(({ id }) => id === 'ember_slime')

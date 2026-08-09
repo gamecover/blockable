@@ -18,8 +18,9 @@ export const SUPPORTED_COMBAT_EFFECT_SPEC_VERSION = '0.5.4'
 
 const GRADE_ADAPTER = Object.freeze({
   NORMAL: 'normal',
-  VETERAN: 'named',
-  ELITE: 'named',
+  HORDE: 'horde',
+  VETERAN: 'elite',
+  ELITE: 'elite',
   BOSS: 'boss',
 })
 const SUPPORTED_GRADES = new Set(Object.keys(GRADE_ADAPTER))
@@ -417,7 +418,7 @@ export const createMonsterEncounter = (monster) => ({
   grade: monster.grade_id,
   health: monster.stats.max_hp,
   maxHealth: monster.stats.max_hp,
-  glyph: monster.grade_id === 'boss' ? '♜' : monster.grade_id === 'named' ? '⚙' : '◉',
+  glyph: monster.grade_id === 'boss' ? '♜' : monster.grade_id === 'elite' ? '⚙' : '◉',
   imageUrl: getMonsterImageAsset(monster.id),
 })
 
@@ -642,12 +643,19 @@ export const describeMonsterAbilityPreview = (
   }
 }
 
-export const pickMonsterEncounter = ({ floor, gradeId, random = Math.random }) => {
-  const requested = getSpawnableMonsters({ floor, gradeId })
-  const fallback = gradeId === 'boss' ? [] : getSpawnableMonsters({ floor, gradeId: 'normal' })
-  const pool = requested.length ? requested : fallback
-  if (!pool.length) {
+export const pickMonsterEncounter = ({
+  floor,
+  gradeId,
+  dungeonId = 'all',
+  excludedIds = [],
+  random = Math.random,
+}) => {
+  const requested = getSpawnableMonsters({ floor, gradeId, dungeonId })
+  const excluded = new Set(excludedIds)
+  const pool = requested.filter(({ id }) => !excluded.has(id))
+  const candidates = pool.length ? pool : requested
+  if (!candidates.length) {
     throw new MonsterDesignRuntimeError('RUNTIME', `${floor}층/${gradeId}에 출현 가능한 몬스터가 없습니다.`)
   }
-  return createMonsterEncounter(pool[Math.floor(random() * pool.length)])
+  return createMonsterEncounter(candidates[Math.floor(random() * candidates.length)])
 }

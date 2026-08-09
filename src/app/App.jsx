@@ -206,6 +206,8 @@ export function App() {
       node,
       floor: node.floor,
       difficultyTier: run.map.difficulty ?? DEFAULT_DUNGEON.difficulty,
+      dungeonId: run.activeDungeonId,
+      bossEncounterHistory: run.bossEncounterHistory,
     })
     const nextEncounter = { type: node.type, grade: node.grade, node, ...combat, monster: combat.monsters[0] }
     const musicMonsterId = combat.monsters.find(({ slotId }) => slotId === 5)?.id

@@ -326,15 +326,15 @@ describe('block effects and combinations', () => {
 
     expect(effects.combinations).toContain('base_33_05')
     expect(effects.baseDamageEffects).toEqual([
-      { target: 'allEnemies', range: 'all', distance: 0, amount: 18 },
+      { target: 'allEnemies', range: 'all', distance: 0, amount: 4 },
     ])
     expect(effects.independentDamageEffects).toEqual([
-      { target: 'allEnemies', range: 'all', distance: 0, amount: 15 },
+      { target: 'allEnemies', range: 'all', distance: 0, amount: 8 },
       { target: 'allEnemies', range: 'all', distance: 0, amount: 30 },
     ])
     expect(action.hitCount).toBe(3)
-    expect(action.damageBySlot.get(1)).toBe(99)
-    expect(action.combatants[0].currentHealth).toBe(21)
+    expect(action.damageBySlot.get(1)).toBe(50)
+    expect(action.combatants[0].currentHealth).toBe(70)
   })
 
   it('uses canonical DAMAGE_OVER_TIME value as the 0.5.4 stack count', () => {

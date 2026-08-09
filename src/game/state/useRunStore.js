@@ -51,6 +51,7 @@ const initialRun = (developerMode = false) => ({
   uniqueBlockId: null,
   uniqueBlockChoiceIds: [],
   discoveredBlueprintIds: [...INITIAL_DISCOVERED_BLUEPRINT_IDS],
+  bossEncounterHistory: [],
   developerMode,
   developerDifficulty: 1,
   battlePiles: { drawPile: [], hand: [], discardPile: [] },
@@ -307,6 +308,15 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
       battlePiles: initialBattlePiles,
     }
     state.battlePiles = initialBattlePiles
+    if (encounter.battleType === 'boss') {
+      const bossId = encounter.bossEncounterId
+        ?? encounter.monsters?.find(({ slotId }) => slotId === 5)?.id
+      if (bossId) {
+        state.bossEncounterHistory = encounter.resetBossEncounterHistory
+          ? [bossId]
+          : [...new Set([...state.bossEncounterHistory, bossId])]
+      }
+    }
     state.deathCause = null
     state.armor = 0
     state.combat = {
@@ -344,8 +354,8 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
   return createStore(persist(stateCreator, {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, deathCause }) =>
-    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, deathCause }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, bossEncounterHistory, deathCause }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, bossEncounterHistory, deathCause }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const hydratedDeck = persisted.deck.map(hydrateBlock)
@@ -414,6 +424,9 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
         ...INITIAL_DISCOVERED_BLUEPRINT_IDS,
         ...(Array.isArray(persisted.discoveredBlueprintIds) ? persisted.discoveredBlueprintIds : []),
       ])],
+      bossEncounterHistory: Array.isArray(persisted.bossEncounterHistory)
+        ? persisted.bossEncounterHistory.filter((id) => typeof id === 'string')
+        : [],
     }
   },
   }))

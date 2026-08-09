@@ -140,6 +140,19 @@ describe('Darkest Dungeon-style map generation', () => {
     })
   })
 
+  it('assigns normal nodes only normal or horde grades and keeps elite nodes elite', () => {
+    for (let seed = 0; seed < 100; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        floor.nodes
+          .filter(({ type }) => type === 'battle')
+          .forEach(({ grade }) => expect(['normal', 'horde']).toContain(grade))
+        floor.nodes
+          .filter(({ type }) => type === 'elite')
+          .forEach(({ grade }) => expect(grade).toBe('elite'))
+      })
+    }
+  })
+
   it('generates exactly three floors for the difficulty-one great forge', () => {
     const map = generateMap({ seed: 42, dungeonId: 'great-forge', difficulty: 1 })
 
