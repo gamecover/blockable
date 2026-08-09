@@ -4,8 +4,8 @@
   "metadata": {
     "project_name": "Blockable",
     "ruleset_name": "prototype",
-    "updated_at": "2026-08-07T01:53:24+09:00",
-    "validation_status": "valid",
+    "updated_at": "2026-08-09T10:41:55+09:00",
+    "validation_status": "alid",
     "validation_error_count": 10,
     "validation_warning_count": 29,
     "designer_name": "Blockable Block Designer",
@@ -211,7 +211,7 @@
           "effect_name": "화상 디버프 부여",
           "description": "적에게 화상 디버프를 부여합니다",
           "target": "SELECTED",
-          "value": 3,
+          "value": 5,
           "type": "DAMAGE_OVER_TIME",
           "parameters": {
             "id": "BURN",
@@ -271,7 +271,7 @@
           "effect_name": "화상 디버프 부여",
           "description": "적에게 화상 디버프를 부여합니다",
           "target": "SELECTED",
-          "value": 3,
+          "value": 5,
           "type": "DAMAGE_OVER_TIME",
           "parameters": {
             "id": "BURN",
@@ -335,7 +335,7 @@
           "effect_name": "화상 디버프 부여",
           "description": "적에게 화상 디버프를 부여합니다",
           "target": "SELECTED",
-          "value": 3,
+          "value": 5,
           "type": "DAMAGE_OVER_TIME",
           "parameters": {
             "id": "BURN",
@@ -1889,12 +1889,12 @@
           "effect_name": "상처 디버프 부여",
           "description": "적에게 상처 디버프를 부여한다",
           "target": "SELECTED",
-          "value": 5,
+          "value": 3,
           "type": "DEBUFF",
           "parameters": {
             "id": "WOUND",
-            "duration": 5,
-            "intensify": 5
+            "duration": 0,
+            "intensify": 0
           }
         }
       ],
@@ -2287,8 +2287,8 @@
     },
     {
       "combination_id": "base_44_02",
-      "combination_name": "마법봉",
-      "description": "재료의 마력을 담아낼 수 있는 마력봉. 직접 입힐 수 있는 공격력은 턱없이 낮지만, 숨겨진 잠재력은 무궁무진하다.\n추가 턴 획득, 다음 턴에 추가 배치 2 획득",
+      "combination_name": "투척용 망치",
+      "description": "적의 머리를 향해 투척하여 상대를 기절시킬 수 있는 망치. 신중하게 던지지 않으면 당하는 쪽은 내가 될지도 모른다.\n- 적에게 기절 부여",
       "formula": {
         "instances": [
           {
@@ -2306,10 +2306,10 @@
           },
           {
             "instance_id": "piece_2",
-            "block_id": "s001",
+            "block_id": "s003",
             "origin": {
-              "x": 3,
-              "y": 1
+              "x": 2,
+              "y": 0
             },
             "rotation": 0,
             "reflected": false,
@@ -2319,12 +2319,12 @@
           },
           {
             "instance_id": "piece_3",
-            "block_id": "a002",
+            "block_id": "s002",
             "origin": {
-              "x": 2,
-              "y": 0
+              "x": 1,
+              "y": 2
             },
-            "rotation": 270,
+            "rotation": 0,
             "reflected": false,
             "match": {
               "kind": "exact_block"
@@ -2338,38 +2338,25 @@
       },
       "effects": [
         {
-          "effect_id": "extra_effect_turn_3",
-          "effect_name": "추가 턴",
-          "description": "추가 턴을 획득합니다",
+          "effect_id": "crowd_control_stun",
+          "effect_name": "적에게 기절을 부여",
+          "description": "적에게 기절을 부여",
           "target": "SELECTED",
           "value": 1,
-          "type": "EXTRA",
+          "type": "CROWD_CONTROL",
           "parameters": {
-            "id": "TURN",
+            "id": "STUN",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         },
         {
-          "effect_id": "exter_effect_extra_combination",
-          "effect_name": "다음 턴 추가 배치",
-          "description": "다음 턴에 추가 배치 횟수를 획득한다",
+          "effect_id": "extra_effect_damage_7",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
           "target": "SELECTED",
-          "value": 2,
-          "type": "BUFF",
-          "parameters": {
-            "id": "RAGE",
-            "duration": 2,
-            "intensify": 2
-          }
-        },
-        {
-          "effect_id": "base_damage_block_30",
-          "effect_name": "기초 공격력",
-          "description": "블록이 가진 기초 공격력",
-          "target": "SELECTED",
-          "value": -25,
-          "type": "BASE_DAMAGE",
+          "value": 20,
+          "type": "INDEPENDENT_DAMAGE",
           "parameters": {
             "id": "NONE",
             "duration": 0,
@@ -2547,6 +2534,157 @@
           "target": "SELECTED",
           "value": 25,
           "type": "INDEPENDENT_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ],
+      "conditional_effects": [],
+      "tags": []
+    },
+    {
+      "combination_id": "base_44_05",
+      "combination_name": "미니건",
+      "description": "무자비한 연사가 가능한 소형 서브 머신건.\n_ 기본 공격력 감소, 추가 공격 횟수 30 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 3,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 90,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "base_damage_block_35",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -28,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_attack_per_time_6",
+          "effect_name": "추가 공격 횟수",
+          "description": "추가 공격 횟수를 획득 합니다",
+          "target": "self",
+          "value": 30,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "HIT_COUNT",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ],
+      "conditional_effects": [],
+      "tags": []
+    },
+    {
+      "combination_id": "base_44_06",
+      "combination_name": "헤비 암즈",
+      "description": "강력한 강완의 건틀릿. 사용하는 사람이 충분히 강하다면, 적을 일격에 고깃덩이로 만드는 것 또한 어렵지 않을 것이다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 2,
+              "y": 2
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 0
+            },
+            "rotation": 180,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_damage_8",
+          "effect_name": "효과 공격력",
+          "description": "효과로 독립 공격력을 부여합니다",
+          "target": "SELECTED",
+          "value": 40,
+          "type": "BASE_DAMAGE",
           "parameters": {
             "id": "NONE",
             "duration": 0,
@@ -3386,6 +3524,261 @@
           "type": "BASE_DAMAGE",
           "parameters": {
             "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ],
+      "conditional_effects": [],
+      "tags": []
+    },
+    {
+      "combination_id": "special_44_12",
+      "combination_name": "마법봉",
+      "description": "재료의 마력을 담아낼 수 있는 마력봉. 직접 입힐 수 있는 공격력은 턱없이 낮지만, 숨겨진 잠재력은 무궁무진하다.\n추가 턴 획득, 다음 턴에 추가 배치 2 획득",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s001",
+            "origin": {
+              "x": 3,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "a002",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_turn_3",
+          "effect_name": "추가 턴",
+          "description": "추가 턴을 획득합니다",
+          "target": "SELECTED",
+          "value": 1,
+          "type": "EXTRA",
+          "parameters": {
+            "id": "TURN",
+            "duration": 0,
+            "intensify": 1
+          }
+        },
+        {
+          "effect_id": "exter_effect_extra_combination",
+          "effect_name": "다음 턴 추가 배치",
+          "description": "다음 턴에 추가 배치 횟수를 획득한다",
+          "target": "SELECTED",
+          "value": 2,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 2,
+            "intensify": 2
+          }
+        },
+        {
+          "effect_id": "base_damage_block_30",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -25,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ],
+      "conditional_effects": [],
+      "tags": []
+    },
+    {
+      "combination_id": "test_dot_damage",
+      "combination_name": "아이콘 테스트용",
+      "description": "아이콘 테스트용 조합",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s002",
+            "origin": {
+              "x": 0,
+              "y": 1
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s002",
+            "origin": {
+              "x": 1,
+              "y": 1
+            },
+            "rotation": 180,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s001",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 270,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": true,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "per_turn_extra_chills",
+          "effect_name": "매 턴 오한 부여",
+          "description": "매 턴 적에게 오한을 부여",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "CHILL",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "debuff_weakness_6",
+          "effect_name": "약화 디버프 부여",
+          "description": "적에게 약화 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WEAKNESS",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "debuff_wound_2",
+          "effect_name": "상처 디버프 부여",
+          "description": "적에게 상처 디버프를 부여한다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DEBUFF",
+          "parameters": {
+            "id": "WOUND",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "extra_effect_poison",
+          "effect_name": "중독 디버프 부여",
+          "description": "적에게 중독 디버프를 부여합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DAMAGE_OVER_TIME",
+          "parameters": {
+            "id": "POISON",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "dot_damage_bleed_2",
+          "effect_name": "출혈 디버프 부여",
+          "description": "적에게 출혈 디버프를 부여합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DAMAGE_OVER_TIME",
+          "parameters": {
+            "id": "BLEED",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "dot_damage_burn_4",
+          "effect_name": "화상 디버프 부여",
+          "description": "적에게 화상 디버프를 부여합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "DAMAGE_OVER_TIME",
+          "parameters": {
+            "id": "BURN",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "buff_add_rage_3",
+          "effect_name": "분노 버프 획득",
+          "description": "분노 버프 스택을 획득 합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BUFF",
+          "parameters": {
+            "id": "RAGE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "buff_add_armor_2",
+          "effect_name": "철갑 버프 획득",
+          "description": "철갑 버프 스택을 획득 합니다",
+          "target": "SELECTED",
+          "value": 5,
+          "type": "BUFF",
+          "parameters": {
+            "id": "ARMOR",
             "duration": 0,
             "intensify": 0
           }

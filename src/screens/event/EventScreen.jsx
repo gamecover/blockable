@@ -17,10 +17,10 @@ import {
   STANDARD_BLOCK_SHAPES,
 } from '../../game/systems/blockModificationSystem.js'
 import eventFrame from './assets/pictures/event_base_innerframe.png'
-import oldMoleImage from '../../../Assets/Event/old_mole.png'
-import randomChestImage from '../../../Assets/Event/random_chest.png'
-import relexHpImage from '../../../Assets/Event/relex_hp.png'
-import shopMerchantImage from '../../../Assets/Event/shop_merchant.png'
+import oldMoleImage from './assets/pictures/old_mole.png'
+import randomChestImage from './assets/pictures/random_chest.png'
+import relexHpImage from './assets/pictures/relex_hp.png'
+import shopMerchantImage from './assets/pictures/shop_merchant.png'
 
 const colorLabels = { nature: '자연', water: '물', fire: '불', steel: '강철' }
 const shapeLabels = { '001': 'I형', '002': 'L형', '003': 'O형' }

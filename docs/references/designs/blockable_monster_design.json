@@ -947,7 +947,7 @@
                 "condition": {
                   "condition_id": "MONSTER_HP_RATIO",
                   "operator": "LTE",
-                  "value": 0
+                  "value": 0.0
                 },
                 "priority": 0,
                 "once": false,
