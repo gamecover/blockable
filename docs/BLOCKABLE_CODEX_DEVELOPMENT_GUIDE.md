@@ -1,648 +1,951 @@
-Codex 개발 지침 v0.3
+# Blockable Codex 개발 지침 v0.4
 
-문서 목적
-- 이 문서는 게임을 Codex로 개발할 때 따라야 하는 프로젝트 환경, 기술별 책임, 파일 구조 및 코드 작성 규칙을 정의한다.
-- 일반 게임 기획 내용과 분리하여 사용한다.
-- 가장 중요한 원칙은 메인 파일 하나에 모든 코드를 작성하지 않는 것이다.
-- 동일한 상태, 렌더링, 사운드 또는 게임 규칙을 여러 라이브러리가 중복 소유하지 않도록 책임을 명확히 분리한다.
+## 문서 목적
 
+이 문서는 **Blockable을 어떤 구조와 원칙으로 구현할 것인지**를 정의한다.
 
-0. 프로젝트 환경 및 Codex 개발 규칙
+현재 해커톤 프로토타입에는 마감 대응을 위해 일부 임시 구현, 국소 하드코딩, 구조적 타협이 존재할 수 있다. 이 문서는 그러한 임시 코드를 그대로 정당화하거나 현재 Repository를 1:1 설명하기 위한 문서가 아니다.
 
-0-1. 개발 환경
+이 문서는 다음 두 역할을 가진다.
 
-- 플랫폼: 웹(Web)
-- 애플리케이션 UI: React
-- 메인 게임 엔진: Phaser
-- 게임은 브라우저에서 실행되는 싱글 플레이 웹 게임으로 제작한다.
-- GitHub Pages 등으로 배포하여, 링크 클릭만으로 브라우저에서 바로 플레이할 수 있어야 한다.
-- 모든 소스 코드는 프로젝트 루트를 기준으로 관리한다.
-- 애플리케이션 소스 코드는 기본적으로 ${PWD}/src/ 아래에 배치한다.
-- 개발 언어와 확장자는 프로젝트 생성 시 선택한 JavaScript 또는 TypeScript 중 하나로 통일한다.
-- 이 문서의 .js 및 .jsx 파일명은 JavaScript 프로젝트를 기준으로 한 예시다.
-- 설치된 라이브러리 버전은 package.json과 lock 파일을 기준으로 하며, Codex가 임의로 메이저 버전을 변경하지 않는다.
+1. 현재 기능을 수정할 때 Codex가 따라야 할 최소 변경 원칙
+2. 해커톤 이후 정식 정리·리팩터링 시 목표로 삼을 Target Architecture
 
+게임 규칙은 다음 문서가 Source of Truth다.
 
-0-2. 기술 스택과 책임
+- `BLOCKABLE_GAME_DESIGN.md`: 무엇을 플레이하는 게임인가
+- `BLOCKABLE_COMBAT_SYSTEM.md`: 전투가 어떻게 계산되는가
+- `BLOCKABLE_MAP_SYSTEM.md`: 지도가 어떻게 생성·이동·저장되는가
 
-1. React / React DOM
-- 메인 화면, 지도, 이벤트, 상점, 결과 화면을 구성한다.
-- HUD, 메뉴, 버튼, 팝업, 툴팁 및 접근성 UI를 렌더링한다.
-- CSS Grid와 Flexbox를 사용해 DOM 화면의 배치를 구성한다.
-- Phaser가 렌더링하는 인게임 오브젝트를 React DOM으로 중복 렌더링하지 않는다.
+이 문서는 게임 규칙을 새로 만들지 않는다.
 
-2. Phaser
-- 인게임 핵심 화면을 Canvas 또는 WebGL로 렌더링하는 메인 게임 엔진이다.
-- 전투 퍼즐 판, 블록, 몬스터 스프라이트, 타일 이동, 포인터 입력 및 인게임 이펙트를 담당한다.
-- Phaser Scene의 생성, 시작, 정지 및 해제를 관리한다.
-- Phaser 내부 게임 오브젝트를 React state로 매 프레임 복제하지 않는다.
+---
 
-3. Motion for React
-- 이전 명칭인 Framer Motion에 해당하는 React UI 애니메이션 라이브러리다.
-- React DOM으로 만든 화면 전환, 팝업, 메뉴, HUD 및 버튼 애니메이션에만 사용한다.
-- Phaser Canvas 안의 블록, 타일, 몬스터 및 전투 이펙트에는 사용하지 않는다.
-- Phaser Canvas 내부 애니메이션은 Phaser Tween 또는 Phaser Animation을 사용한다.
+# 1. 프로젝트 기본 환경
 
-4. Howler.js
-- 배경음, 효과음, 음소거 및 볼륨을 담당하는 사운드 시스템이다.
-- SoundManager를 통해서만 호출한다.
-- Howler.js를 기본 사운드 담당자로 선택한 경우 Phaser 사운드 시스템으로 같은 음원을 중복 재생하지 않는다.
-- 브라우저 자동 재생 제한을 고려해 최초 사용자 입력 후 오디오를 활성화한다.
+## 1.1 플랫폼
 
-5. Zustand + Immer
-- 플레이 중 여러 화면에서 공유해야 하는 게임 데이터를 관리한다.
-- 덱, 블록 목록, 체력, 골드, 현재 층, 선택 경로, 설정 및 저장 가능한 런 데이터를 관리한다.
-- Immer는 Zustand 상태를 불변성 규칙에 맞게 안전하게 갱신하기 위해 사용한다.
-- Phaser의 Sprite, Scene, Tween, Audio 객체와 같은 런타임 인스턴스를 Zustand에 저장하지 않는다.
+- Web
+- Browser-based Single Player Game
+- Static Web Deployment
+- GitHub Pages와 같은 정적 호스팅을 기본 배포 방식으로 고려한다.
 
-6. XState
-- 게임 진행 절차와 상태 전이를 관리한다.
-- 앱 진행, 인카운터 진행, 전투 턴 단계 및 몬스터 행동 State Machine을 정의한다.
-- 상태와 이벤트에 따라 다음 단계를 결정하지만 피해량, 회복량 또는 보상량 계산을 직접 중복 구현하지 않는다.
-- 실제 수치 계산은 src/game/systems/의 순수 함수 또는 시스템 함수를 호출한다.
+## 1.2 현재 핵심 기술
 
-7. Custom Hooks
-- React와 Zustand, XState, Phaser 사이의 연결을 담당한다.
-- 구독 등록, 이벤트 전달, Phaser 생명주기 연결 및 정리 작업을 담당한다.
-- 핵심 전투 규칙, 지도 생성 규칙 또는 몬스터 행동 규칙을 Custom Hook 내부에 직접 구현하지 않는다.
+현재 프로젝트의 중심 구조는 다음과 같다.
 
+- React: 화면과 DOM UI
+- Phaser: 전투의 동적 Game Board와 Canvas 입력·연출
+- JSON 기반 Block / Monster / Combination Data
+- Browser Storage 기반 Run Save
+- Vite 계열 정적 빌드 환경
 
-0-3. 단일 책임과 단일 소유권 원칙
+특정 Library를 문서에 적었다는 이유만으로 새 의존성을 강제로 추가하지 않는다.
 
-가장 중요한 명령:
+예를 들어 Zustand, XState, Howler.js, Motion for React 등의 사용 여부는 실제 Repository와 현재 구조를 먼저 확인한 뒤 판단한다.
 
-"메인 파일 하나에 모든 코드를 작성하지 마세요."
+현재 사용하지 않는 Library를 이 문서를 맞추기 위해 새로 도입하지 않는다.
 
-- App.jsx와 main.jsx에는 전체 애플리케이션을 조립하고 시작하는 최소한의 코드만 작성한다.
-- 메인 파일에 전투 규칙, 지도 생성, 블록 계산 또는 몬스터 행동을 직접 구현하지 않는다.
-- 메인 파일에서 모든 게임 상태와 에셋 경로를 관리하지 않는다.
-- 하나의 데이터에 대해 기준이 되는 원본 상태(Source of Truth)는 하나만 둔다.
-- 같은 게임 규칙을 React, Phaser, Zustand 및 XState에 각각 중복 구현하지 않는다.
-- 기능과 책임에 따라 파일과 폴더를 분리한다.
+---
 
-상태 소유권 기준:
-- 장기 게임 데이터: Zustand + Immer
-- 진행 단계와 상태 전이: XState
-- 화면에서만 필요한 임시 UI 상태: 해당 React 컴포넌트
-- 렌더링 중에만 존재하는 Sprite, Tween 및 Scene 상태: Phaser
+# 2. 가장 중요한 구현 원칙
 
+## 2.1 단일 책임
 
-0-4. 최상위 실행 구조
+> 메인 파일 하나 또는 하나의 Phaser Scene에 모든 기능을 작성하지 않는다.
 
-App
-→ 현재 애플리케이션 화면 선택
-→ React Screen 렌더링
-→ 전투 화면일 경우 GameContainer 생성
-→ GameContainer가 Phaser 게임 또는 Scene 연결
-→ Phaser가 Game Board / Stage 렌더링
-→ React UI Overlay가 HUD와 메뉴 렌더링
+- Screen은 화면 조립을 담당한다.
+- Game Rule은 별도 System/Engine 계층이 담당한다.
+- Data는 Data Layer가 담당한다.
+- Presentation은 React 또는 Phaser가 담당한다.
+- Save는 저장 계층이 담당한다.
 
-구성 요소별 책임:
+## 2.2 단일 Source of Truth
 
-1. App
-- 최상위 루트다.
-- 화면 전환과 최상위 Provider를 조립한다.
-- 구체적인 게임 규칙을 포함하지 않는다.
+같은 상태를 여러 기술 계층이 각각 원본처럼 소유하지 않는다.
 
-2. Game Engine / Phaser Layer
-- Phaser 설정, Scene, Canvas 및 인게임 렌더링을 담당한다.
-- 전투 판, 블록, 몬스터 및 인게임 애니메이션을 관리한다.
+예:
 
-3. Custom Hooks / Bridge
-- React와 Phaser, Zustand, XState 사이의 이벤트와 생명주기를 연결한다.
-- 연결 코드만 가지며 게임 규칙의 주인이 되지 않는다.
+- Player HP를 React state와 Phaser 내부 변수에서 각각 계산하지 않는다.
+- Monster Planned Ability를 UI와 Combat Logic이 각각 Random으로 결정하지 않는다.
+- Map Node 완료 여부를 React와 Map Engine이 별도로 수정하지 않는다.
 
-4. AssetManager / SoundManager
-- 이미지, 스프라이트 시트, 애니메이션 데이터 및 사운드를 로드하고 재사용한다.
-- 동일 리소스를 화면이나 몬스터마다 반복 생성하지 않는다.
+하나의 도메인 상태는 하나의 Source of Truth를 가진다.
 
-5. GameContainer
-- Phaser Canvas가 들어갈 DOM 컨테이너를 제공한다.
-- Phaser 인스턴스를 생성하고 화면 이탈 시 정상적으로 해제한다.
+## 2.3 Presentation은 Rule을 복제하지 않는다
 
-6. UI Overlay
-- React DOM으로 HUD, 메뉴, 턴 종료 버튼, 팝업 및 도움말을 표시한다.
-- Phaser Canvas 위에 배치할 수 있다.
+UI는 게임 결과를 표시한다.
 
-7. Game Board / Stage
-- Phaser가 렌더링하는 게임의 핵심 공간이다.
-- 퍼즐 판, 블록, 몬스터, 이동 및 전투 이펙트를 표시한다.
+UI가 다음과 같은 핵심 규칙을 별도로 다시 계산하지 않는다.
 
+- Damage
+- Armor
+- Status 수명
+- Monster Ability 선택
+- Map 이동 가능 여부
+- Blueprint Discovery 판정
+- Shop Transaction Count
 
-0-5. 화면별 폴더 분리
+가능하면 Engine/System에서 결과를 생성하고 Presentation은 그 결과를 표시한다.
 
-화면은 기능별로 독립된 폴더를 사용한다.
+---
 
+# 3. Target Architecture
+
+장기적으로 다음 흐름을 목표로 한다.
+
+```text
+User Input / UI
+        ↓
+Command / Event
+        ↓
+Game Engine / State
+        ↓
+Game Result / Presentation State
+        ↓
+React / Phaser Presentation
+```
+
+예:
+
+```text
+[Turn End 클릭]
+      ↓
+END_TURN Command
+      ↓
+Combat Engine
+- Combination 계산
+- Damage 계산
+- Status 계산
+- Monster Planned Action 실행
+      ↓
+Result
+- HP Changed
+- Status Changed
+- Monster Action
+- Damage Presentation
+      ↓
+React / Phaser
+```
+
+현재 프로토타입 전체가 이 구조로 완전히 분리되어 있다고 가정하지 않는다.
+
+새 작업에서 불필요한 대규모 리팩터링 없이 이 방향으로 책임을 분리한다.
+
+---
+
+# 4. React와 Phaser의 역할
+
+현재 Blockable은 **React와 Phaser를 한 화면에서 역할 분리하여 사용**한다.
+
+핵심 원칙:
+
+> Static / DOM Presentation과 Dynamic Game Board를 중복 소유하지 않는다.
+
+## 4.1 React가 담당하는 영역
+
+현재 구조에서 React가 담당하기 적합한 영역:
+
+- Splash / Main / Prologue
+- World Map Screen
+- Dungeon Map UI
+- Event
+- Shop
+- Rest
+- Reward
+- Result / Victory / GameOver
+- Common Game Menu
+- Player HP / Armor / Status HUD
+- Blueprint Panel
+- Monster List / Monster Detail
+- Monster HP / Status / Intent Text
+- Modal / Tooltip
+- Settings
+- 접근성 중심 UI
+
+React UI는 CSS Grid / Flexbox / Container-relative Layout을 우선 사용한다.
+
+## 4.2 Phaser가 담당하는 영역
+
+현재 Battle에서 Phaser가 담당하기 적합한 동적 영역:
+
+- Formwork / Puzzle Board
+- Drag 가능한 Block
+- Block Rotation
+- Block Placement / Recall
+- Placement Ghost
+- Canvas Pointer Input
+- Board의 Dynamic Highlight
+- Battle Dynamic Effect Text
+- Damage Number
+- Canvas 기반 Hit / Attack Presentation
+- Phaser Tween / Animation이 필요한 동적 연출
+
+## 4.3 중복 렌더링 금지
+
+금지 예:
+
+- 같은 Block을 React와 Phaser에서 동시에 실제 게임 오브젝트로 생성
+- 같은 Monster HP를 React와 Phaser에서 각각 계산
+- Phaser Scene에서 DOM Element를 직접 찾아 수정
+- React Component가 Phaser Sprite 내부 속성을 직접 임의 변경
+
+필요한 연결은 명시적인 Event / Bridge를 이용한다.
+
+## 4.4 Monster Presentation
+
+과거 지침처럼 "Monster는 무조건 Phaser가 렌더링해야 한다"고 절대 규칙으로 두지 않는다.
+
+현재 Blockable에서는 Monster의 정보 UI와 Static Presentation을 React가 담당할 수 있다.
+
+중요한 것은 기술 선택이 아니라 **한 요소의 소유권을 한쪽으로 정하는 것**이다.
+
+---
+
+# 5. 권장 도메인 구조
+
+실제 Repository 구조를 먼저 확인하고 기존 구조를 존중한다.
+
+장기 Target의 예시는 다음과 같다.
+
+```text
 src/
-├── screens/
-│   ├── main/
-│   ├── map/
-│   ├── move/
-│   ├── battle/
-│   ├── event/
-│   ├── shop/
-│   └── result/
+├─ app/
+├─ screens/
+│  ├─ main/
+│  ├─ prologue/
+│  ├─ worldMap/
+│  ├─ map/
+│  ├─ battle/
+│  ├─ event/
+│  ├─ shop/
+│  ├─ rest/
+│  ├─ reward/
+│  └─ result/
+├─ game/
+│  ├─ systems/
+│  ├─ state/
+│  ├─ events/
+│  ├─ phaser/
+│  ├─ save/
+│  └─ utils/
+├─ data/
+│  ├─ blocks/
+│  ├─ combinations/
+│  ├─ monsters/
+│  ├─ encounters/
+│  ├─ dungeons/
+│  └─ events/
+├─ components/
+└─ assets/
+```
 
-각 화면 폴더에는 해당 화면에서만 사용하는 요소를 배치한다.
-- 화면 컴포넌트
-- 하위 React UI 컴포넌트
-- 화면 전용 UI 이벤트 처리
-- 화면 전용 Custom Hook
-- 화면 전용 스타일
-- 화면 전용 이미지와 사운드
+이 구조를 맞추기 위해 현재 파일을 한 번에 모두 옮기지 않는다.
 
+새 기능을 만들 때 기능 소유권을 명확히 하는 기준으로 사용한다.
 
-0-6. 전투 화면 폴더 구조
+---
 
-src/screens/battle/
-├── BattleScreen.jsx
-├── GameContainer.jsx
-├── components/
-│   ├── BattleHeader.jsx
-│   ├── PlayerStatus.jsx
-│   ├── MonsterStatus.jsx
-│   ├── BlockHandOverlay.jsx
-│   └── EndTurnButton.jsx
-├── events/
-│   ├── handleEndTurn.js
-│   ├── handlePause.js
-│   └── handleOpenPile.js
-├── hooks/
-│   ├── useBattleMachine.js
-│   └── usePhaserGame.js
-├── assets/
-│   ├── pictures/
-│   ├── sounds/
-│   └── animations/
-└── styles/
-    └── battle.css
+# 6. Game Rule 계층
 
-- BattleScreen.jsx는 GameContainer와 React UI Overlay를 조립한다.
-- GameContainer.jsx는 Phaser Canvas의 마운트 지점과 생명주기만 관리한다.
-- 블록 드래그, 회전, 배치 및 회수처럼 Canvas 내부 입력은 Phaser Scene의 input 코드에서 처리한다.
-- 턴 종료 버튼처럼 DOM에 있는 입력은 React event handler에서 XState 이벤트를 전송한다.
-- 구체적인 블록 효과, 피해 및 보상 계산은 src/game/systems/로 분리한다.
+## 6.1 System의 책임
 
+게임 규칙은 가능한 한 React, Phaser, DOM에 독립적인 함수 또는 Module로 작성한다.
 
-0-7. React와 Phaser 경계
+예:
 
-React가 담당하는 화면:
-- 메인 화면
-- 지도 화면
-- 이동 선택 화면
-- 일반 이벤트 화면
-- 상점 화면
-- 결과 화면
-- 전투 HUD와 메뉴
+- Damage System
+- Status System
+- Combination System
+- Deck System
+- Reward System
+- Map Generation System
+- Encounter System
+- Save System
 
-Phaser가 담당하는 화면:
-- 전투 퍼즐 판
-- 드래그 가능한 블록
-- 몬스터 및 전투 스프라이트
-- 타일 이동
-- Canvas 안에서 발생하는 공격, 방어, 회복 및 파티클 이펙트
+## 6.2 순수 함수 우선
 
-금지 사항:
-- 같은 퍼즐 블록을 React DOM과 Phaser Canvas 양쪽에 동시에 생성하지 않는다.
-- React가 Phaser Sprite의 위치를 매 프레임 state로 갱신하지 않는다.
-- Phaser Scene에서 React DOM을 직접 조작하지 않는다.
-- React 컴포넌트가 Phaser Scene 내부 객체를 직접 수정하지 않는다.
+가능한 규칙 계산은 다음 형태를 우선한다.
 
-연결 방식:
-- React와 Phaser는 명시적인 Bridge 또는 Event Bus를 통해 통신한다.
-- 이벤트 이름과 payload 구조는 src/game/events/에 정의한다.
-- 화면을 떠날 때 이벤트 구독과 Phaser 인스턴스를 반드시 해제한다.
+```text
+Input State + Command
+→ Calculation
+→ Result
+```
 
+예:
 
-0-8. 에셋과 사운드 관리
+```text
+calculateDamage(attacker, target, packet)
+→ rawDamage
+→ appliedDamage
+→ armorDamage
+→ hpDamage
+```
 
-에셋 기본 위치:
-- 한 화면 전용: 해당 화면의 assets
-- 특정 몬스터 전용: 해당 몬스터 폴더의 assets
-- 여러 화면 공용: ${PWD}/src/assets/
+함수 내부에서 UI를 직접 조작하지 않는다.
 
-메인 화면 배경 예시:
-${PWD}/src/screens/main/assets/pictures/target_picture.png
+## 6.3 Random 제어
 
-공용 에셋 구조:
+Random에 의존하는 규칙은 Seed 또는 주입 가능한 RNG를 사용해 재현 가능하도록 한다.
 
+특히:
+
+- Map Generation
+- Encounter 결정
+- Battle 초기 Shuffle
+- Monster 확률 Pattern
+- Reward 후보
+
+에서 Save/Continue 또는 Test를 위해 Random 결과를 재현할 수 있어야 한다.
+
+---
+
+# 7. Command / Event 원칙
+
+복잡한 화면 동작은 직접 여러 상태를 수정하기보다 의미 있는 Command 또는 Event로 전달한다.
+
+예:
+
+```text
+END_TURN
+SELECT_MONSTER
+PLACE_BLOCK
+REMOVE_BLOCK
+OPEN_BLUEPRINT
+MAP_NODE_SELECTED
+SHOP_ENTER_PURCHASE
+SHOP_ENTER_CLEANUP
+SAVE_AND_QUIT
+```
+
+Command/Event 이름은 구현 기술보다 게임 의미를 우선한다.
+
+UI Component 내부에서 여러 도메인 상태를 직접 수정하는 구조를 줄인다.
+
+---
+
+# 8. Battle 구현 원칙
+
+전투 규칙은 `BLOCKABLE_COMBAT_SYSTEM.md`를 따른다.
+
+## 8.1 Monster Intent
+
+Monster의 이번 Turn Ability는 Combat Logic에서 한 번 결정한다.
+
+```text
+Pattern / AI
+→ Planned Ability
+→ Presentation
+→ 동일 Ability 실행
+```
+
+금지:
+
+```text
+Monster Detail UI에서 Random
+Monster Turn에서 다시 Random
+```
+
+Planned Action의 Source of Truth는 Combat State다.
+
+## 8.2 Preview
+
+Preview는 실제 상태를 변경하면 안 된다.
+
+예:
+
+- Expected Damage
+- Attack Range
+- Combination Effect
+- Placement Ghost
+
+Preview 계산에서 HP, Armor, Stack, Deck를 실제로 Mutation하지 않는다.
+
+## 8.3 Presentation Event
+
+실제 계산 결과와 연출을 분리한다.
+
+예:
+
+```text
+Damage Result
+→ HP State Update
+→ DAMAGE_PRESENTATION Event
+→ Phaser Damage Text / Hit Animation
+```
+
+연출이 Combat 결과의 Source of Truth가 되어서는 안 된다.
+
+---
+
+# 9. Map 구현 원칙
+
+지도 규칙은 `BLOCKABLE_MAP_SYSTEM.md`를 따른다.
+
+## 9.1 Graph와 UI 좌표 분리
+
+Node의 실제 연결:
+
+```text
+edges
+```
+
+화면 표시:
+
+```text
+position x/y
+```
+
+를 구분한다.
+
+좌표가 가까워 보인다는 이유로 이동 가능하다고 판단하지 않는다.
+
+## 9.2 Generated Data와 Runtime State 분리
+
+Generated:
+
+- Node
+- Edge
+- Type
+- Content Reference
+
+Runtime:
+
+- Current
+- Revealed
+- Cleared
+- Reward Claimed
+- Shop State
+
+를 구분한다.
+
+## 9.3 Load에서 재생성 금지
+
+진행 중 Save는 생성된 Map 자체를 복원한다.
+
+현재 Generator Version으로 다시 생성하여 구조를 바꾸지 않는다.
+
+---
+
+# 10. Save / Continue 원칙
+
+Save Data는 브라우저에서 변경될 수 있는 외부 입력으로 취급한다.
+
+## 10.1 저장 데이터 검증
+
+- Schema Version 확인
+- 필수 Field 확인
+- Type 확인
+- Enum 확인
+- 유효한 ID Reference 확인
+
+손상 데이터를 바로 기존 Save 위에 덮어쓰지 않는다.
+
+## 10.2 Battle Continue
+
+전투 중 종료 시 정확한 Mid-turn Snapshot이 아니라 **Battle Start State**로 복원한다.
+
+같은 Encounter와 Initial Random 결과를 복원한다.
+
+따라서 저장해야 할 수 있는 정보:
+
+- Encounter ID
+- Battle Seed
+- Monster Composition
+- Initial Deck State
+- Initial Shuffle 결정 정보
+
+## 10.3 Quit와 Death 분리
+
+```text
+QUIT_TO_MAIN
+→ Save
+→ Main
+→ Run 유지
+```
+
+```text
+PLAYER_DEAD
+→ GameOver
+→ Run 종료
+```
+
+두 Event를 같은 저장 처리로 합치지 않는다.
+
+---
+
+# 11. Data-driven Block / Monster 구조
+
+## 11.1 Designer 흐름
+
+```text
+Block Designer / Monster Designer
+        ↓
+JSON Output
+        ↓
+Validation
+        ↓
+Game Data
+        ↓
+Common Effect Interpreter
+        ↓
+Runtime
+```
+
+## 11.2 Effect 해석
+
+Runtime은 다음 필드를 기준으로 실행한다.
+
+```text
+type
+parameters.id
+value
+target
+```
+
+`effect_name`과 `description`은 표시와 진단을 위한 정보다.
+
+이름이나 자연어 설명에서 실행 의미를 임의 추론하지 않는다.
+
+## 11.3 Spec Version
+
+현재 Combat Effect Spec은 `0.5.4`다.
+
+- JSON의 `metadata.combat_effect_spec_version` 확인
+- 지원하지 않는 Version 자동 변환 금지
+- 새 Type / ID 임의 연결 금지
+
+## 11.4 ID 기반 참조
+
+특정 Block/Monster 이름 문자열로 규칙을 하드코딩하지 않는다.
+
+가능하면:
+
+- ID
+- Grade
+- Tag
+- Data Reference
+- Config
+
+를 사용한다.
+
+프로토타입 임시 이름 기반 조건이 있다면 가능한 한 한 곳에 국소화하고 정식 설계로 확장하지 않는다.
+
+---
+
+# 12. UI Layout 원칙
+
+## 12.1 기준 화면
+
+Blockable의 주요 화면은 16:9를 기본 디자인 비율로 한다.
+
+4K / 2K / 1K 등 서로 다른 해상도에서도 같은 상대적 구성을 유지하는 것을 목표로 한다.
+
+## 12.2 상대 배치
+
+장기 기준:
+
+- Parent-relative
+- Flexbox
+- Grid
+- `%`
+- `vw/vh`의 제한적 사용
+- Container Query 또는 적절한 Responsive Rule
+
+를 우선한다.
+
+Viewport Pixel Hardcode를 여러 컴포넌트에 중복하지 않는다.
+
+## 12.3 Prototype 예외
+
+마감 과정에서 고정값을 사용할 수 있다.
+
+단:
+
+- 한 곳에 국소화
+- 완료된 UI의 기준 좌표를 무작정 다시 변경하지 않음
+- 추후 Responsive 구조로 교체 가능한 형태 유지
+
+를 우선한다.
+
+---
+
+# 13. UI 좌표 문제 수정 절차
+
+Blockable 개발 과정에서 React DOM, Phaser Canvas, Browser Viewport의 좌표계가 다르기 때문에 단순 Screenshot Guess만으로 수정하면 반복 비용이 커진다.
+
+Codex는 UI 위치 문제에서 다음 순서를 따른다.
+
+1. 실제 DOM Parent 확인
+2. Containing Block 확인
+3. CSS Computed Position 확인
+4. Phaser Logical Resolution 확인
+5. FIT / Scaling 확인
+6. Browser Viewport 기준 좌표와 비교
+7. 필요한 Delta만 수정
+
+사용자가 실제 화면에서 측정한 `ΔX`, `ΔY`가 있다면 그 값을 우선적인 검증 정보로 사용한다.
+
+같은 문제에 Transform을 반복 누적하지 않는다.
+
+---
+
+# 14. 이미 완료된 UI 보호
+
+Codex가 특정 UI만 수정하라는 요청을 받으면 이미 완료된 다른 영역을 건드리지 않는다.
+
+예:
+
+- Monster HP가 완료됐으면 Status 수정 중 HP Layout을 재설계하지 않는다.
+- Common Game Menu 수정 중 Battle Board를 이동하지 않는다.
+- Player Status Tooltip 수정 중 Monster Status가 정상이라면 Monster 쪽을 변경하지 않는다.
+
+작업 범위가 작으면 변경 파일 수도 작게 유지한다.
+
+---
+
+# 15. Asset 관리
+
+## 15.1 기본 원칙
+
+- 동일 Asset을 여러 위치에 중복 복사하지 않는다.
+- Runtime이 사용하는 실제 경로를 하나의 Source로 둔다.
+- 파일명 Typo가 이미 Runtime Contract가 된 경우 사용자 승인 없이 임의 Rename하지 않는다.
+
+## 15.2 역할별 Asset
+
+공용:
+
+```text
 src/assets/
-├── pictures/
-├── sprites/
-├── icons/
-├── sounds/
-├── animations/
-└── manifests/
-
-에셋 사용 규칙:
-- 소스 코드에서 ${PWD}를 런타임 URL로 사용하지 않는다.
-- 번들러가 처리할 수 있도록 import 또는 프로젝트에서 정한 에셋 URL 규칙을 사용한다.
-- Phaser가 필요한 에셋은 Scene preload 단계 또는 공용 AssetManager에서 로드한다.
-- 같은 에셋 키를 서로 다른 파일에 중복 등록하지 않는다.
-- 에셋 키와 경로는 manifest 또는 constants에서 관리한다.
-- 에셋 로딩 실패 시 대체 이미지 또는 오류 처리를 제공한다.
-
-사운드 규칙:
-- Howler.js를 사용하는 SoundManager를 사운드의 단일 진입점으로 사용한다.
-- React 컴포넌트와 Phaser Scene에서 new Howl을 직접 반복 생성하지 않는다.
-- 배경음, 효과음, UI 사운드 및 음량 그룹을 구분한다.
-- 화면 전환 또는 Scene 종료 시 불필요한 사운드를 정지하거나 해제한다.
-
-
-0-9. 이벤트 처리 코드 분리
-
-- UI 컴포넌트에는 복잡한 게임 규칙을 직접 작성하지 않는다.
-- UI 컴포넌트와 Phaser 입력 처리는 명령 또는 이벤트를 전달한다.
-- XState가 현재 진행 상태에서 이벤트를 받을 수 있는지 판단한다.
-- 실제 계산은 game/systems를 호출한다.
-- 계산 결과는 해당 상태 소유자에게 반영한다.
-
-턴 종료 처리 예시:
-
-사용자가 턴 종료 버튼 클릭
-→ React handler가 END_TURN 이벤트 전송
-→ XState가 현재 상태에서 END_TURN 허용 여부 확인
-→ 블록 및 세트 효과 계산 시스템 호출
-→ Zustand의 전투 데이터 갱신
-→ 몬스터 State Machine에 행동 결정 이벤트 전달
-→ Phaser에 연출 명령 전달
-→ 연출 완료 이벤트 수신
-→ XState가 다음 턴 상태로 전환
-→ React HUD와 Phaser 화면 갱신
-
-화면별 UI 이벤트 위치:
-- 전투 화면: ${PWD}/src/screens/battle/events/
-- 지도 화면: ${PWD}/src/screens/map/events/
-- 일반 이벤트 화면: ${PWD}/src/screens/event/events/
-
-공용 도메인 이벤트 정의:
-- ${PWD}/src/game/events/
-
-공용 게임 규칙:
-- ${PWD}/src/game/systems/
-
-
-0-10. 게임 객체 관리
-
-src/objects/
-├── monsters/
-├── blocks/
-├── items/
-└── relics/
-
-몬스터 구조 예시:
-
-src/objects/monsters/
-├── fireSpirit/
-│   ├── fireSpiritData.js
-│   ├── fireSpiritMachine.js
-│   ├── fireSpiritActions.js
-│   ├── fireSpiritSprite.js
-│   └── assets/
-├── mimic/
-│   ├── mimicData.js
-│   ├── mimicMachine.js
-│   ├── mimicActions.js
-│   ├── mimicSprite.js
-│   └── assets/
-└── voidMonster/
-    ├── voidMonsterData.js
-    ├── voidMonsterMachine.js
-    ├── voidMonsterActions.js
-    ├── voidMonsterSprite.js
-    └── assets/
-
-각 몬스터 폴더의 책임:
-- Data: 기본 능력치와 정적 설정
-- Machine: XState 상태, 전환, guard 및 행동 선택 규칙
-- Actions: 해당 몬스터 고유 행동 정의
-- Sprite: Phaser 표시와 애니메이션 연결
-- Assets: 해당 몬스터 전용 리소스
-
-- 몬스터가 Phaser에서 렌더링된다면 FireSpirit.jsx와 같은 React 표시 컴포넌트를 기본으로 만들지 않는다.
-- React가 필요한 도감, 툴팁 또는 상세 UI는 별도의 React UI 컴포넌트로 작성한다.
-- 몬스터 데이터, 상태 전이, 수치 계산 및 화면 표시를 한 파일에 합치지 않는다.
-
-
-0-11. XState 기반 State Machine
-
-- 게임 진행과 몬스터 행동 State Machine은 XState를 사용해 구현한다.
-- XState를 사용하는 경우 StateMachine.js, State.js, Transition.js 같은 자체 범용 엔진을 다시 만들지 않는다.
-- 단순 데이터와 React 화면 컴포넌트에는 State Machine을 적용하지 않는다.
-- 몬스터는 규칙 기반 조건과 확률을 조합해 행동한다.
-- 몬스터의 현재 상태, 이전 행동 및 필요한 전투 정보를 이용해 다음 행동을 결정한다.
-
-몬스터 행동 정의의 핵심 요소:
-
-1. 패턴과 확률의 조합
-- 반드시 실행해야 하는 규칙을 확률 판단보다 먼저 검사한다.
-- 강제 규칙이 없을 때만 확률에 따라 행동 후보를 선택한다.
-
-2. 연속 행동 제한
-- 이전 행동, 연속 사용 횟수 및 재사용 대기 상태를 확인한다.
-- 금지된 행동이 다시 선택되면 허용된 다른 행동 또는 기본 행동으로 대체한다.
-
-3. 플레이어 및 전투 상태 반응
-- 플레이어 체력, 방어도, 상태 이상 및 이전 행동을 조건으로 사용할 수 있다.
-- 몬스터 자신의 체력, 버프, 디버프, 동료의 상태와 행동 순서도 조건으로 사용할 수 있다.
-
-4. 상태 전환
-- 현재 상태와 수신한 이벤트에 따라 다음 상태를 결정한다.
-- 상태 예시: 시작, 준비, 공격, 방어, 회복, 특수 행동, 행동 불가, 사망.
-
-행동 패턴 예시:
-
-순차적 규칙형
-시작
-→ 첫 턴 버프
-→ 공격 상태로 전환
-→ 이후 공격 반복
-
-상태 및 동기화형
-몬스터 A 준비
-→ 몬스터 B 공격
-→ 몬스터 A 특수 행동
-→ 두 몬스터 상태 갱신
-
-확률형
-강제 규칙 검사
-→ 난수 생성
-→ 확률에 따른 행동 후보 선택
-→ 연속 사용 제한 검사
-→ 플레이어 및 몬스터 상태 검사
-→ 최종 행동 결정
-→ 이전 행동과 다음 상태 갱신
-
-공통 Machine 구조:
-
-src/game/machines/
-├── appMachine.js
-├── encounterMachine.js
-├── battleTurnMachine.js
-├── shared/
-│   ├── guards.js
-│   ├── actions.js
-│   └── events.js
-└── tests/
-
-- 개별 몬스터 Machine은 각 몬스터 폴더에 둔다.
-- 공통 guard, action 및 event 정의만 src/game/machines/shared/에서 재사용한다.
-- 몬스터 Machine이 피해 계산을 직접 구현하지 않고 game/systems를 호출한다.
-- 확률형 행동을 테스트할 수 있도록 난수 함수는 외부에서 주입하거나 고정 가능한 형태로 작성한다.
-
-
-0-12. 게임 상태와 데이터
-
-Zustand + Immer가 관리하는 데이터 예시:
-- 현재 런 정보
-- 현재 층과 선택 경로
-- 플레이어 체력과 골드
-- 덱, 손패, 버림 더미 및 남은 블록
-- 획득한 아이템과 유물
-- 게임 설정
-- 저장 가능한 진행 데이터
-
-XState가 관리하는 상태 예시:
-- 현재 애플리케이션 단계
-- 지도 선택 가능 여부
-- 인카운터 시작, 진행, 보상 및 종료 단계
-- 플레이어 입력 대기, 효과 계산, 몬스터 행동, 연출 대기 및 다음 턴 단계
-- 몬스터의 행동 상태와 전이
-
-Phaser가 관리하는 임시 상태 예시:
-- Sprite와 Game Object 인스턴스
-- Tween 진행 상태
-- 포인터 드래그 중인 좌표
-- 파티클과 일시적인 연출 객체
-
-금지 사항:
-- 동일한 체력이나 골드를 Zustand와 XState context 양쪽에서 각각 원본으로 관리하지 않는다.
-- Phaser 객체를 Zustand에 저장하지 않는다.
-- React state를 영구 게임 저장소로 사용하지 않는다.
-- 상태를 수정할 수 있는 공식 action 또는 event를 우회해 직접 변경하지 않는다.
-
-
-0-13. 공용 게임 시스템
-
-src/game/
-├── phaser/
-│   ├── config/
-│   ├── scenes/
-│   ├── input/
-│   └── bridge/
-├── systems/
-│   ├── battleSystem.js
-│   ├── damageSystem.js
-│   ├── defenseSystem.js
-│   ├── healingSystem.js
-│   ├── deckSystem.js
-│   ├── blockEffectSystem.js
-│   ├── shapeBonusSystem.js
-│   ├── rewardSystem.js
-│   └── mapGenerationSystem.js
-├── machines/
-├── state/
-├── events/
-├── constants/
-└── utils/
-
-폴더별 책임:
-- game/phaser: Phaser 설정, Scene, Canvas 입력 및 React 연결
-- game/systems: 화면과 엔진에 독립적인 게임 규칙과 계산
-- game/machines: XState 기반 진행 State Machine
-- game/state: Zustand store와 데이터 갱신 action
-- game/events: 시스템 사이에서 사용하는 이벤트 이름과 payload 규격
-- game/constants: 고정 수치와 열거형
-- game/utils: 여러 영역에서 공통 사용하는 작은 보조 함수
-
-시스템 함수 작성 원칙:
-- 입력값과 반환값을 명확히 한다.
-- 가능한 한 React, Phaser 및 DOM에 의존하지 않는 순수 함수로 작성한다.
-- 난수에 의존하는 함수는 테스트에서 난수를 통제할 수 있도록 한다.
-- 시스템 함수 안에서 화면을 직접 조작하지 않는다.
-
-
-0-14. 보안 및 신뢰성
-
-1. 프론트엔드 비밀정보 금지
-- API 키, 비밀번호, 관리자 토큰 및 비밀값을 React 코드나 번들에 포함하지 않는다.
-- 환경 변수 이름에 숨겨도 브라우저에 전달된 값은 비밀이 아니다.
-- 비밀값이 필요한 기능은 별도 서버에서 처리한다.
-
-2. 사용자 입력과 저장 데이터 검증
-- 이름, 저장 파일, URL parameter 및 localStorage 데이터는 신뢰하지 않는다.
-- JSON 구조, 자료형, 범위 및 허용된 열거값을 검사한 뒤 사용한다.
-- 잘못된 저장 데이터는 안전한 기본값으로 복구하거나 불러오기를 거부한다.
-
-3. XSS 방지
-- 사용자 입력을 HTML로 직접 삽입하지 않는다.
-- dangerouslySetInnerHTML을 사용하지 않는다. 반드시 필요하면 검증된 정화 절차를 거친다.
-- eval, new Function 및 문자열 기반 코드 실행을 사용하지 않는다.
-
-4. 의존성 관리
-- package-lock.json 또는 선택한 패키지 관리자의 lock 파일을 저장소에 포함한다.
-- Codex가 요청 없이 패키지를 추가하거나 메이저 버전을 변경하지 않는다.
-- 설치 전 패키지의 이름, 공식 배포처 및 필요성을 확인한다.
-- 정기적으로 알려진 취약점과 사용하지 않는 의존성을 점검한다.
-
-5. 리소스 경로와 네트워크
-- 사용자 입력을 그대로 이미지, 사운드 또는 외부 스크립트 URL로 사용하지 않는다.
-- 허용된 로컬 에셋과 신뢰할 수 있는 출처만 로드한다.
-- 가능하면 배포 환경에 Content Security Policy를 설정한다.
-- 외부 요청 실패, 지연 및 잘못된 응답을 처리한다.
-
-6. 랭킹과 점수
-- 브라우저에서 계산한 점수와 클리어 기록은 사용자가 조작할 수 있다고 가정한다.
-- 로컬 랭킹은 재미 요소로만 사용한다.
-- 신뢰 가능한 온라인 랭킹이 필요하면 서버가 점수와 플레이 결과를 검증해야 한다.
-
-7. 안정성
-- React Error Boundary와 Phaser Scene 오류 처리를 구분한다.
-- 화면 이동 시 타이머, 이벤트 구독, XState actor, Howler 사운드 및 Phaser 인스턴스를 정리한다.
-- 저장 중 오류가 발생해도 기존 저장 데이터를 즉시 덮어쓰지 않는다.
-- 개발 모드에서는 오류 원인을 기록하되 사용자 데이터나 비밀값을 로그로 남기지 않는다.
-
-
-0-15. 배포 및 브라우저 실행
-
-- 프로젝트는 정적 웹 호스팅으로 배포할 수 있어야 한다.
-- GitHub Pages 등을 이용해 별도의 프로그램 설치 없이 공개 링크만으로 게임을 실행할 수 있어야 한다.
-- 기본 배포 결과물은 정적 HTML, JavaScript, CSS 및 에셋 파일로 구성한다.
-- 백엔드가 필요한 기능을 추가하지 않는 한 게임의 기본 실행이 별도 서버 API에 의존하지 않도록 한다.
-- 배포 경로가 도메인 루트가 아닌 하위 경로일 수 있음을 고려한다.
-- 이미지, 사운드, 스프라이트 및 번들 경로를 절대 루트 경로로 하드코딩하지 않는다.
-- 사용하는 빌드 도구에서 base path 또는 public path를 배포 환경에 맞게 설정한다.
-- SPA 라우팅을 사용할 경우 GitHub Pages에서 새로고침이나 직접 URL 접근 시 404가 발생하지 않도록 HashRouter 또는 적절한 fallback 방식을 사용한다.
-- 배포용 빌드가 성공해도 로컬 개발 서버에서만 동작하는 경로가 남아 있지 않은지 확인한다.
-- 배포 후 실제 공개 URL에서 메인 화면, 화면 이동, Phaser Canvas, 이미지, 사운드 및 저장 기능을 확인한다.
-- Codex는 배포 설정을 수정할 때 기존 배포 방식과 package.json의 scripts를 먼저 확인한다.
-- 요청받지 않은 호스팅 서비스 변경, 도메인 변경 또는 유료 서비스 도입을 진행하지 않는다.
-
-
-0-16. 테스트 및 검증
-
-- game/systems의 전투, 덱 순환, 블록 효과, 보상 및 지도 생성 규칙을 단위 테스트한다.
-- XState Machine의 주요 상태 전이와 허용되지 않는 이벤트를 테스트한다.
-- 몬스터의 순차형, 동기화형, 확률형 패턴을 테스트한다.
-- 확률형 테스트에서는 고정 난수 또는 주입한 난수 함수를 사용한다.
-- React와 Phaser Bridge의 이벤트 구독 및 해제를 확인한다.
-- 화면을 반복해서 열고 닫았을 때 Phaser Canvas, 이벤트 리스너 및 사운드가 중복 생성되지 않는지 확인한다.
-- 코드 변경 후 lint, test 및 build를 실행한다.
-- 배포 설정이나 에셋 경로를 변경한 경우 production build와 정적 배포 경로를 확인한다.
-- 기존 기능과 관련 없는 실패가 있으면 숨기지 말고 구분해 보고한다.
-
-
-0-17. Codex 코드 작성 규칙
-
-Codex는 코드를 생성하거나 수정할 때 다음 원칙을 따라야 한다.
-
-1. 작업 전에 기존 폴더 구조, package.json, lock 파일 및 관련 코드를 먼저 확인한다.
-2. App.jsx, main.jsx 또는 하나의 Scene 파일에 모든 기능을 구현하지 않는다.
-3. React, Phaser, Zustand, XState 및 Howler.js의 책임 경계를 지킨다.
-4. 같은 역할을 하는 코드가 있다면 중복 구현하지 않는다.
-5. 하나의 파일은 가능한 한 하나의 주요 책임만 가진다.
-6. React 컴포넌트 안에 복잡한 전투 계산이나 지도 생성 코드를 직접 작성하지 않는다.
-7. Phaser Scene 안에 영구 게임 데이터와 전체 전투 규칙을 직접 저장하지 않는다.
-8. 화면 전용 코드는 해당 화면 폴더에 작성한다.
-9. 공용 게임 규칙은 src/game/systems/에 작성한다.
-10. 진행 단계와 상태 전이는 XState Machine으로 작성한다.
-11. 공유 게임 데이터는 Zustand action을 통해 변경한다.
-12. 몬스터별 데이터와 행동 Machine은 해당 몬스터 폴더에 작성한다.
-13. XState를 사용하면서 별도의 범용 State Machine 엔진을 중복 제작하지 않는다.
-14. Motion for React를 Phaser Canvas 내부 애니메이션에 사용하지 않는다.
-15. Phaser Tween을 React DOM UI 애니메이션에 사용하지 않는다.
-16. 사운드는 SoundManager를 통해 Howler.js로 재생한다.
-17. 이미지, 사운드 및 애니메이션은 용도에 맞는 assets 폴더에 배치한다.
-18. 소스 코드에서 ${PWD}를 런타임 에셋 URL로 사용하지 않는다.
-19. 새로운 패키지나 폴더를 임의로 추가하기 전에 기존 구조에서 해결 가능한지 확인한다.
-20. 요청받지 않은 전체 리팩터링이나 라이브러리 교체를 진행하지 않는다.
-21. 임시 코드, 사용하지 않는 코드 및 중복 코드를 남기지 않는다.
-22. 코드 변경 후 import 경로, lint, test, build 및 기존 화면 동작을 확인한다.
-23. 테스트하지 못한 항목과 남은 한계는 완료 결과에 명시한다.
-24. GitHub Pages 같은 정적 호스팅의 하위 경로에서도 에셋과 화면 이동이 정상 동작하도록 한다.
-25. 배포 관련 변경 후 가능하면 실제 배포 URL 또는 정적 미리보기에서 게임 실행을 확인한다.
-
-
-0-18. 전체 권장 구조
-
-src/
-├── app/
-│   ├── App.jsx
-│   └── providers/
-├── assets/
-│   ├── pictures/
-│   ├── sprites/
-│   ├── icons/
-│   ├── sounds/
-│   ├── animations/
-│   └── manifests/
-├── components/
-│   └── ui/
-├── screens/
-│   ├── main/
-│   ├── map/
-│   ├── move/
-│   ├── battle/
-│   ├── event/
-│   ├── shop/
-│   └── result/
-├── objects/
-│   ├── monsters/
-│   ├── blocks/
-│   ├── items/
-│   └── relics/
-├── game/
-│   ├── phaser/
-│   │   ├── config/
-│   │   ├── scenes/
-│   │   ├── input/
-│   │   └── bridge/
-│   ├── systems/
-│   ├── machines/
-│   ├── state/
-│   ├── events/
-│   ├── constants/
-│   └── utils/
-├── managers/
-│   ├── AssetManager.js
-│   └── SoundManager.js
-├── hooks/
-├── security/
-│   └── validation/
-└── main.jsx
-
-
-0-19. 최종 핵심 명령
-
-"메인 파일이나 하나의 Phaser Scene에 모든 코드를 생성하지 마세요. React는 화면과 UI Overlay를, Phaser는 인게임 Canvas와 게임 오브젝트 렌더링을, Zustand + Immer는 공유 게임 데이터를, XState는 진행 단계와 상태 전이를, Howler.js는 사운드를 담당합니다. Motion for React는 React DOM 애니메이션에만 사용하고 Phaser Canvas 애니메이션은 Phaser Tween 또는 Animation으로 구현하세요. 실제 게임 규칙과 계산은 src/game/systems/에 분리하고, 각 시스템 사이의 통신은 명시적인 event와 bridge를 통해 처리하세요. 게임은 GitHub Pages 등의 정적 웹 호스팅에 배포하여 링크 클릭만으로 브라우저에서 바로 플레이할 수 있어야 합니다. 기존 구조와 의존성을 먼저 확인한 뒤 최소 범위로 수정하고 lint, test, production build 및 배포 경로를 검증하세요."
-
-
-부록 A. 핵심 기술 역할 요약
-
-- React DOM + CSS Grid/Flexbox: 화면, HUD, 메뉴, 오버레이
-- Phaser: 퍼즐 판, 스프라이트, 포인터 입력, 타일 이동, 인게임 이펙트
-- Motion for React: React DOM 화면 전환과 UI 애니메이션
-- Howler.js: 배경음과 효과음
-- Zustand + Immer: 공유 게임 데이터와 불변 상태 갱신
-- XState: 게임 흐름, 턴 제어, 몬스터 행동 State Machine
-- Custom Hooks: React와 각 시스템의 연결 및 생명주기 정리
-- AssetManager: 에셋 키, 경로, 로딩 및 재사용
-- SoundManager: 사운드 생성, 재생, 정지, 그룹 음량 및 해제
-- 정적 웹 배포: GitHub Pages 등의 링크를 통해 설치 없이 브라우저에서 즉시 실행
-
-
-부록 B. 검토 과정에서 수정한 항목
-
-- 'Famer Motionr'를 현재 명칭인 'Motion for React'로 수정했다.
-- 중복 기재된 'React DOM (CSS Grid / Flexbox)' 항목을 하나로 통합했다.
-- React DOM과 Phaser가 같은 게임 화면을 중복 렌더링하지 않도록 영역을 분리했다.
-- Motion for React는 DOM 애니메이션, Phaser Tween은 Canvas 애니메이션으로 구분했다.
-- Zustand는 공유 데이터, XState는 흐름과 상태 전이로 역할을 분리했다.
-- XState를 사용하므로 자체 범용 State Machine 엔진을 다시 만드는 구조를 제거했다.
-- Howler.js와 Phaser 사운드 시스템의 중복 사용을 금지하고 Howler.js를 기본 사운드 담당자로 정했다.
-- Custom Hook을 핵심 게임 로직 계층이 아니라 연결 계층으로 수정했다.
-- 브라우저 게임의 저장 데이터, XSS, 의존성, 에셋 URL 및 온라인 랭킹에 관한 보안 지침을 추가했다.
-- GitHub Pages 등의 정적 웹 호스팅 배포와 하위 경로, SPA 라우팅 및 실제 공개 URL 검증 규칙을 추가했다.
+```
 
+화면 전용:
 
+```text
+screens/<screen>/assets/
+```
+
+등 현재 Repository 규칙을 우선한다.
+
+## 15.3 React / Phaser Loading
+
+- React는 Bundler가 처리할 수 있는 import 또는 현재 프로젝트 URL 규칙 사용
+- Phaser는 preload 또는 Asset Manager를 사용
+- 같은 Phaser Key 중복 등록 금지
+
+---
+
+# 16. Sound와 Animation
+
+현재 Repository에서 사용하는 Sound/Animation Library를 먼저 확인한다.
+
+## 16.1 React DOM Animation
+
+React DOM Animation은 현재 프로젝트에서 이미 사용하는 방식이 있으면 재사용한다.
+
+Motion Library를 사용한다면 React DOM에 한정한다.
+
+## 16.2 Phaser Animation
+
+Canvas 내부 Block, Hit, Damage, Monster Attack 등의 동적 연출은 Phaser Tween / Animation을 우선한다.
+
+React Animation Library로 Phaser Object를 직접 제어하지 않는다.
+
+## 16.3 Sound
+
+현재 Sound Manager가 있다면 그것을 단일 진입점으로 사용한다.
+
+새 기능마다 Audio Object를 직접 반복 생성하지 않는다.
+
+---
+
+# 17. State Management
+
+현재 Repository의 실제 State Layer를 먼저 확인한다.
+
+## 17.1 장기 상태
+
+예:
+
+- HP
+- Gold
+- Deck
+- Dungeon Progress
+- Map
+- Blueprint Discovery
+- Save Data
+
+## 17.2 진행 상태
+
+예:
+
+- Current Screen
+- Battle Phase
+- Reward Pending
+- Event Step
+- Monster Planned Action
+
+## 17.3 Presentation-only 상태
+
+예:
+
+- Tooltip Hover
+- Modal Open
+- Animation Playing
+- Temporary Selection Highlight
+
+## 17.4 Library 도입 원칙
+
+Zustand, XState 등 특정 Library가 이미 사용 중이라면 그 역할을 존중한다.
+
+사용 중이 아니라면 단순 기능을 위해 새 Library를 임의 추가하지 않는다.
+
+대규모 State Migration은 별도 승인 작업으로 취급한다.
+
+---
+
+# 18. Codex 작업 절차
+
+## 18.1 작업 전
+
+1. 요청 범위를 정확히 읽는다.
+2. 관련 파일을 우선 확인한다.
+3. 기존 같은 기능이 있는지 찾는다.
+4. 현재 Source of Truth를 찾는다.
+5. 변경 범위를 최소화한다.
+
+관련 없는 전체 Repository를 반복해서 읽지 않는다.
+
+## 18.2 구현 중
+
+- 기존 Formatter / Component / System 재사용
+- 동일 Logic 중복 구현 금지
+- UI에서 데이터 다시 계산하지 않기
+- 이름 문자열보다 ID / Data Reference 사용
+- 임시 구현은 한 곳에 국소화
+- 사용자가 완료했다고 한 영역 보호
+
+## 18.3 작업 후
+
+가능한 범위에서:
+
+- Build
+- Lint
+- Test
+- Runtime 확인
+
+을 수행한다.
+
+테스트하지 못한 항목은 완료한 것처럼 보고하지 않는다.
+
+---
+
+# 19. Codex 요청 범위 보호
+
+다음 행위를 금지한다.
+
+- 요청 없는 대규모 Refactor
+- 요청 없는 Library 교체
+- 요청 없는 Folder 전면 재구성
+- 요청 없는 Asset Rename
+- 완료된 UI 전면 재배치
+- 게임 규칙을 문서 확인 없이 임의 변경
+- 새 Effect의 의미를 자연어로 추론하여 구현
+
+사용자가 "이 파일만", "이 UI만", "이 로직만"이라고 지정하면 그 범위를 우선한다.
+
+---
+
+# 20. Git / GitHub 규칙
+
+Repository 읽기와 분석은 자유롭게 수행할 수 있다.
+
+하지만 다음 Write 작업은 **사용자의 명시적 허가를 받은 뒤에만** 수행한다.
+
+- Git Commit
+- Git Push
+- GitHub 파일 수정
+- Branch 생성 및 Merge
+- Pull Request 생성
+
+Codex가 작업을 완료했다고 해서 자동 Commit/Push하지 않는다.
+
+사용자가 `commit / push 하지 마세요`라고 지정한 경우 절대 수행하지 않는다.
+
+---
+
+# 21. 테스트 원칙
+
+## 21.1 System Test
+
+가능하면 다음을 독립적으로 테스트한다.
+
+- Damage
+- Armor
+- Status
+- Deck Cycle
+- Combination
+- Map Generation
+- Save/Load
+- Reward
+- Shop Transaction
+
+## 21.2 Random Test
+
+Random 기반 기능은 고정 Seed로 재현 가능하게 한다.
+
+## 21.3 UI Regression
+
+UI 변경 시 요청 대상뿐 아니라 바로 인접한 완료 영역의 Regression을 확인한다.
+
+예:
+
+- Player Status 수정 → Monster Status 유지 확인
+- Common Menu 수정 → Battle Layout 유지 확인
+- Map 이동 수정 → Node Completion 유지 확인
+
+## 21.4 Production Build
+
+배포 경로, Asset, Screen 변경 후 production build를 확인한다.
+
+---
+
+# 22. 정적 배포
+
+- Browser에서 별도 설치 없이 실행 가능해야 한다.
+- Static HTML / JS / CSS / Asset으로 배포 가능해야 한다.
+- GitHub Pages의 Sub Path를 고려한다.
+- 절대 Root Path 하드코딩을 피한다.
+- SPA Routing을 사용할 경우 배포 환경의 직접 URL 접근을 검토한다.
+- Local Dev Server에서만 동작하는 경로를 남기지 않는다.
+
+---
+
+# 23. 보안과 저장 신뢰성
+
+## 23.1 Frontend Secret 금지
+
+API Key, Password, Secret Token을 Browser Bundle에 넣지 않는다.
+
+## 23.2 Save Data
+
+Local Save는 사용자 또는 외부 도구가 변경할 수 있다고 가정한다.
+
+- Schema 검증
+- Type 검증
+- Range 검증
+- Enum 검증
+- ID Reference 검증
+
+후 사용한다.
+
+## 23.3 XSS
+
+- 사용자 문자열을 HTML로 직접 삽입하지 않는다.
+- 불필요한 `dangerouslySetInnerHTML` 사용 금지
+- `eval`, `new Function` 금지
+
+---
+
+# 24. Prototype 임시 구현 원칙
+
+마감 때문에 임시 구현이 필요한 경우 허용할 수 있다.
+
+단 다음 원칙을 적용한다.
+
+1. 핵심 Combat Formula를 임시 규칙으로 복제하지 않는다.
+2. Save/Load의 Source of Truth를 우회하지 않는다.
+3. Temporary Rule은 가능한 한 Config 또는 한 Module에 모은다.
+4. 여러 화면에 같은 Hardcode를 복제하지 않는다.
+5. 정식 Game Design을 임시 코드에 맞춰 왜곡하지 않는다.
+6. 추후 제거 지점을 식별할 수 있게 한다.
+
+권장 표시:
+
+```text
+TODO: prototype hardcode
+TODO: replace according to game design / development guide
+```
+
+버그 수정 과정의 상세 내역을 정식 Architecture 문서에 누적 기록하지 않는다.
+
+---
+
+# 25. 현재 사용 중인 핵심 구현 구조
+
+현재 프로젝트에서 큰 틀로 사용하는 구조:
+
+- React 기반 Screen / DOM UI
+- Phaser 기반 Battle Board / Dynamic Interaction
+- JSON 기반 Block / Monster / Combination Data
+- Browser Run Save
+- Static Web Build / Deployment
+- React와 Phaser 사이의 명시적인 정보 전달
+- Data-driven Combat Effect 해석
+
+세부 Library 사용 여부는 실제 Repository를 기준으로 확인한다.
+
+---
+
+# 26. 장기 Target / 아직 정리가 필요한 구조
+
+이 절은 게임 기능의 미구현 목록이 아니라 **Architecture의 장기 정리 목표**다.
+
+- UI → Command/Event → Engine → Result → Presentation 흐름의 일관된 적용
+- Game Rule의 System 계층 집중
+- Presentation State 분리
+- Save Schema Versioning 강화
+- Random Seed 관리 일원화
+- Map / Battle / Event의 공통 Event 규격 정리
+- State Ownership 명확화
+- 공통 Asset Manager 정리
+- 공통 Sound Manager 정리
+- 순수 함수 기반 Unit Test 확대
+- Temporary Hardcode 제거
+- Responsive Container-relative UI 정리
+
+현재 Target Architecture 미도달
+
+- Encounter 생성 책임이 App/UI 계층에 일부 존재
+- Encounter System 또는 이에 해당하는 Game System 계층으로 분리 필요
+
+
+이 항목을 현재 모두 구현 완료한 것으로 문서화하지 않는다.
+
+---
+
+# 27. AI / Codex 개발에서 얻은 운영 원칙
+
+Blockable은 AI-assisted Development를 적극 사용하는 프로젝트다.
+
+AI에게 모든 판단을 맡기는 것이 아니라 다음 역할 분리를 사용한다.
+
+## AI / Codex에 적합한 작업
+
+- 반복적인 Component 구현
+- Data Wiring
+- 기존 Pattern을 이용한 기능 추가
+- JSON Validation
+- Build Error 분석
+- 관련 파일 간 연결
+- 구조적 중복 탐색
+
+## 사람이 직접 판단해야 하는 작업
+
+- 최종 Game Rule
+- UI의 시각적 우선순위
+- 실제 화면에서의 배치 품질
+- 플레이 감각
+- 무엇을 임시 구현으로 허용할지
+- AI 수정 결과가 의도와 일치하는지 검증
+
+Screenshot만 보고 좌표를 반복 추측시키는 방식보다, 사람이 실제 좌표와 차이를 측정하고 AI가 구조적으로 적용하는 방식이 효율적이다.
+
+---
+
+# 28. 최종 Codex 핵심 명령
+
+> 기존 구조와 관련 파일을 먼저 확인하고 요청 범위 안에서 최소 수정한다. React는 Screen과 Static/DOM UI를, Phaser는 Dynamic Battle Board와 Canvas Input/Effect를 담당하되 동일한 요소를 중복 소유하지 않는다. 게임 규칙은 Presentation에 중복 구현하지 않고 Engine/System 계층의 단일 Source of Truth를 사용한다. Block/Monster Designer JSON은 `type + parameters.id + value + target`을 기준으로 검증·해석한다. Map과 Battle의 Random 결과는 Save/Continue에서 재현 가능해야 한다. Prototype 임시 구현은 가능한 한 국소화하고 정식 Game Design과 분리한다. 관련 Build/Test를 수행하고 미검증 사항은 명시한다. Git Commit/Push 및 GitHub Write는 사용자 승인 없이 수행하지 않는다.
 
