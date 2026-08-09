@@ -12,12 +12,14 @@ import { getBlueprintCatalog } from '../../game/systems/blueprintSystem.js'
 import globalMap from '../../screens/map/assets/pictures/maps_volcano.png'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import { GoldAmount } from '../ui/GoldAmount.jsx'
+import { BlockPreview } from '../ui/BlockPreview.jsx'
 import mainBarLeft from '../../assets/pictures/ui/main_bar_left.png'
 import mainBarMiddle from '../../assets/pictures/ui/main_bar_middle.png'
 import mainBarRight from '../../assets/pictures/ui/main_bar_right.png'
 import './styles/common-game-menu.css'
 
 const statusLabels = { saving: '저장 중', saved: '저장 완료', failed: '저장 실패' }
+const DECK_COLOR_ORDER = Object.freeze({ steel: 0, water: 1, nature: 2, fire: 3, special: 10, legendary: 11, curse: 12 })
 const mapSymbols = {
   unique_block_selection: '◆',
   floor_start: '●',
@@ -112,20 +114,23 @@ function WorldMapModal({ worldMap, activeDungeonId, onClose }) {
 
 function DeckModal({ deck, onClose }) {
   const blockCounts = deck.reduce((counts, block) => {
-    const key = `${block.shape}-${block.color}`
+    const key = block.definitionId ?? `${block.shape}-${block.color}`
     const current = counts.get(key)
     counts.set(key, current ? { ...current, count: current.count + 1 } : { ...block, count: 1 })
     return counts
   }, new Map())
+  const groupedBlocks = [...blockCounts.values()].sort((left, right) => {
+    const colorOrder = (DECK_COLOR_ORDER[left.color] ?? 99) - (DECK_COLOR_ORDER[right.color] ?? 99)
+    return colorOrder || left.name.localeCompare(right.name, 'ko')
+  })
 
   return (
     <div className="common-modal__panel common-modal__panel--deck" role="dialog" aria-modal="true" aria-labelledby="deck-title">
       <header><div><small>현재 원정 주머니</small><h2 id="deck-title">현재 덱 · {deck.length}개</h2></div><button type="button" onClick={onClose} aria-label="덱 닫기">×</button></header>
-      <div className="run-deck" aria-label="현재 덱 구성">
-        {[...blockCounts.values()].map((block) => (
-          <div className={`run-deck__block ${block.color}`} key={`${block.shape}-${block.color}`}>
-            <strong>{block.shape}</strong>
-            <span>{block.color === 'neutral' ? '무색 블록' : `${block.color} 블록`}</span>
+      <div className="battle-pile-grid run-deck" aria-label="현재 덱 구성">
+        {groupedBlocks.map((block) => (
+          <div className="run-deck__block" key={block.definitionId ?? `${block.shape}-${block.color}`} aria-label={`${block.name} ×${block.count}`} title={block.name}>
+            <BlockPreview block={block} compact />
             <b aria-label={`${block.count}개`}>×{block.count}</b>
           </div>
         ))}

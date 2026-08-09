@@ -4,7 +4,7 @@
   "metadata": {
     "project_name": "Blockable",
     "ruleset_name": "prototype",
-    "updated_at": "2026-08-09T10:56:44+09:00",
+    "updated_at": "2026-08-09T22:21:52+09:00",
     "validation_status": "valid",
     "validation_error_count": 10,
     "validation_warning_count": 29,
@@ -2081,14 +2081,14 @@
         {
           "effect_id": "extra_effect_turn_2",
           "effect_name": "추가 턴",
-          "description": "추가 턴을 획득합니다",
+          "description": "추가 배치를 획득합니다",
           "target": "self",
-          "value": 1,
+          "value": 2,
           "type": "EXTRA",
           "parameters": {
-            "id": "TURN",
+            "id": "PLACEMENT",
             "duration": 0,
-            "intensify": 1
+            "intensify": 0
           }
         },
         {
@@ -2498,10 +2498,10 @@
             "instance_id": "piece_3",
             "block_id": "s002",
             "origin": {
-              "x": 1,
+              "x": 0,
               "y": 1
             },
-            "rotation": 90,
+            "rotation": 270,
             "reflected": false,
             "match": {
               "kind": "exact_block"
@@ -2602,6 +2602,88 @@
           "description": "효과로 독립 공격력을 부여합니다",
           "target": "SELECTED",
           "value": 40,
+          "type": "BASE_DAMAGE",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        }
+      ],
+      "conditional_effects": [],
+      "tags": []
+    },
+    {
+      "combination_id": "base_44_07",
+      "combination_name": "판금 갑옷",
+      "description": "방어에 치중하여 만든 갑옷. 공격 성능은 전무하지만, 때로는 살아남는 것이 더 중요하다.",
+      "formula": {
+        "instances": [
+          {
+            "instance_id": "piece_1",
+            "block_id": "s003",
+            "origin": {
+              "x": 0,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_2",
+            "block_id": "s003",
+            "origin": {
+              "x": 1,
+              "y": 2
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          },
+          {
+            "instance_id": "piece_3",
+            "block_id": "s003",
+            "origin": {
+              "x": 2,
+              "y": 0
+            },
+            "rotation": 0,
+            "reflected": false,
+            "match": {
+              "kind": "exact_block"
+            }
+          }
+        ]
+      },
+      "transform_rule": {
+        "allow_rotation": false,
+        "allow_reflection": true
+      },
+      "effects": [
+        {
+          "effect_id": "extra_effect_defence_7",
+          "effect_name": "효과 방어력",
+          "description": "효과로 독립 방어력을 부여합니다",
+          "target": "self",
+          "value": 60,
+          "type": "BLOCK",
+          "parameters": {
+            "id": "NONE",
+            "duration": 0,
+            "intensify": 0
+          }
+        },
+        {
+          "effect_id": "base_damage_block_25",
+          "effect_name": "기초 공격력",
+          "description": "블록이 가진 기초 공격력",
+          "target": "SELECTED",
+          "value": -30,
           "type": "BASE_DAMAGE",
           "parameters": {
             "id": "NONE",
@@ -3537,166 +3619,6 @@
           "type": "BASE_DAMAGE",
           "parameters": {
             "id": "NONE",
-            "duration": 0,
-            "intensify": 0
-          }
-        }
-      ],
-      "conditional_effects": [],
-      "tags": []
-    },
-    {
-      "combination_id": "test_dot_damage",
-      "combination_name": "아이콘 테스트용",
-      "description": "아이콘 테스트용 조합",
-      "formula": {
-        "instances": [
-          {
-            "instance_id": "piece_1",
-            "block_id": "s002",
-            "origin": {
-              "x": 0,
-              "y": 1
-            },
-            "rotation": 0,
-            "reflected": false,
-            "match": {
-              "kind": "exact_block"
-            }
-          },
-          {
-            "instance_id": "piece_2",
-            "block_id": "s002",
-            "origin": {
-              "x": 1,
-              "y": 1
-            },
-            "rotation": 180,
-            "reflected": false,
-            "match": {
-              "kind": "exact_block"
-            }
-          },
-          {
-            "instance_id": "piece_3",
-            "block_id": "s001",
-            "origin": {
-              "x": 0,
-              "y": 0
-            },
-            "rotation": 270,
-            "reflected": false,
-            "match": {
-              "kind": "exact_block"
-            }
-          }
-        ]
-      },
-      "transform_rule": {
-        "allow_rotation": true,
-        "allow_reflection": true
-      },
-      "effects": [
-        {
-          "effect_id": "per_turn_extra_chills",
-          "effect_name": "매 턴 오한 부여",
-          "description": "매 턴 적에게 오한을 부여",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DEBUFF",
-          "parameters": {
-            "id": "CHILL",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "debuff_weakness_6",
-          "effect_name": "약화 디버프 부여",
-          "description": "적에게 약화 디버프를 부여한다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DEBUFF",
-          "parameters": {
-            "id": "WEAKNESS",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "debuff_wound_2",
-          "effect_name": "상처 디버프 부여",
-          "description": "적에게 상처 디버프를 부여한다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DEBUFF",
-          "parameters": {
-            "id": "WOUND",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "extra_effect_poison",
-          "effect_name": "중독 디버프 부여",
-          "description": "적에게 중독 디버프를 부여합니다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DAMAGE_OVER_TIME",
-          "parameters": {
-            "id": "POISON",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "dot_damage_bleed_2",
-          "effect_name": "출혈 디버프 부여",
-          "description": "적에게 출혈 디버프를 부여합니다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DAMAGE_OVER_TIME",
-          "parameters": {
-            "id": "BLEED",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "dot_damage_burn_4",
-          "effect_name": "화상 디버프 부여",
-          "description": "적에게 화상 디버프를 부여합니다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "DAMAGE_OVER_TIME",
-          "parameters": {
-            "id": "BURN",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "buff_add_rage_3",
-          "effect_name": "분노 버프 획득",
-          "description": "분노 버프 스택을 획득 합니다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "BUFF",
-          "parameters": {
-            "id": "RAGE",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "buff_add_armor_2",
-          "effect_name": "철갑 버프 획득",
-          "description": "철갑 버프 스택을 획득 합니다",
-          "target": "SELECTED",
-          "value": 5,
-          "type": "BUFF",
-          "parameters": {
-            "id": "ARMOR",
             "duration": 0,
             "intensify": 0
           }

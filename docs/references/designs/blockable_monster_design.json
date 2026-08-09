@@ -4,7 +4,7 @@
   "metadata": {
     "project_name": "Blockable",
     "designer_name": "Blockable Monster Designer",
-    "updated_at": "2026-08-09T12:25:00+09:00",
+    "updated_at": "2026-08-09T22:15:51+09:00",
     "validation_status": "valid",
     "migrated_from_schema": "1.4.0",
     "combat_effect_spec_version": "0.5.4"
@@ -533,28 +533,7 @@
                 }
               ]
             },
-            "triggers": [
-              {
-                "trigger_id": "destruct",
-                "event_id": "SKILL_USED",
-                "condition": {
-                  "condition_id": "TURN",
-                  "operator": "EQ",
-                  "value": 3
-                },
-                "priority": 0,
-                "once": false,
-                "cooldown_turns": 0,
-                "max_triggers_per_turn": 0,
-                "max_triggers_per_battle": 0,
-                "allow_chained_triggers": false,
-                "response": {
-                  "type": "IMMEDIATE",
-                  "cancel_current_intent": false,
-                  "skill_id": "a0006"
-                }
-              }
-            ]
+            "triggers": []
           }
         ]
       }
@@ -948,7 +927,7 @@
                 "condition": {
                   "condition_id": "MONSTER_HP_RATIO",
                   "operator": "LTE",
-                  "value": 0
+                  "value": 0.0
                 },
                 "priority": 0,
                 "once": false,
@@ -2132,7 +2111,7 @@
       "monster_id": "scrap_amalgam",
       "monster_name": "고철 얽힘이",
       "description": "",
-      "grade": "HORDE",
+      "grade": "NORMAL",
       "hp": 30,
       "appearance_condition": [
         {
@@ -2230,7 +2209,7 @@
       "monster_id": "burning_worm",
       "monster_name": "불타는 기생충",
       "description": "",
-      "grade": "HORDE",
+      "grade": "NORMAL",
       "hp": 40,
       "appearance_condition": [
         {
@@ -2323,7 +2302,7 @@
       "monster_id": "slag_imp",
       "monster_name": "슬래그 임프",
       "description": "",
-      "grade": "HORDE",
+      "grade": "NORMAL",
       "hp": 45,
       "appearance_condition": [
         {
