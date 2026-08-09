@@ -21,6 +21,7 @@ import {
   calculateGeneralDamage,
   consumeOneShotStatus,
   resolveTurnEndStatuses,
+  STATUS_EFFECTS,
 } from '../systems/statusEffectSystem.js'
 import { HAND_SIZE, STARTING_GOLD, STARTING_MAX_HEALTH } from '../constants/gameConfig.js'
 import { isValidSave } from '../../security/validation/saveValidation.js'
@@ -50,6 +51,7 @@ const initialRun = (developerMode = false) => ({
   uniqueBlockId: null,
   uniqueBlockChoiceIds: [],
   discoveredBlueprintIds: [...INITIAL_DISCOVERED_BLUEPRINT_IDS],
+  bossEncounterHistory: [],
   developerMode,
   developerDifficulty: 1,
   battlePiles: { drawPile: [], hand: [], discardPile: [] },
@@ -58,6 +60,7 @@ const initialRun = (developerMode = false) => ({
     monster: createCombatantState(),
   },
   pendingBattle: null,
+  deathCause: null,
 })
 
 const isUniqueBlock = (block) =>
@@ -83,6 +86,15 @@ const hydrateBattlePiles = (piles) => ({
   drawPile: piles.drawPile.map(hydrateBlock),
   hand: piles.hand.map(hydrateBlock),
   discardPile: piles.discardPile.map(hydrateBlock),
+})
+
+const createDeathCause = (state, cause, damage) => ({
+  dungeonName: state.map?.dungeonName ?? null,
+  floorNumber: state.floor,
+  sourceName: cause.sourceName ?? null,
+  effectName: cause.effectName ?? '피해',
+  damage,
+  causeType: cause.causeType ?? cause.sourceType ?? 'unknown',
 })
 
 const createRunStore = ({ storageName, developerMode, persistent = true }) => {
@@ -187,7 +199,8 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
       state.previousNodeId = null
     }
   }),
-  damagePlayer: (amount, attackerStatuses = []) => set((state) => {
+  damagePlayer: (amount, attackerStatuses = [], cause = {}) => set((state) => {
+    const healthBeforeDamage = state.health
     const adjustedAmount = calculateGeneralDamage({
       amount,
       attackerStatuses,
@@ -195,10 +208,27 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     })
     const absorbed = Math.min(state.armor, adjustedAmount)
     state.armor -= absorbed
-    state.health = Math.max(0, state.health - (adjustedAmount - absorbed))
+    const healthDamage = Math.max(0, adjustedAmount - absorbed)
+    state.health = Math.max(0, state.health - healthDamage)
+    if (healthBeforeDamage > 0 && state.health <= 0) {
+      state.deathCause = createDeathCause(
+        state,
+        cause,
+        Math.min(healthBeforeDamage, healthDamage),
+      )
+    }
   }),
-  damagePlayerIgnoringArmor: (amount) => set((state) => {
-    state.health = Math.max(0, state.health - Math.max(0, amount))
+  damagePlayerIgnoringArmor: (amount, cause = {}) => set((state) => {
+    const healthBeforeDamage = state.health
+    const healthDamage = Math.max(0, amount)
+    state.health = Math.max(0, state.health - healthDamage)
+    if (healthBeforeDamage > 0 && state.health <= 0) {
+      state.deathCause = createDeathCause(
+        state,
+        cause,
+        Math.min(healthBeforeDamage, healthDamage),
+      )
+    }
   }),
   clearArmor: () => set((state) => { state.armor = 0 }),
   retainArmorNextTurn: () => set((state) => {
@@ -243,6 +273,7 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     )
   }),
   resolvePlayerTurnEndStatuses: (placedCount) => set((state) => {
+    const healthBeforeStatuses = state.health
     const result = resolveTurnEndStatuses({
       health: state.health,
       armor: state.armor,
@@ -252,6 +283,14 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     state.health = result.health
     state.armor = result.armor
     state.combat.player.statuses = result.statuses
+    const lethalEvent = result.damageEvents.find(({ healthAfter }) => healthAfter <= 0)
+    if (healthBeforeStatuses > 0 && lethalEvent) {
+      state.deathCause = createDeathCause(state, {
+        sourceName: lethalEvent.sourceName,
+        effectName: STATUS_EFFECTS[lethalEvent.statusId]?.name ?? lethalEvent.statusId,
+        causeType: 'status',
+      }, lethalEvent.damage)
+    }
   }),
   markPrologueSeen: () => set((state) => { state.prologueSeen = true }),
   markTutorialCompleted: () => set((state) => { state.tutorialCompleted = true }),
@@ -269,6 +308,16 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
       battlePiles: initialBattlePiles,
     }
     state.battlePiles = initialBattlePiles
+    if (encounter.battleType === 'boss') {
+      const bossId = encounter.bossEncounterId
+        ?? encounter.monsters?.find(({ slotId }) => slotId === 5)?.id
+      if (bossId) {
+        state.bossEncounterHistory = encounter.resetBossEncounterHistory
+          ? [bossId]
+          : [...new Set([...state.bossEncounterHistory, bossId])]
+      }
+    }
+    state.deathCause = null
     state.armor = 0
     state.combat = {
       player: createCombatantState(),
@@ -283,11 +332,10 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
     state.armor = 0
     state.gold = snapshot.gold
     state.deck = snapshot.deck
-    state.battlePiles = hasSavedBattlePiles(state.battlePiles)
-      ? state.battlePiles
-      : hasSavedBattlePiles(snapshot.battlePiles)
-        ? snapshot.battlePiles
-        : drawHand(startBattleDeck(snapshot.deck))
+    state.deathCause = null
+    state.battlePiles = hasSavedBattlePiles(snapshot.battlePiles)
+      ? snapshot.battlePiles
+      : drawHand(startBattleDeck(snapshot.deck))
     state.combat = {
       player: createCombatantState(),
       monster: createCombatantState(),
@@ -306,8 +354,8 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
   return createStore(persist(stateCreator, {
   name: storageName,
   storage: createJSONStorage(() => trackedLocalStorage),
-  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }) =>
-    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds }),
+  partialize: ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, bossEncounterHistory, deathCause }) =>
+    ({ health, maxHealth, gold, deck, map, worldMap, activeDungeonId, currentNodeId, previousNodeId, floor, prologueSeen, tutorialCompleted, runStarted, developerMode, developerDifficulty, pendingBattle, battlePiles, uniqueBlockId, uniqueBlockChoiceIds, discoveredBlueprintIds, bossEncounterHistory, deathCause }),
   merge: (persisted, current) => {
     if (!isValidSave(persisted)) return current
     const hydratedDeck = persisted.deck.map(hydrateBlock)
@@ -376,6 +424,9 @@ const createRunStore = ({ storageName, developerMode, persistent = true }) => {
         ...INITIAL_DISCOVERED_BLUEPRINT_IDS,
         ...(Array.isArray(persisted.discoveredBlueprintIds) ? persisted.discoveredBlueprintIds : []),
       ])],
+      bossEncounterHistory: Array.isArray(persisted.bossEncounterHistory)
+        ? persisted.bossEncounterHistory.filter((id) => typeof id === 'string')
+        : [],
     }
   },
   }))

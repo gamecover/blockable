@@ -56,6 +56,36 @@ describe('combat system 0.5.4 status effects', () => {
     })
   })
 
+  it('reports the lethal status event separately from the total turn-end damage', () => {
+    const statuses = addStatusUpdate(
+      addStatusUpdate([], update('bleeding', 2)),
+      update('burn', 5),
+    )
+    const result = resolveTurnEndStatuses({
+      owner: 'player', health: 6, armor: 0, statuses, playerPlacedBlockCount: 1,
+    })
+
+    expect(result.health).toBe(0)
+    expect(result.damageEvents).toEqual([
+      { statusId: 'bleeding', damage: 2, healthAfter: 4 },
+      { statusId: 'burn', damage: 4, healthAfter: 0 },
+    ])
+  })
+
+  it('retains the monster that applied a lethal damage-over-time status', () => {
+    const statuses = addStatusUpdate([], {
+      ...update('burn', 5),
+      sourceName: '잉걸불 슬라임',
+    })
+    const result = resolveTurnEndStatuses({
+      owner: 'player', health: 4, armor: 0, statuses, playerPlacedBlockCount: 1,
+    })
+
+    expect(result.damageEvents).toEqual([{
+      statusId: 'burn', sourceName: '잉걸불 슬라임', damage: 4, healthAfter: 0,
+    }])
+  })
+
   it('protects newly applied poison until next turn and then halves it', () => {
     const newlyApplied = addStatusUpdate([], update('poison', 5), true)
     expect(getPoisonPlacementDamage(newlyApplied)).toBe(0)

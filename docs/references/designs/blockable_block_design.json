@@ -4,8 +4,8 @@
   "metadata": {
     "project_name": "Blockable",
     "ruleset_name": "prototype",
-    "updated_at": "2026-08-09T10:41:55+09:00",
-    "validation_status": "alid",
+    "updated_at": "2026-08-09T10:56:44+09:00",
+    "validation_status": "valid",
     "validation_error_count": 10,
     "validation_warning_count": 29,
     "designer_name": "Blockable Block Designer",
@@ -2109,88 +2109,6 @@
       "tags": []
     },
     {
-      "combination_id": "base_33_10",
-      "combination_name": "미완성 부적",
-      "description": "다급하게 만드느라 완성하지 못한 토템. 어떻게든 쓸 순 있겠지만, 제대로 효과가 나타나는지 의문이다.\n분노 버프를 획득하고, 추가 턴을 얻는다.",
-      "formula": {
-        "instances": [
-          {
-            "instance_id": "piece_1",
-            "block_id": "s001",
-            "origin": {
-              "x": 0,
-              "y": 0
-            },
-            "rotation": 90,
-            "reflected": false,
-            "match": {
-              "kind": "exact_block"
-            }
-          },
-          {
-            "instance_id": "piece_2",
-            "block_id": "s002",
-            "origin": {
-              "x": 1,
-              "y": 1
-            },
-            "rotation": 90,
-            "reflected": false,
-            "match": {
-              "kind": "exact_block"
-            }
-          }
-        ]
-      },
-      "transform_rule": {
-        "allow_rotation": false,
-        "allow_reflection": true
-      },
-      "effects": [
-        {
-          "effect_id": "base_damage_block_25",
-          "effect_name": "기초 공격력",
-          "description": "블록이 가진 기초 공격력",
-          "target": "SELECTED",
-          "value": -20,
-          "type": "BASE_DAMAGE",
-          "parameters": {
-            "id": "NONE",
-            "duration": 0,
-            "intensify": 0
-          }
-        },
-        {
-          "effect_id": "buff_add_rage",
-          "effect_name": "분노 버프 획득",
-          "description": "분노 버프 스택을 획득 합니다",
-          "target": "self",
-          "value": 3,
-          "type": "BUFF",
-          "parameters": {
-            "id": "RAGE",
-            "duration": 3,
-            "intensify": 3
-          }
-        },
-        {
-          "effect_id": "extra_effect_turn",
-          "effect_name": "추가 턴",
-          "description": "추가 턴을 획득합니다",
-          "target": "self",
-          "value": 1,
-          "type": "EXTRA",
-          "parameters": {
-            "id": "TURN",
-            "duration": 0,
-            "intensify": 1
-          }
-        }
-      ],
-      "conditional_effects": [],
-      "tags": []
-    },
-    {
       "combination_id": "base_44_01",
       "combination_name": "권총",
       "description": "3연발 사격이 가능한 권총. 날짐승을 잡는데는 이만한게 없다.\n기초 공격력 감소, 추가 공격 횟수 부여.",
@@ -2519,12 +2437,12 @@
           "effect_name": "약화 디버프 부여",
           "description": "적에게 약화 디버프를 부여한다",
           "target": "SELECTED",
-          "value": 5,
+          "value": 3,
           "type": "DEBUFF",
           "parameters": {
             "id": "WEAKNESS",
-            "duration": 5,
-            "intensify": 5
+            "duration": 0,
+            "intensify": 0
           }
         },
         {

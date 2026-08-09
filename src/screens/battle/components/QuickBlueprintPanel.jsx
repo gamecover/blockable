@@ -12,7 +12,7 @@ import blueprintRecipeBase from '../../../assets/pictures/ui/blueprint_recipe_ba
 import blueprintRecipeDetail from '../../../assets/pictures/ui/blueprint_recipe_detail.png'
 import itemBox from '../../../assets/pictures/ui/item_box.png'
 
-export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds, allowedCombinationIds = null }) {
+export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds, allowedCombinationIds = null, disabled = false }) {
   const listRef = useRef(null)
   const dragRef = useRef(null)
   const [isListDragging, setIsListDragging] = useState(false)
@@ -63,7 +63,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
   return (
     <section className="battle-left-ui" aria-label="전투 왼쪽 UI">
       <img className="battle-left-ui__icon" src={blueprintIcon} alt="" draggable={false} />
-      <aside className="quick-blueprints" data-tutorial-target="blueprint" aria-label="퀵 조합 청사진" onDragStart={(event) => event.preventDefault()}>
+      <aside className={`quick-blueprints${disabled ? ' is-disabled' : ''}`} data-tutorial-target="blueprint" aria-label="퀵 조합 청사진" aria-disabled={disabled} onDragStart={(event) => event.preventDefault()}>
         <img className="quick-blueprints__frame" src={blueprintRecipeBase} alt="" draggable={false} />
         <header><strong>청사진</strong></header>
         {scrollIndicators.top && <span className="quick-blueprints__scroll-indicator quick-blueprints__scroll-indicator--top" aria-hidden="true">▲</span>}
@@ -71,6 +71,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
           ref={listRef}
           className={`quick-blueprints__list${isListDragging ? ' is-dragging' : ''}`}
           onPointerDown={(event) => {
+            if (disabled) return
             if (event.button !== 0) return
             const item = event.target.closest('.quick-blueprints__item')
             if (!item || !event.currentTarget.contains(item)) return
@@ -91,6 +92,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
             }
           }}
           onPointerMove={(event) => {
+            if (disabled) return
             const drag = dragRef.current
             if (!drag || drag.pointerId !== event.pointerId) return
             const deltaX = event.clientX - drag.startX
@@ -121,6 +123,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
             }
           }}
           onPointerUp={(event) => {
+            if (disabled) return
             const drag = dragRef.current
             if (!drag || drag.pointerId !== event.pointerId) return
             if (drag?.mode === 'block' && drag.combination) {
@@ -145,6 +148,7 @@ export function QuickBlueprintPanel({ hand, placedBlocks, discoveredBlueprintIds
                 className="quick-blueprints__item available"
                 data-combination-id={combination.id}
                 data-blueprint-drag-source="true"
+                disabled={disabled}
                 title={`${combination.display_name} 퀵 조합`}
                 key={combination.id}
               >

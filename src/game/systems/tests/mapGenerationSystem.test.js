@@ -140,6 +140,32 @@ describe('Darkest Dungeon-style map generation', () => {
     })
   })
 
+  it('assigns normal nodes only normal or horde grades and keeps elite nodes elite', () => {
+    for (let seed = 0; seed < 100; seed += 1) {
+      generateMap({ seed }).floors.forEach((floor) => {
+        floor.nodes
+          .filter(({ type }) => type === 'battle')
+          .forEach(({ grade }) => expect(['normal', 'horde']).toContain(grade))
+        floor.nodes
+          .filter(({ type }) => type === 'elite')
+          .forEach(({ grade }) => expect(grade).toBe('elite'))
+      })
+    }
+  })
+
+  it('generates exactly three floors for the difficulty-one great forge', () => {
+    const map = generateMap({ seed: 42, dungeonId: 'great-forge', difficulty: 1 })
+
+    expect(map.floors).toHaveLength(3)
+    expect(findMapNode(map, map.floors[0].destinationNodeId).type).toBe('stairs')
+    expect(findMapNode(map, map.floors[1].destinationNodeId).type).toBe('stairs')
+    expect(findMapNode(map, map.floors[2].destinationNodeId)).toMatchObject({
+      type: 'boss',
+      grade: 'boss',
+      isFinalBoss: true,
+    })
+  })
+
   it('places a guaranteed rest room at the destination-side midpoint of every shortest main path', () => {
     for (let seed = 0; seed < 100; seed += 1) {
       const map = generateMap({ seed })

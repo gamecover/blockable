@@ -2,8 +2,9 @@ import { createBlock } from '../../objects/blocks/blockData.js'
 import { getRewardBlockDefinitions } from './blockRulesSystem.js'
 
 export const MAX_SHOP_TRANSACTIONS = 3
-export const SHOP_CLEANUP_COST = 50
+export const SHOP_CLEANUP_BASE_COST = 50
 export const getShopPurchaseCost = (purchaseCount) => 50 + (Math.min(2, Math.max(0, purchaseCount)) * 25)
+export const getShopCleanupCost = (cleanupCount) => SHOP_CLEANUP_BASE_COST + (Math.min(2, Math.max(0, cleanupCount)) * 50)
 
 export const createShopOffers = (count = 4, random = Math.random) => {
   const candidates = [...getRewardBlockDefinitions()]

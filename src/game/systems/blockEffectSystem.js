@@ -8,7 +8,7 @@ import {
   BlockRulesRuntimeError,
   parseBlockEffectTarget,
 } from './blockRulesSystem.js'
-import { STATUS_EFFECTS, createStatusUpdateFromEffect } from './statusEffectSystem.js'
+import { createStatusUpdateFromEffect, describeStatusEffect } from './statusEffectSystem.js'
 import { resolveColorSynergy } from './colorSynergySystem.js'
 import { normalizeCombatEffectsV054 } from './combatEffectSchemaSystem.js'
 
@@ -68,14 +68,7 @@ export const describePlacedBlockColors = (placedBlocks = []) => {
 }
 
 const describePreviewStatuses = (updates = []) => updates
-  .map((status) => {
-    const name = status.name
-      ?? STATUS_EFFECTS[status.id]?.name
-      ?? status.sourceId
-      ?? status.id
-    const stacks = Number(status.stacks ?? status.intensify ?? 0)
-    return stacks > 0 ? `${name} ${stacks}` : name
-  })
+  .map(describeStatusEffect)
   .filter(Boolean)
   .join(', ')
 
@@ -88,16 +81,24 @@ export const describeFinalBlockEffects = (effects, resolvedDamage = {}) => {
     ...effects.baseDamageEffects,
     ...effects.independentDamageEffects,
   ]
-  const ranges = [...new Set(damageEffects.map(describeDamageRange))]
+  const describedRanges = damageEffects.map(describeDamageRange)
+  const ranges = [...new Set(
+    describedRanges.some((range) => range !== '단일')
+      ? describedRanges.filter((range) => range !== '단일')
+      : describedRanges,
+  )]
   const selfBuffs = describePreviewStatuses(
     (effects.buffs ?? []).filter(({ target }) => target === 'self'),
   )
   const enemyDebuffs = describePreviewStatuses(
     (effects.debuffs ?? []).filter(({ target }) => target !== 'self'),
   )
+  const formatDamageValue = (rawDamage) => rawDamage < 0
+    ? `0 (계산 ${rawDamage})`
+    : String(rawDamage)
   const damages = [
-    baseDamage !== 0 ? `기본 데미지(B) ${baseDamage}` : '',
-    independentDamage !== 0 ? `독립 데미지(A) ${independentDamage}` : '',
+    effects.baseDamageEffects.length > 0 ? `기본 데미지(B) ${formatDamageValue(baseDamage)}` : '',
+    effects.independentDamageEffects.length > 0 ? `독립 데미지(A) ${formatDamageValue(independentDamage)}` : '',
   ].filter(Boolean).join(' + ')
   return [
     damages,
@@ -138,6 +139,8 @@ export const getDominantCombinationColor = (participatingBlocks = []) => {
 export const describeBlockEffect = (rawEffect) => {
   const effect = normalizeEffect(rawEffect)
   const parameters = effect.parameters ?? {}
+  const status = createStatusUpdateFromEffect(effect)
+  if (status) return describeStatusEffect(status)
   if (effect.type === 'EXTRA' && parameters.id === 'HIT_COUNT') {
     return `추가 공격 횟수 ${effect.value}`
   }
@@ -166,6 +169,8 @@ export const describeBlockEffect = (rawEffect) => {
 
 const effectLabel = (effect) => {
   const parameters = effect.parameters ?? {}
+  const status = createStatusUpdateFromEffect(effect)
+  if (status) return describeStatusEffect(status)
   if (effect.type === 'EXTRA' && parameters.id === 'HIT_COUNT') {
     return `추가 공격 횟수 ${effect.value}`
   }
@@ -200,17 +205,21 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     !participatingBlocks.has(placedBlock))
   const combinationStages = getCombinationEffectStages(matches)
   const colorSynergy = resolveColorSynergy(placedBlocks)
-  const independentEffects = [
+  const combinationEffectStages = [
     combinationStages.recipeEffects,
     combinationStages.conditionalEffects,
     combinationStages.synergyEffects,
-  ].flatMap((stage) => [...stage].sort((left, right) => left.order - right.order))
+  ]
   const result = {
     damage: 0,
     damageByTarget: { enemy: 0, allEnemies: 0 },
     damageEffects: [],
     baseDamageEffects: [],
     independentDamageEffects: [],
+    rawBaseDamage: 0,
+    appliedBaseDamage: 0,
+    rawIndependentDamage: 0,
+    appliedIndependentDamage: 0,
     armor: 0,
     healing: 0,
     drawCount: 0,
@@ -244,6 +253,10 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
   result.hitCountModifier = 0
   result.playerStatuses = []
   let baseDamageAmount = 0
+  let combinationBaseDamageAmount = 0
+  let combinationIndependentDamageAmount = 0
+  let hasCombinationBaseDamage = false
+  let hasCombinationIndependentDamage = false
   let baseDamageScope = null
   let damagePacketSequence = 0
   const addEffect = (rawEffect, fallbackDamageKind, {
@@ -251,6 +264,7 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     packetId = null,
     contributesHitCount = true,
     canonical = false,
+    isCombinationEffect = false,
   } = {}) => {
     if (!canonical) {
       const normalizedEffects = normalizeCombatEffectsV054([rawEffect])
@@ -263,6 +277,7 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
           packetId,
           contributesHitCount,
           canonical: true,
+          isCombinationEffect,
         }))
         return
       }
@@ -302,12 +317,20 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
       if (damageKind === 'baseDamageEffects') {
         baseDamageAmount += amount
         baseDamageScope = damageEffect
+        if (isCombinationEffect) {
+          combinationBaseDamageAmount += amount
+          hasCombinationBaseDamage = true
+        }
       } else {
         result.damage += amount
         result.damageEffects.push(damageEffect)
         result[damageKind].push(damageEffect)
         if (range === 'all') result.damageByTarget.allEnemies += amount
         else result.damageByTarget.enemy += amount
+        if (isCombinationEffect && damageKind === 'independentDamageEffects') {
+          combinationIndependentDamageAmount += amount
+          hasCombinationIndependentDamage = true
+        }
       }
       return
     }
@@ -400,7 +423,13 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
   participatingPlacedBlocks.forEach(({ block }) => {
     block.effects?.forEach((effect) => addEffect(effect, 'baseDamageEffects'))
   })
-  independentEffects.forEach((effect) => addEffect(effect, 'independentDamageEffects'))
+  combinationEffectStages.forEach((stage) => {
+    [...stage]
+      .sort((left, right) => left.order - right.order)
+      .forEach((effect) => addEffect(effect, 'independentDamageEffects', {
+        isCombinationEffect: true,
+      }))
+  })
   unusedPlacedBlocks.forEach(({ block }, blockIndex) => {
     const convertedBasePacketId = `unused-block-${block.id ?? blockIndex}-base`
     block.effects?.forEach((effect) => addEffect(effect, 'independentDamageEffects', {
@@ -471,5 +500,17 @@ export const resolveBlockEffects = (placedBlocks, { currentArmor = 0 } = {}) => 
     else totals.enemy += effect.amount
     return totals
   }, { enemy: 0, allEnemies: 0 })
+  const combinedBaseDamage = result.baseDamageEffects
+    .reduce((sum, effect) => sum + effect.amount, 0)
+  const combinedIndependentDamage = result.independentDamageEffects
+    .reduce((sum, effect) => sum + effect.amount, 0)
+  result.rawBaseDamage = hasCombinationBaseDamage
+    ? combinationBaseDamageAmount
+    : combinedBaseDamage
+  result.appliedBaseDamage = Math.max(0, result.rawBaseDamage)
+  result.rawIndependentDamage = hasCombinationIndependentDamage
+    ? combinationIndependentDamageAmount
+    : combinedIndependentDamage
+  result.appliedIndependentDamage = Math.max(0, result.rawIndependentDamage)
   return result
 }

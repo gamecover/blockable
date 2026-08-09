@@ -3,7 +3,13 @@ import {
   getMonsterImageAsset,
   hasMonsterImageAsset,
 } from '../../objects/monsters/monsterImageAssets.js'
-import { createStatusUpdateFromEffect } from './statusEffectSystem.js'
+import {
+  calculateGeneralDamage,
+  createStatusUpdateFromEffect,
+  describeStatusEffect,
+  getBuffDamageBonus,
+  getHitCountBonus,
+} from './statusEffectSystem.js'
 import { normalizeCombatEffectsV054 } from './combatEffectSchemaSystem.js'
 
 export const MONSTER_DESIGN_SOURCE_PATH = 'docs/references/designs/blockable_monster_design.json'
@@ -12,8 +18,9 @@ export const SUPPORTED_COMBAT_EFFECT_SPEC_VERSION = '0.5.4'
 
 const GRADE_ADAPTER = Object.freeze({
   NORMAL: 'normal',
-  VETERAN: 'named',
-  ELITE: 'named',
+  HORDE: 'horde',
+  VETERAN: 'elite',
+  ELITE: 'elite',
   BOSS: 'boss',
 })
 const SUPPORTED_GRADES = new Set(Object.keys(GRADE_ADAPTER))
@@ -411,7 +418,7 @@ export const createMonsterEncounter = (monster) => ({
   grade: monster.grade_id,
   health: monster.stats.max_hp,
   maxHealth: monster.stats.max_hp,
-  glyph: monster.grade_id === 'boss' ? '♜' : monster.grade_id === 'named' ? '⚙' : '◉',
+  glyph: monster.grade_id === 'boss' ? '♜' : monster.grade_id === 'elite' ? '⚙' : '◉',
   imageUrl: getMonsterImageAsset(monster.id),
 })
 
@@ -575,12 +582,80 @@ export const describeMonsterAbility = (ability) => {
   }
 }
 
-export const pickMonsterEncounter = ({ floor, gradeId, random = Math.random }) => {
-  const requested = getSpawnableMonsters({ floor, gradeId })
-  const fallback = gradeId === 'boss' ? [] : getSpawnableMonsters({ floor, gradeId: 'normal' })
-  const pool = requested.length ? requested : fallback
-  if (!pool.length) {
+export const describeMonsterAbilityPreview = (
+  ability,
+  { attackerStatuses = [], defenderStatuses = [] } = {},
+) => {
+  if (!ability) {
+    return {
+      label: '행동 없음',
+      expectedDamage: null,
+      range: '',
+      effects: [],
+    }
+  }
+
+  const resolved = resolveMonsterAbility(ability)
+  const rageBonus = getBuffDamageBonus(attackerStatuses)
+  const hitCountBonus = getHitCountBonus(attackerStatuses)
+  const hitMultiplier = 1 + hitCountBonus + resolved.hitCountBonus
+  const actionMultiplier = 1 + resolved.extraTurns
+  const rawDamage = (
+    (resolved.playerBaseDamage + rageBonus) * hitMultiplier
+    + resolved.playerBaseHitAttacks.reduce((total, attack) =>
+      total + (attack.value + rageBonus) * (attack.hitCount + hitCountBonus), 0)
+  ) * actionMultiplier + resolved.playerIndependentDamage * actionMultiplier
+  const expectedDamage = rawDamage > 0
+    ? calculateGeneralDamage({
+        amount: rawDamage,
+        attackerStatuses,
+        defenderStatuses,
+      })
+    : 0
+  const effects = (ability.effects ?? [])
+    .filter(({ type }) => !['BASE_DAMAGE', 'INDEPENDENT_DAMAGE'].includes(type?.toUpperCase()))
+    .map((effect) => {
+      const status = createStatusUpdateFromEffect(effect)
+      if (status) return describeStatusEffect(status)
+      const value = Number(effect.value ?? 0)
+      const type = effect.type?.toUpperCase()
+      if (type === 'BLOCK') return `방어 ${value}`
+      if (type === 'RECOVERY') return `회복 ${value}`
+      if (type === 'EXTRA' && effect.parameters?.id === 'HIT_COUNT') return `추가 공격 ${value}`
+      if (type === 'EXTRA' && effect.parameters?.id === 'TURN') return `추가 행동 ${value}`
+      return value ? `${effect.effect_name} ${value}` : effect.effect_name
+    })
+    .filter(Boolean)
+  const targets = [...new Set((ability.effects ?? [])
+    .map(({ target }) => target?.toLowerCase())
+    .filter(Boolean))]
+  const range = targets.includes('all')
+    ? '전체'
+    : targets.length > 0 && targets.every((target) => target === 'self')
+      ? '자신'
+      : '단일'
+
+  return {
+    label: ability.display_name,
+    expectedDamage,
+    range,
+    effects: [...new Set(effects)],
+  }
+}
+
+export const pickMonsterEncounter = ({
+  floor,
+  gradeId,
+  dungeonId = 'all',
+  excludedIds = [],
+  random = Math.random,
+}) => {
+  const requested = getSpawnableMonsters({ floor, gradeId, dungeonId })
+  const excluded = new Set(excludedIds)
+  const pool = requested.filter(({ id }) => !excluded.has(id))
+  const candidates = pool.length ? pool : requested
+  if (!candidates.length) {
     throw new MonsterDesignRuntimeError('RUNTIME', `${floor}층/${gradeId}에 출현 가능한 몬스터가 없습니다.`)
   }
-  return createMonsterEncounter(pool[Math.floor(random() * pool.length)])
+  return createMonsterEncounter(candidates[Math.floor(random() * candidates.length)])
 }

@@ -42,7 +42,8 @@ export function StatusEffectList({ statuses = [], ownerName, className = '', sty
       {visibleStatuses.map(({ id, stacks, definition }) => (
         <span
           className={`status-effect status-effect--${definition.category}`}
-          title={`${definition.categoryName} · ${definition.name} ${stacks}스택`}
+          data-tooltip={`${definition.name} / ${stacks}스택`}
+          title={`${definition.name} / ${stacks}스택`}
           key={id}
         >
           <span aria-hidden="true">

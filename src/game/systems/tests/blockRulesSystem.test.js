@@ -32,9 +32,9 @@ describe('official block rules', () => {
     }).toEqual({
       colors: 7,
       blockTypes: 7,
-      effects: 17,
+      effects: 21,
       blocks: 28,
-      combinations: 26,
+      combinations: 29,
       synergies: 0,
     })
     expect(getRuleBlock('s001').display_name).toBe('강철_I')

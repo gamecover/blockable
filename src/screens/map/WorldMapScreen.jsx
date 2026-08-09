@@ -21,6 +21,7 @@ export function WorldMapScreen({
     <ScreenFrame
       title="전체 지도"
       subtitle={`일반 던전 ${cleared}/${worldMap.requiredClearCount}`}
+      dungeonId="great-forge"
       actions={<div className="resource-bar map-resource-bar"><span>♥ {health}/{maxHealth}</span><GoldAmount amount={gold} /></div>}
     >
       {developerMode && (

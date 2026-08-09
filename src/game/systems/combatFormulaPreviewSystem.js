@@ -1,7 +1,5 @@
-const calculateDamage = (amount, multiplier, reduction, wound) => Math.max(
-  0,
-  Math.floor(amount * multiplier * reduction * wound),
-)
+const calculateRawDamage = (amount, multiplier, reduction, wound) =>
+  Math.floor(amount * multiplier * reduction * wound)
 
 const describeUpdates = (updates = []) => updates
   .map(({ name, id, stacks }) => `${name ?? id} ${stacks}`)
@@ -19,22 +17,26 @@ export const resolveCombatFormulaPreview = (effects, context = {}) => {
     1,
     1 + Number(context.hitCountBonus ?? 0) + Number(effects.hitCountModifier ?? 0),
   )
-  const baseResult = calculateDamage(
+  const rawBaseResult = calculateRawDamage(
     baseDamage + damageBonus,
     attackMultiplier,
     attackReductionMultiplier,
     woundMultiplier,
   ) * hitCount
-  const independentResult = calculateDamage(
+  const baseResult = Math.max(0, rawBaseResult)
+  const rawIndependentResult = calculateRawDamage(
     independentDamage,
     attackMultiplier,
     attackReductionMultiplier,
     woundMultiplier,
   )
+  const independentResult = Math.max(0, rawIndependentResult)
 
   return {
     baseResult,
     independentResult,
+    rawBaseResult,
+    rawIndependentResult,
     lines: [
       `기본 공격(B) ${baseResult} = ((${baseDamage} + ${damageBonus}) × ${attackMultiplier} × ${attackReductionMultiplier} × ${woundMultiplier}) × ${hitCount}`,
       `독립 공격(A) ${independentResult} = ${independentDamage} × ${attackMultiplier} × ${attackReductionMultiplier} × ${woundMultiplier}`,

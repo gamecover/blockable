@@ -40,8 +40,7 @@ import {
 } from '../../game/systems/monsterDesignSystem.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { useRunStore, useRunStoreApi } from '../../game/state/runStoreContext.js'
-import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
-import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
+import { getDungeonBackground } from '../../assets/manifests/dungeonBackgroundManifest.js'
 import discardIcon from '../../assets/pictures/ui/icon_discard.png'
 import turnEndButtonFrame from '../../assets/pictures/ui/button_turn_end_base.png'
 import blockPack from '../../assets/pictures/ui/block_pack.png'
@@ -82,6 +81,7 @@ export function BattleScreen({
   onWin,
   onLose,
   onAbandon,
+  onQuitToMain,
   tutorialMode = false,
   onTutorialSkip,
 }) {
@@ -169,7 +169,13 @@ export function BattleScreen({
         addedBlocks,
       )
       if (poisonDamage > 0) {
-        damagePlayerIgnoringArmor(poisonDamage)
+        const poison = runStore.getState().combat.player.statuses
+          .find(({ id }) => id === 'poison')
+        damagePlayerIgnoringArmor(poisonDamage, {
+          sourceName: poison?.sourceName,
+          effectName: '중독',
+          causeType: 'status',
+        })
         if (runStore.getState().health <= 0) {
           send({ type: 'PLAYER_DEFEATED' })
           onLose()
@@ -337,23 +343,28 @@ export function BattleScreen({
             const monsterHitCount = 1 + hitCountBonus + action.hitCountBonus
             const monsterActionCount = 1 + action.extraTurns
             const monsterRageBonus = getBuffDamageBonus(entry.statuses)
+            const damageFromMonster = (amount) => damagePlayer(amount, entry.statuses, {
+              sourceName: entry.name,
+              effectName: entry.turnPlan.ability?.display_name ?? '기본 공격',
+              causeType: 'direct',
+            })
             for (let hit = 0; hit < monsterHitCount * monsterActionCount; hit += 1) {
-              damagePlayer(action.playerBaseDamage + monsterRageBonus, entry.statuses)
+              damageFromMonster(action.playerBaseDamage + monsterRageBonus)
             }
             action.playerBaseHitAttacks.forEach((attack) => {
               const hitCount = (attack.hitCount + hitCountBonus) * monsterActionCount
               for (let hit = 0; hit < hitCount; hit += 1) {
-                damagePlayer(attack.value + monsterRageBonus, entry.statuses)
+                damageFromMonster(attack.value + monsterRageBonus)
               }
             })
             if (action.playerIndependentDamage) {
               for (let actionIndex = 0; actionIndex < monsterActionCount; actionIndex += 1) {
-                damagePlayer(action.playerIndependentDamage, entry.statuses)
+                damageFromMonster(action.playerIndependentDamage)
               }
             }
             for (let actionIndex = 0; actionIndex < monsterActionCount; actionIndex += 1) {
               action.playerStatuses.forEach((status) =>
-                applyCombatStatus('player', status, undefined, true))
+                applyCombatStatus('player', { ...status, sourceName: entry.name }, undefined, true))
             }
             const after = runStore.getState()
             addLog(`${entry.slotId}번 ${entry.name} · ${entry.turnPlan.ability?.display_name ?? '행동'} · 피해 ${before.health - after.health}`)
@@ -519,9 +530,7 @@ export function BattleScreen({
     })
     return positions
   }, [activeMonsterId, combatants, selectedMonsterId])
-  const battleBackground = dungeonId === 'ashen-forge-west'
-    ? floodedFoundryBackground
-    : ashenFurnaceBackground
+  const battleBackground = getDungeonBackground(dungeonId)
 
   return (
     <main
@@ -530,17 +539,19 @@ export function BattleScreen({
     >
       {!tutorialMode && <CommonGameMenu
         gold={gold}
+        health={health}
         floor={floor}
         map={map}
         worldMap={worldMap}
         deck={deck}
+        discoveredBlueprintIds={discoveredBlueprintIds}
         activeDungeonId={activeDungeonId}
         currentNodeId={currentNodeId}
         currentScreen={tutorialMode ? 'tutorial' : 'battle'}
         title={map?.dungeonName ?? '던전'}
         leftPrimary={battleType === 'boss' ? 'BOSS FLOOR' : `FLOOR ${floor}`}
         leftSecondary={`${turn} TURN`}
-        onMainMenu={onAbandon}
+        onMainMenu={onQuitToMain}
       />}
       <div className={`monster-slots monster-slots--${battleType} monster-slots--selected-${selectedMonster?.slotId ?? 'none'}`} aria-label="몬스터 전투 슬롯">
         {combatants.map((entry) => {
@@ -608,16 +619,16 @@ export function BattleScreen({
           setSelectedMonsterId(monsterId)
         }}
         battleType={battleType}
+        playerStatuses={combat.player.statuses}
       />
       <div className="battle-left-center-cluster">
-        {machineState.matches('playerInput') && (
-          <QuickBlueprintPanel
-            hand={battlePiles.hand}
-            placedBlocks={board.placedBlocks}
-            discoveredBlueprintIds={discoveredBlueprintIds}
-            allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
-          />
-        )}
+        <QuickBlueprintPanel
+          hand={battlePiles.hand}
+          placedBlocks={board.placedBlocks}
+          discoveredBlueprintIds={discoveredBlueprintIds}
+          allowedCombinationIds={tutorialMode && !tutorialFreeCombat ? ['base_33_01'] : null}
+          disabled={!machineState.matches('playerInput')}
+        />
         <BattleCenterOverlay
           health={health}
           maxHealth={maxHealth}

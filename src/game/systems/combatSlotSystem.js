@@ -1,4 +1,4 @@
-import { pickMonsterEncounter } from './monsterDesignSystem.js'
+import { getSpawnableMonsters, pickMonsterEncounter } from './monsterDesignSystem.js'
 
 export const MONSTER_SLOT_IDS = Object.freeze([1, 2, 3, 4, 5])
 
@@ -37,29 +37,49 @@ export const createCombatSlots = ({
   node,
   floor,
   difficultyTier,
+  dungeonId = 'all',
+  bossEncounterHistory = [],
   random = Math.random,
 }) => {
   const battleType = node.type === 'boss' ? 'boss' : 'normal'
-  const isEliteEncounter = node.type === 'elite' || node.grade === 'named'
-  const normalCount = battleType === 'boss'
+  const eliteAvailable = node.type === 'elite'
+    && getSpawnableMonsters({ floor, dungeonId, gradeId: 'elite' }).length > 0
+  const spawnGrade = node.type === 'elite'
+    ? (eliteAvailable ? 'elite' : 'normal')
+    : node.grade === 'horde' ? 'horde' : 'normal'
+  const monsterCount = battleType === 'boss'
     ? 0
-    : isEliteEncounter
-      ? 2 + Math.floor(random() * 2)
-      : 1 + Math.floor(random() * 2)
-  const normalSlots = Array.from({ length: normalCount }, (_, index) => {
+    : spawnGrade === 'elite' || (spawnGrade === 'normal' && node.type !== 'elite')
+      ? 1
+      : 2 + Math.floor(random() * 2)
+  const normalSlots = Array.from({ length: monsterCount }, (_, index) => {
     const monster = pickMonsterEncounter({
       floor,
       difficultyTier,
-      gradeId: isEliteEncounter ? 'named' : 'normal',
+      dungeonId,
+      gradeId: spawnGrade,
       random,
     })
     return { ...monster, instanceId: `${monster.id}-${index + 1}`, slotId: index + 1 }
   })
   if (battleType === 'normal') return { battleType, monsters: normalSlots }
-  const boss = pickMonsterEncounter({ floor, difficultyTier, gradeId: 'boss', random })
+  const bossPool = getSpawnableMonsters({ floor, dungeonId, gradeId: 'boss' })
+  const encounteredBossIds = new Set(bossEncounterHistory)
+  const resetBossEncounterHistory = bossPool.length > 0
+    && bossPool.every(({ id }) => encounteredBossIds.has(id))
+  const boss = pickMonsterEncounter({
+    floor,
+    difficultyTier,
+    dungeonId,
+    gradeId: 'boss',
+    excludedIds: resetBossEncounterHistory ? [] : bossEncounterHistory,
+    random,
+  })
   return {
     battleType,
     monsters: [{ ...boss, instanceId: `${boss.id}-boss`, slotId: 5 }],
+    bossEncounterId: boss.id,
+    resetBossEncounterHistory,
   }
 }
 
