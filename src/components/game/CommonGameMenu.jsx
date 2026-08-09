@@ -1,11 +1,14 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import deckIcon from '../../assets/pictures/ui/icons/icon_blueprints_alpha.png'
+import { BlueprintRecipe } from './BlueprintRecipe.jsx'
 import dungeonMapIcon from '../../assets/pictures/ui/map_base_alpha.png'
 import settingsIcon from '../../assets/pictures/ui/icons/Icon_Settings_a.png'
+import blockPackIcon from '../../assets/pictures/ui/block_pack.png'
+import blueprintIcon from '../../assets/pictures/ui/blueprint_icon.png'
 import { MAX_FLOOR } from '../../game/constants/gameConfig.js'
 import { GAME_EVENTS, gameBridge } from '../../game/events/gameEvents.js'
 import { saveStatusStore } from '../../game/state/trackedStorage.js'
 import { getMapNodePosition, isNodeWithinKnownProgress } from '../../game/systems/mapGenerationSystem.js'
+import { getBlueprintCatalog } from '../../game/systems/blueprintSystem.js'
 import globalMap from '../../screens/map/assets/pictures/maps_volcano.png'
 import { GameSettingsModal } from './GameSettingsModal.jsx'
 import { GoldAmount } from '../ui/GoldAmount.jsx'
@@ -132,6 +135,23 @@ function DeckModal({ deck, onClose }) {
   )
 }
 
+function BlueprintCatalogModal({ discoveredBlueprintIds, onClose }) {
+  const discoveredIds = new Set(discoveredBlueprintIds)
+
+  return (
+    <div className="common-modal__panel common-modal__panel--blueprints" role="dialog" aria-modal="true" aria-labelledby="blueprint-catalog-title">
+      <header><div><small>조합 도감</small><h2 id="blueprint-catalog-title">청사진</h2></div><button type="button" onClick={onClose} aria-label="청사진 닫기">×</button></header>
+      <div className="blueprint-catalog" aria-label="청사진 목록">
+        {getBlueprintCatalog().map((combination) => (
+          <article className="blueprint-catalog__item" key={combination.id}>
+            <BlueprintRecipe combination={combination} isDiscovered={discoveredIds.has(combination.id)} />
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MainMenuConfirm({ onCancel, onConfirm }) {
   return (
     <div className="common-modal__panel common-modal__panel--confirm" role="alertdialog" aria-modal="true" aria-labelledby="main-confirm-title">
@@ -151,6 +171,8 @@ export function CommonGameMenu({
   currentNodeId,
   currentScreen,
   gold = 0,
+  health = 0,
+  discoveredBlueprintIds = [],
   title,
   leftPrimary,
   leftSecondary,
@@ -204,11 +226,16 @@ export function CommonGameMenu({
       <section className="common-game-menu__panel common-game-menu__right" aria-label="게임 메뉴">
         <img className="common-game-menu__frame" src={mainBarRight} alt="" aria-hidden="true" />
         <div className="common-game-menu__panel-content">
-          <GoldAmount amount={gold} />
-          <span className="common-game-menu__gold-label">Gold</span>
-        <IconButton label="던전 지도" imageSrc={dungeonMapIcon} onClick={() => setModal('map')} />
-        <IconButton label="현재 덱 확인" imageSrc={deckIcon} onClick={() => setModal('deck')} />
-        <IconButton label="설정 열기" imageSrc={settingsIcon} onClick={() => setModal('settings')} />
+          <div className="common-game-menu__info">
+            <span className="common-game-menu__health">HP : {health}</span>
+            <span className="common-game-menu__gold"><GoldAmount amount={gold} /><span className="common-game-menu__gold-label">Gold</span></span>
+          </div>
+          <div className="common-game-menu__actions">
+            <IconButton label="던전 지도" imageSrc={dungeonMapIcon} onClick={() => setModal('map')} />
+            <IconButton label="소지 블록 확인" imageSrc={blockPackIcon} onClick={() => setModal('deck')} />
+            <IconButton label="청사진" imageSrc={blueprintIcon} onClick={() => setModal('blueprints')} />
+            <IconButton label="설정 열기" imageSrc={settingsIcon} onClick={() => setModal('settings')} />
+          </div>
         </div>
         <span className={`common-game-menu__save ${saveStatus}`} role="status">{statusLabels[saveStatus]}</span>
       </section>
@@ -222,6 +249,7 @@ export function CommonGameMenu({
         {modal === 'map' && <RunMapModal map={map} floor={floor} currentNodeId={currentNodeId} concealFuture={currentScreen === 'battle'} canOpenWorldMap={currentScreen !== 'map' || developerMode} onClose={() => setModal(null)} onOpenWorldMap={() => setModal('worldMap')} />}
         {modal === 'worldMap' && <WorldMapModal worldMap={worldMap} activeDungeonId={activeDungeonId} onClose={() => setModal(null)} />}
         {modal === 'deck' && <DeckModal deck={deck} onClose={() => setModal(null)} />}
+        {modal === 'blueprints' && <BlueprintCatalogModal discoveredBlueprintIds={discoveredBlueprintIds} onClose={() => setModal(null)} />}
         {modal === 'settings' && <GameSettingsModal onClose={() => setModal(null)} onRequestMainMenu={() => setModal('main')} />}
         {modal === 'main' && <MainMenuConfirm onCancel={() => setModal(null)} onConfirm={onMainMenu} />}
       </div>}

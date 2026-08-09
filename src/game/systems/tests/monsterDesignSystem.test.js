@@ -12,6 +12,7 @@ import {
   monsterDesignDiagnostics,
   resolveMonsterAbility,
   describeMonsterAbility,
+  describeMonsterAbilityPreview,
   selectMonsterAbility,
 } from '../monsterDesignSystem.js'
 
@@ -50,6 +51,27 @@ describe('monster design integration', () => {
     expect(first.ability.id).toBe('basic_attack')
     expect(resolveMonsterAbility(first.ability).playerDamage).toBe(5)
     expect(second.ability.id).toBe('a0001')
+  })
+
+  it('planned ability preview uses the selected ability and user-facing effect labels', () => {
+    const monster = getSpawnableMonsters({ floor: 1, gradeId: 'normal' })
+      .find(({ id }) => id === 'ember_slime')
+    const firstPlan = selectMonsterAbility(monster, createMonsterBehavior(monster), {
+      turn: 1,
+      monster_hp_ratio: 1,
+    })
+    const plan = selectMonsterAbility(monster, firstPlan.runtime, {
+      turn: 2,
+      monster_hp_ratio: 1,
+    })
+    const preview = describeMonsterAbilityPreview(plan.ability)
+
+    expect(preview).toMatchObject({
+      label: '점액 파편',
+      expectedDamage: 5,
+      range: '단일',
+      effects: ['화상 5'],
+    })
   })
 
   it('공통 effect type과 parameters.id를 기존 전투 변수로 연결한다', () => {

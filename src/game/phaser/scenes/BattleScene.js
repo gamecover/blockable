@@ -1023,8 +1023,8 @@ export class BattleScene extends Phaser.Scene {
     )
     const combatFormula = resolveCombatFormulaPreview(effects, this.combatFormulaContext)
     const effectValues = hasUnknownCombination ? '???' : describeFinalBlockEffects(effects, {
-      baseDamage: combatFormula.baseResult,
-      independentDamage: combatFormula.independentResult,
+      baseDamage: effects.rawBaseDamage,
+      independentDamage: effects.rawIndependentDamage,
     })
     const disclosedEffectValues = hasUnknownCombination ? effectValues : [
       effectValues,

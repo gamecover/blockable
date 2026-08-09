@@ -49,6 +49,15 @@ export const createCombatantState = () => ({
   statuses: [],
 })
 
+export const describeStatusEffect = (status = {}) => {
+  const name = status.name
+    ?? STATUS_EFFECTS[status.id]?.name
+    ?? status.sourceId
+    ?? status.id
+  const stacks = Number(status.stacks ?? status.intensify ?? 0)
+  return stacks > 0 ? `${name} ${stacks}` : name
+}
+
 export const addStatus = (statuses, statusId, stacks = 1, newlyApplied = false) => {
   if (!STATUS_EFFECTS[statusId] || stacks <= 0) return statuses
   const nextStacks = statusId === 'stun' ? 1 : stacks
@@ -81,6 +90,7 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
     value: normalizedValue,
     intensify: ['stun', 'double_attack'].includes(update.id) ? 1 : update.intensify,
     remainingTurns: null,
+    ...(update.sourceName ? { sourceName: update.sourceName } : {}),
     ...(newlyApplied ? { newlyApplied: true } : {}),
   }
   const existing = statuses.find(({ id }) => id === update.id)
@@ -89,6 +99,7 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
       id: update.id,
       stacks: layer.intensify,
       layers: [layer],
+      ...(update.sourceName ? { sourceName: update.sourceName } : {}),
       ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(update.id)
         ? { newlyAppliedStacks: layer.intensify }
         : {}),
@@ -99,6 +110,7 @@ export const addStatusUpdate = (statuses, update, newlyApplied = false) => {
         ...status,
         layers: [...(status.layers ?? []), layer],
         stacks: status.stacks + layer.intensify,
+        ...(update.sourceName ? { sourceName: update.sourceName } : {}),
         ...(newlyApplied && ['weakness', 'wound', 'chill'].includes(update.id)
           ? { newlyAppliedStacks: (status.newlyAppliedStacks ?? 0) + layer.intensify }
           : {}),
@@ -184,10 +196,24 @@ export const resolveTurnEndStatuses = ({
   const poisonDamage = owner === 'monster' && survivedBleeding
     ? getActiveStacks(poison) * 3
     : 0
+  const healthAfterBurn = Math.max(0, healthAfterBleeding - burnDamage)
+  const healthAfterPoison = Math.max(0, healthAfterBurn - poisonDamage)
+  const createDamageEvent = (status, damage, healthAfter) => ({
+    statusId: status?.id,
+    ...(status?.sourceName ? { sourceName: status.sourceName } : {}),
+    damage,
+    healthAfter,
+  })
+  const damageEvents = [
+    createDamageEvent(bleeding, Math.min(health, bleedingDamage), healthAfterBleeding),
+    createDamageEvent(burn, Math.min(healthAfterBleeding, burnDamage), healthAfterBurn),
+    createDamageEvent(poison, Math.min(healthAfterBurn, poisonDamage), healthAfterPoison),
+  ].filter(({ damage }) => damage > 0)
   return {
-    health: Math.max(0, healthAfterBleeding - burnDamage - poisonDamage),
+    health: healthAfterPoison,
     armor: armor - absorbedBurn,
     damage: bleedingDamage + burnDamage + poisonDamage,
+    damageEvents,
     statuses: statuses
       .map((status) => {
         if (status.id === 'bleeding') {

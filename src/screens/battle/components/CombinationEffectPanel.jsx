@@ -1,9 +1,15 @@
 import damageReportFrame from '../../../assets/pictures/ui/damage_report.png'
 import { describeFinalBlockEffects } from '../../../game/systems/blockEffectSystem.js'
 
-export function CombinationEffectPanel({ effects, discoveredBlueprintIds = [] }) {
+export function CombinationEffectPanel({
+  effects,
+  discoveredBlueprintIds = [],
+}) {
   const synergyLines = effects.colorSynergy?.labels ?? []
-  const effectSummary = describeFinalBlockEffects(effects)
+  const effectSummary = describeFinalBlockEffects(effects, {
+    baseDamage: effects.rawBaseDamage,
+    independentDamage: effects.rawIndependentDamage,
+  })
   const discoveredIds = new Set(discoveredBlueprintIds)
   const hasUndiscoveredCombination = effects.combinationDetails.some(
     ({ id }) => !discoveredIds.has(id),

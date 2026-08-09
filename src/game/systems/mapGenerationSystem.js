@@ -46,6 +46,9 @@ export const DIFFICULTY_CONFIGS = Object.freeze({
 
 export const DIFFICULTY_ONE_CONFIG = DIFFICULTY_CONFIGS[1]
 
+const getFloorCount = (dungeonId, difficulty, config) =>
+  dungeonId === 'great-forge' && difficulty === 1 ? 3 : config.floorCount
+
 const createSeededRandom = (seed) => {
   let value = (Math.imul(seed >>> 0, 2654435761) + 1013904223) >>> 0
   return () => {
@@ -492,6 +495,7 @@ export const generateMap = ({
   const random = createSeededRandom(seed)
   const normalizedDifficulty = Math.min(10, Math.max(1, Math.trunc(Number(difficulty) || 1)))
   const config = DIFFICULTY_CONFIGS[normalizedDifficulty]
+  const floorCount = getFloorCount(dungeonId, normalizedDifficulty, config)
   return {
     schemaVersion: MAP_SCHEMA_VERSION,
     generatorVersion: MAP_GENERATOR_VERSION,
@@ -500,8 +504,8 @@ export const generateMap = ({
     difficulty: normalizedDifficulty,
     seed,
     floors: Array.from(
-      { length: config.floorCount },
-      (_, index) => createFloor(index + 1, config.floorCount, random, config),
+      { length: floorCount },
+      (_, index) => createFloor(index + 1, floorCount, random, config),
     ),
   }
 }

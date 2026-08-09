@@ -1,5 +1,4 @@
-import ashenFurnaceBackground from '../../assets/pictures/backgrounds/Ash_furance_alpha.png'
-import floodedFoundryBackground from '../../assets/pictures/backgrounds/flooded_foundry_alpha.png'
+import { getDungeonBackground } from '../../assets/manifests/dungeonBackgroundManifest.js'
 
 export function DungeonLoadingScreen({
   dungeonId,
@@ -9,9 +8,7 @@ export function DungeonLoadingScreen({
   onRetry,
   onContinue,
 }) {
-  const background = dungeonId === 'ashen-forge-west'
-    ? floodedFoundryBackground
-    : ashenFurnaceBackground
+  const background = getDungeonBackground(dungeonId)
 
   return (
     <main

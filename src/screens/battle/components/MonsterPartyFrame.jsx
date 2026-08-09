@@ -8,6 +8,7 @@ import monsterHpElite from '../../../assets/pictures/ui/hp_bar_monster_elite.png
 import monsterHpBoss from '../../../assets/pictures/ui/hp_bar_monster_boss.png'
 import monsterHpBlock from '../../../assets/pictures/ui/hp_bar_monster_block.png'
 import monsterHpEmpty from '../../../assets/pictures/ui/hp_bar_monster_empty.png'
+import { describeMonsterAbilityPreview } from '../../../game/systems/monsterDesignSystem.js'
 
 const SLOTS = [1, 2, 3, 4, 5]
 
@@ -21,6 +22,7 @@ export function MonsterPartyFrame({
   canSelect,
   onSelect,
   battleType,
+  playerStatuses = [],
 }) {
   const bySlot = new Map(combatants.map((entry) => [entry.slotId, entry]))
   const selectedMonster = combatants.find(({ instanceId }) => instanceId === selectedMonsterId)
@@ -31,6 +33,12 @@ export function MonsterPartyFrame({
     ? 'boss'
     : (detailMonster?.gradeId === 'named' || detailMonster?.grade === 'named' ? 'elite' : 'normal')
   const healthFrame = { normal: monsterHpNormal, elite: monsterHpElite, boss: monsterHpBoss }[selectedMonsterGrade]
+  const selectedMonsterAbility = selectedMonster?.currentHealth > 0
+    ? describeMonsterAbilityPreview(selectedMonster.turnPlan?.ability, {
+        attackerStatuses: selectedMonster.statuses,
+        defenderStatuses: playerStatuses,
+      })
+    : describeMonsterAbilityPreview(null)
   const filledHealthSegmentCount = detailMonster?.currentHealth > 0
     ? Math.max(1, Math.ceil(detailMonster.currentHealth / detailMonster.health * healthSegments.length))
     : 0
@@ -114,6 +122,11 @@ export function MonsterPartyFrame({
           <div className="monster-party-frame__detail-content">
             <span className="monster-party-frame__detail-label">적 상세 정보</span>
             <strong className="monster-party-frame__selected-name" style={{ left: '13%', right: 'auto', top: '6%', width: '46%', height: '12%', justifyContent: 'start', textAlign: 'left' }}><span className="monster-party-frame__selected-name-text">{detailMonster.name}</span></strong>
+            <span className="monster-party-frame__ability-detail" aria-label={`${selectedMonster?.name ?? detailMonster.name} 이번 턴 행동`}>
+              <b>{selectedMonsterAbility.label}</b>
+              {selectedMonsterAbility.range && <small>{selectedMonsterAbility.expectedDamage > 0 ? `피해 ${selectedMonsterAbility.expectedDamage}` : '피해 없음'} · 범위 {selectedMonsterAbility.range}</small>}
+              {selectedMonsterAbility.effects.length > 0 && <em>{selectedMonsterAbility.effects.join(' · ')}</em>}
+            </span>
             <span className="monster-party-frame__portrait" style={{ gridRow: 3, alignSelf: 'center', justifySelf: 'stretch', height: '100%', paddingTop: '7%', boxSizing: 'border-box' }}>
               <span className={`monster-party-frame__portrait-motion${presentationMotion?.monsterId === detailMonster.instanceId ? ` is-${presentationMotion.type}` : ''}`}>
                 {detailMonster.imageUrl

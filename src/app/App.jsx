@@ -41,7 +41,9 @@ export function App() {
   const [earnedGold, setEarnedGold] = useState(0)
   const [runMode, setRunMode] = useState('normal')
   const [conqueredDungeonName, setConqueredDungeonName] = useState('')
+  const [finalBossName, setFinalBossName] = useState('')
   const [resultFloor, setResultFloor] = useState(1)
+  const [resultDeathCause, setResultDeathCause] = useState(null)
   const [areaLoading, setAreaLoading] = useState(null)
   const [tutorialReturn, setTutorialReturn] = useState('menu')
   const [tutorialAttempt, setTutorialAttempt] = useState(0)
@@ -90,6 +92,8 @@ export function App() {
     const targetRun = targetStore.getState()
     const prologueSeen = targetRun.prologueSeen
     targetRun.startRun()
+    setResultDeathCause(null)
+    setFinalBossName('')
     setRunMode(mode)
     if (mode === 'normal' && prologueSeen && !targetRun.tutorialCompleted) {
       beginTutorial('game')
@@ -315,6 +319,11 @@ export function App() {
       setConqueredDungeonName(activeDungeon?.name ?? run.map.dungeonName)
       run.completeDungeon()
       if (activeDungeon?.kind === 'final') {
+        setFinalBossName(
+          encounter.monsters?.find(({ slotId }) => slotId === 5)?.name
+          ?? encounter.monster?.name
+          ?? '',
+        )
         setResultFloor(run.floor)
         deleteActiveRun()
       }
@@ -368,6 +377,21 @@ export function App() {
     send({ type: 'LOSE' })
   }
 
+  const quitBattleToMain = () => {
+    if (activeStore.getState().runStarted) {
+      activeStore.setState({ lastSavedAt: Date.now() })
+    }
+    setEncounter(null)
+    send({ type: 'MENU' })
+  }
+
+  const handleBattleLoss = () => {
+    setResultFloor(run.floor)
+    setResultDeathCause(activeStore.getState().deathCause)
+    deleteActiveRun()
+    send({ type: 'LOSE' })
+  }
+
   const backToMenu = () => {
     if (activeStore.getState().runStarted) {
       activeStore.setState({ lastSavedAt: Date.now() })
@@ -404,7 +428,7 @@ export function App() {
   if (current === 'worldMap') screen = <WorldMapScreen {...run} developerMode={developerMode} onDeveloperDifficultyChange={(difficulty) => { if (developerMode) run.setDeveloperDifficulty(difficulty) }} onPrepare={(dungeon) => prepareDungeon(dungeon)} onSelect={enterDungeon} />
   if (current === 'map') screen = <MapScreen {...run} developerMode={developerMode} onDebugAddGold={() => { if (developerMode) run.addGold(1000) }} onDebugAddHealth={() => { if (developerMode) run.gainMaxHealth(25) }} onLeaveDungeon={() => { run.leaveDungeon(); send({ type: 'LEAVE_DUNGEON' }) }} onSelect={enterNode} />
   if (current === 'startChoice') screen = <StartBlockChoiceScreen choices={uniqueBlockChoices} onChoose={chooseStartingBlock} />
-  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} dungeonId={run.activeDungeonId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={() => { setResultFloor(run.floor); deleteActiveRun(); send({ type: 'LOSE' }) }} onAbandon={abandonBattle} />
+  if (current === 'battle' && monster) screen = <BattleScreen key={run.currentNodeId} dungeonId={run.activeDungeonId} developerMode={developerMode} monster={monster} monsters={encounter.monsters} battleType={encounter.battleType} onWin={winBattle} onLose={handleBattleLoss} onAbandon={abandonBattle} onQuitToMain={quitBattleToMain} />
   if (current === 'tutorial' && monster) screen = <BattleScreen
     key={`tutorial-${tutorialAttempt}`}
     tutorialMode
@@ -420,8 +444,8 @@ export function App() {
   if (current === 'reward') screen = <RewardScreen rewards={rewards} gold={earnedGold} onChoose={finishReward} onSkip={() => finishReward(null)} />
   if (current === 'event') screen = <EventScreen event={encounter?.event} dungeonId={run.activeDungeonId} {...run} onResolve={resolveEvent} onShopTransaction={resolveShopTransaction} onDefer={() => send({ type: 'DONE' })} />
   if (current === 'dungeonConquest') screen = <DungeonConquestScreen dungeonName={conqueredDungeonName} onContinue={() => send({ type: 'CONTINUE' })} />
-  if (current === 'gameover') screen = <ResultScreen floor={resultFloor} onMenu={backToMenu} />
-  if (current === 'ending') screen = <ResultScreen victory floor={resultFloor} onMenu={backToMenu} />
+  if (current === 'gameover') screen = <ResultScreen floor={resultFloor} deathCause={resultDeathCause} onMenu={backToMenu} />
+  if (current === 'ending') screen = <ResultScreen victory floor={resultFloor} victoryBossName={finalBossName} onMenu={backToMenu} />
 
   const commonMenuTitles = {
     prologue: '프롤로그',
@@ -443,6 +467,7 @@ export function App() {
         worldMap={run.worldMap}
         deck={run.deck}
         gold={run.gold}
+        health={run.health}
         activeDungeonId={run.activeDungeonId}
         discoveredBlueprintIds={run.discoveredBlueprintIds}
         currentNodeId={run.currentNodeId}

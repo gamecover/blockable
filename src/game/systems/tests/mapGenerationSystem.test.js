@@ -140,6 +140,19 @@ describe('Darkest Dungeon-style map generation', () => {
     })
   })
 
+  it('generates exactly three floors for the difficulty-one great forge', () => {
+    const map = generateMap({ seed: 42, dungeonId: 'great-forge', difficulty: 1 })
+
+    expect(map.floors).toHaveLength(3)
+    expect(findMapNode(map, map.floors[0].destinationNodeId).type).toBe('stairs')
+    expect(findMapNode(map, map.floors[1].destinationNodeId).type).toBe('stairs')
+    expect(findMapNode(map, map.floors[2].destinationNodeId)).toMatchObject({
+      type: 'boss',
+      grade: 'boss',
+      isFinalBoss: true,
+    })
+  })
+
   it('places a guaranteed rest room at the destination-side midpoint of every shortest main path', () => {
     for (let seed = 0; seed < 100; seed += 1) {
       const map = generateMap({ seed })

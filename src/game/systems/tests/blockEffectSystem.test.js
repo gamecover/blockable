@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createBlock } from '../../../objects/blocks/blockData.js'
 import { conditionMatches } from '../blockCombinationSystem.js'
 import {
+  describeBlockEffect,
   describeDamageRange,
   describeFinalBlockEffects,
   describePlacedBlockColors,
@@ -28,6 +29,21 @@ const placeRecipe = (combinationId, replacementIds = {}) => {
 }
 
 describe('block effects and combinations', () => {
+  it('uses the combat status label for block-card damage-over-time effects', () => {
+    expect(describeBlockEffect({
+      effect_id: 'dot_damage_burn_3',
+      value: 3,
+      type: 'DAMAGE_OVER_TIME',
+      parameters: { id: 'BURN' },
+    })).toBe('화상 3')
+    expect(describeBlockEffect({
+      effect_id: 'dot_damage_poison_2',
+      value: 2,
+      type: 'DAMAGE_OVER_TIME',
+      parameters: { id: 'POISON' },
+    })).toBe('중독 2')
+  })
+
   it('describes attack ranges for the forge effect preview', () => {
     expect(describeDamageRange({ range: 'single', distance: 0 })).toBe('단일')
     expect(describeDamageRange({ range: 'left', distance: 1 })).toBe('기준+좌 1')
@@ -47,6 +63,17 @@ describe('block effects and combinations', () => {
     })).toBe('기본 데미지(B) 18 + 독립 데미지(A) 20  /  범위 전체  /  나의 버프 분노 2  /  적 디버프 약화 1')
   })
 
+  it('omits the single-target label when a broader damage range is present', () => {
+    expect(describeFinalBlockEffects({
+      baseDamageEffects: [{ amount: 10, range: 'single', distance: 0 }],
+      independentDamageEffects: [{ amount: 5, range: 'all', distance: 0 }],
+      buffs: [],
+      debuffs: [],
+      armor: 0,
+      healing: 0,
+    })).toBe('기본 데미지(B) 10 + 독립 데미지(A) 5  /  범위 전체')
+  })
+
   it('shows the resolved B damage after H is applied', () => {
     expect(describeFinalBlockEffects({
       baseDamageEffects: [{ amount: 18, range: 'all', distance: 0 }],
@@ -59,6 +86,17 @@ describe('block effects and combinations', () => {
       baseDamage: 54,
       independentDamage: 45,
     })).toBe('기본 데미지(B) 54 + 독립 데미지(A) 45  /  범위 전체')
+  })
+
+  it('presents negative B and A results as zero while retaining their raw calculations', () => {
+    expect(describeFinalBlockEffects({
+      baseDamageEffects: [{ amount: -23, range: 'single', distance: 0 }],
+      independentDamageEffects: [{ amount: -7, range: 'single', distance: 0 }],
+      buffs: [],
+      debuffs: [],
+      armor: 0,
+      healing: 0,
+    })).toBe('기본 데미지(B) 0 (계산 -23) + 독립 데미지(A) 0 (계산 -7)  /  범위 단일')
   })
 
   it('describes placed colors and prefixes a combination with the dominant non-steel color', () => {
@@ -200,6 +238,17 @@ describe('block effects and combinations', () => {
     const result = resolveBlockEffects(placedBlocks)
 
     expect(result.combinations).toContain('base_33_03')
+    expect(BLOCK_RULE_INDEX.combinations.get('base_33_03').effects).toContainEqual(
+      expect.objectContaining({ type: 'BASE_DAMAGE', value: -20 }),
+    )
+    expect(result.rawBaseDamage).toBe(-20)
+    expect(result.appliedBaseDamage).toBe(0)
+    expect(result.rawIndependentDamage).toBe(15)
+    expect(result.appliedIndependentDamage).toBe(15)
+    expect(describeFinalBlockEffects(result, {
+      baseDamage: result.rawBaseDamage,
+      independentDamage: result.rawIndependentDamage,
+    })).toBe('기본 데미지(B) 0 (계산 -20) + 독립 데미지(A) 15  /  범위 전체')
     expect(result.independentDamageEffects).toContainEqual({
       target: 'allEnemies',
       range: 'all',
