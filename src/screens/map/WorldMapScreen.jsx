@@ -2,6 +2,15 @@ import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { canEnterWorldDungeon } from '../../game/systems/worldMapSystem.js'
 import globalMap from './assets/pictures/maps_volcano.png'
+import centralFurnaceIcon from './assets/pictures/dungeons/central_furnace.png'
+import ashenForgingIcon from './assets/pictures/dungeons/ashen_forging.png'
+import floodedFoundryIcon from './assets/pictures/dungeons/flooded_foundry.png'
+
+const DUNGEON_ICONS = Object.freeze({
+  'great-forge': centralFurnaceIcon,
+  'ashen-forge-east': ashenForgingIcon,
+  'ashen-forge-west': floodedFoundryIcon,
+})
 
 export function WorldMapScreen({
   worldMap,
@@ -40,14 +49,15 @@ export function WorldMapScreen({
           <small>다음 던전 입장부터 적용</small>
         </div>
       )}
-      <div className="world-map" style={{ backgroundImage: `url(${globalMap})` }}>
+      <div className="world-map world-map--selection" style={{ backgroundImage: `url(${globalMap})` }}>
         {worldMap.dungeons.map((dungeon) => {
           const selectable = canEnterWorldDungeon(dungeon, developerMode)
+          const completedInNormalMode = dungeon.status === 'complete' && !developerMode
           return (
             <button
               type="button"
               key={dungeon.id}
-              className={`world-dungeon world-dungeon--${dungeon.kind} world-dungeon--${dungeon.id} ${dungeon.status}`}
+              className={`world-dungeon world-dungeon--selection world-dungeon--${dungeon.kind} world-dungeon--${dungeon.id} ${dungeon.status}${completedInNormalMode ? ' world-dungeon--complete-disabled' : ''}`}
               style={{ left: `${dungeon.position.x}%`, top: `${dungeon.position.y}%` }}
               disabled={!selectable}
               onPointerEnter={() => { if (selectable) onPrepare?.(dungeon) }}
@@ -55,9 +65,9 @@ export function WorldMapScreen({
               onClick={() => onSelect(dungeon)}
               aria-label={`${dungeon.name} · ${dungeon.status}`}
             >
-              <b>{dungeon.kind === 'final' ? '♜' : '◆'}</b>
-              <span>{dungeon.name}</span>
-              <small>난이도 {dungeon.difficulty} · {dungeon.status === 'locked' ? '잠김' : dungeon.status === 'complete' ? '완료' : '입장'}</small>
+              <img className="world-dungeon__icon" src={DUNGEON_ICONS[dungeon.id]} alt="" />
+              <span className="world-dungeon__name">{dungeon.name}</span>
+              <small className="world-dungeon__difficulty">난이도 {dungeon.difficulty}</small>
             </button>
           )
         })}
