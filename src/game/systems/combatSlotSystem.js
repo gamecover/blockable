@@ -1,4 +1,9 @@
-import { getSpawnableMonsters, pickMonsterEncounter } from './monsterDesignSystem.js'
+import {
+  getSpawnableMonsters,
+  pickMonsterEncounter,
+  pickPrototypeHordeEncounter,
+  PROTOTYPE_HORDE_MONSTER_IDS,
+} from './monsterDesignSystem.js'
 
 export const MONSTER_SLOT_IDS = Object.freeze([1, 2, 3, 4, 5])
 
@@ -53,13 +58,21 @@ export const createCombatSlots = ({
       ? 1
       : 2 + Math.floor(random() * 2)
   const normalSlots = Array.from({ length: monsterCount }, (_, index) => {
-    const monster = pickMonsterEncounter({
-      floor,
-      difficultyTier,
-      dungeonId,
-      gradeId: spawnGrade,
-      random,
-    })
+    const monster = spawnGrade === 'horde'
+      ? pickPrototypeHordeEncounter({ random })
+      : pickMonsterEncounter({
+          floor,
+          difficultyTier,
+          dungeonId,
+          gradeId: spawnGrade,
+          ...(spawnGrade === 'normal'
+            ? {
+                excludedIds: PROTOTYPE_HORDE_MONSTER_IDS,
+                allowExcludedFallback: false,
+              }
+            : {}),
+          random,
+        })
     return { ...monster, instanceId: `${monster.id}-${index + 1}`, slotId: index + 1 }
   })
   if (battleType === 'normal') return { battleType, monsters: normalSlots }

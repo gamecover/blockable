@@ -361,6 +361,15 @@ export const monsterDesign = Object.freeze({
 
 const monsterById = new Map(monsterDesign.monsters.map((monster) => [monster.id, monster]))
 
+// Prototype-only encounter pool. These Designer entries remain NORMAL in the
+// source JSON, but horde encounters use them independently until a formal
+// horde grade is added to the design data.
+export const PROTOTYPE_HORDE_MONSTER_IDS = Object.freeze([
+  'scrap_amalgam',
+  'burning_worm',
+  'slag_imp',
+])
+
 const compare = (actual, operator, expected) => {
   const normalized = operator?.toLowerCase()
   if (normalized === 'eq') return actual === expected
@@ -648,14 +657,28 @@ export const pickMonsterEncounter = ({
   gradeId,
   dungeonId = 'all',
   excludedIds = [],
+  allowExcludedFallback = true,
   random = Math.random,
 }) => {
   const requested = getSpawnableMonsters({ floor, gradeId, dungeonId })
   const excluded = new Set(excludedIds)
   const pool = requested.filter(({ id }) => !excluded.has(id))
-  const candidates = pool.length ? pool : requested
+  const candidates = pool.length || !allowExcludedFallback ? pool : requested
   if (!candidates.length) {
     throw new MonsterDesignRuntimeError('RUNTIME', `${floor}층/${gradeId}에 출현 가능한 몬스터가 없습니다.`)
   }
   return createMonsterEncounter(candidates[Math.floor(random() * candidates.length)])
+}
+
+export const pickPrototypeHordeEncounter = ({ random = Math.random } = {}) => {
+  const candidates = PROTOTYPE_HORDE_MONSTER_IDS
+    .map((id) => monsterById.get(id))
+    .filter(Boolean)
+  if (!candidates.length) {
+    throw new MonsterDesignRuntimeError('RUNTIME', '프로토타입 horde 몬스터가 없습니다.')
+  }
+  return {
+    ...createMonsterEncounter(candidates[Math.floor(random() * candidates.length)]),
+    grade: 'horde',
+  }
 }
