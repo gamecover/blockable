@@ -1,7 +1,7 @@
 export const GAME_TITLE = 'BLOCKABLE!'
 export const DEFAULT_DUNGEON = {
   id: 'ashen-forge',
-  name: '잿빛 용광로',
+  name: '잿빛 단조장',
   difficulty: 1,
   floorCount: 2,
 }
