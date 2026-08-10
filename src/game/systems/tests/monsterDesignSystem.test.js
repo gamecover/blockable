@@ -33,9 +33,10 @@ describe('monster design integration', () => {
     expect(ids).not.toContain('explosive_soul')
   })
 
-  it('지정된 세 몬스터만 horde 등급으로 읽는다', () => {
+  it('프로토타입 horde 후보는 Designer JSON에서 normal 등급으로 유지한다', () => {
     const hordeIds = monsterDesign.monsters
-      .filter(({ grade_id: gradeId }) => gradeId === 'horde')
+      .filter(({ id }) => ['scrap_amalgam', 'burning_worm', 'slag_imp'].includes(id))
+      .filter(({ grade_id: gradeId }) => gradeId === 'normal')
       .map(({ id }) => id)
 
     expect(hordeIds).toEqual(['scrap_amalgam', 'burning_worm', 'slag_imp'])

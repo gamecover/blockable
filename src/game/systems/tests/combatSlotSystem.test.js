@@ -93,6 +93,33 @@ describe('combat slots', () => {
     })
   })
 
+  it('uses the prototype horde pool on every floor regardless of Designer appearance conditions', () => {
+    const combat = createCombatSlots({
+      node: { type: 'battle', grade: 'horde' },
+      floor: 3,
+      difficultyTier: 1,
+      random: () => 0,
+    })
+
+    expect(combat.monsters).toHaveLength(2)
+    expect(combat.monsters.every(({ grade }) => grade === 'horde')).toBe(true)
+    expect(combat.monsters.every(({ id }) =>
+      ['scrap_amalgam', 'burning_worm', 'slag_imp'].includes(id))).toBe(true)
+  })
+
+  it('keeps prototype horde candidates out of normal encounters', () => {
+    const hordeIds = new Set(['scrap_amalgam', 'burning_worm', 'slag_imp'])
+    const combat = createCombatSlots({
+      node: { type: 'battle', grade: 'normal' },
+      floor: 3,
+      difficultyTier: 1,
+      random: () => 0.999,
+    })
+
+    expect(combat.monsters).toHaveLength(1)
+    expect(hordeIds.has(combat.monsters[0].id)).toBe(false)
+  })
+
   it('uses only slot five for a boss battle', () => {
     const combat = createCombatSlots({
       node: { type: 'boss', grade: 'boss' },
