@@ -4,21 +4,21 @@ export const WORLD_DUNGEONS = Object.freeze([
     name: '침수된 주조장',
     kind: 'normal',
     difficulty: 1,
-    position: { x: 27.9167, y: 47 },
+    position: { x: 27.9167, y: 39.5926 },
   },
   {
     id: 'ashen-forge-east',
     name: '잿빛 단조장',
     kind: 'normal',
     difficulty: 1,
-    position: { x: 73.3333, y: 50.7407 },
+    position: { x: 73.3333, y: 43.3333 },
   },
   {
     id: 'great-forge',
     name: '중앙 대용광로',
     kind: 'final',
     difficulty: 1,
-    position: { x: 50.5833, y: 51.0185 },
+    position: { x: 50.5833, y: 43.6111 },
   },
 ])
 

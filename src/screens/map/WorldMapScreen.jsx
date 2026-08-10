@@ -2,9 +2,9 @@ import { ScreenFrame } from '../../components/ui/ScreenFrame.jsx'
 import { GoldAmount } from '../../components/ui/GoldAmount.jsx'
 import { canEnterWorldDungeon } from '../../game/systems/worldMapSystem.js'
 import globalMap from './assets/pictures/maps_volcano.png'
-import centralFurnaceIcon from './assets/pictures/dungeons/central_furnace.png'
-import ashenForgingIcon from './assets/pictures/dungeons/ashen_forging.png'
-import floodedFoundryIcon from './assets/pictures/dungeons/flooded_foundry.png'
+import centralFurnaceIcon from './assets/pictures/dungeons/central_furnace_mixed.png'
+import ashenForgingIcon from './assets/pictures/dungeons/ashen_forging_mixed.png'
+import floodedFoundryIcon from './assets/pictures/dungeons/flooded_foundry_mixed.png'
 
 const DUNGEON_ICONS = Object.freeze({
   'great-forge': centralFurnaceIcon,
@@ -66,8 +66,7 @@ export function WorldMapScreen({
               aria-label={`${dungeon.name} · ${dungeon.status}`}
             >
               <img className="world-dungeon__icon" src={DUNGEON_ICONS[dungeon.id]} alt="" />
-              <span className="world-dungeon__name">{dungeon.name}</span>
-              <small className="world-dungeon__difficulty">난이도 {dungeon.difficulty}</small>
+              <small className="world-dungeon__difficulty">난이도 : {dungeon.difficulty}</small>
             </button>
           )
         })}
